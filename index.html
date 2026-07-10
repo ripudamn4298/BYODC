@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BYODC — Build your own Data Centre</title>
+<meta name="description" content="An interactive course: from a grain of sand to the machines that think. You don't read it — you build it.">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/landing.css">
+<link rel="stylesheet" href="css/game.css">
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<script src="vendor/Draggable.min.js"></script>
+<script src="vendor/InertiaPlugin.min.js"></script>
+</head>
+<body>
+
+<!-- ============ LANDING ============ -->
+<div id="landing">
+  <canvas id="artifact" aria-hidden="true"></canvas>
+
+  <nav id="lnav">
+    <a class="wordmark" href="#top">BYODC<span class="dot">·</span></a>
+    <div class="links microlabel">
+      <a href="#journey">The journey</a>
+      <a href="#acts">Acts</a>
+      <a href="#colophon">Colophon</a>
+    </div>
+    <button class="btn primary" data-label="play-act-1" data-begin>Play Act 1 ▸</button>
+  </nav>
+
+  <header id="hero" class="lsection">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <div class="microlabel reveal"><span class="idx">AN INTERACTIVE COURSE</span> — FIVE ACTS, ZERO EQUATIONS</div>
+        <h1 class="reveal">Build your own<br><em>Data Centre.</em></h1>
+        <p class="lede reveal">From a single grain of sand to the machines that think — doped crystal by
+        transistor by chip by cluster. You won't read about any of it. <b>You'll build it, with your own hands.</b></p>
+        <div class="scroll-cue reveal" aria-hidden="true">
+          <span class="microlabel">Scroll to go all the way in</span>
+          <span class="cue-arrow">↓</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-strip microlabel reveal">
+      <span>ACT 1 TOTAL SPEND — <b>$0.0015</b></span><span class="sep"></span>
+      <span>SWITCHES BUILT BY HAND — <b>4</b></span><span class="sep"></span>
+      <span>SCARY EQUATIONS — <b>0</b></span><span class="sep"></span>
+      <span class="drag-hint">↖ THE GLOBE IS DRAGGABLE — GIVE IT A SPIN</span>
+    </div>
+  </header>
+
+  <section id="journey">
+    <div class="journey-pin">
+      <div class="journey-copy">
+        <!-- phases injected by landing.js -->
+      </div>
+    </div>
+  </section>
+
+  <section id="realworld" aria-label="facts from the real semiconductor world">
+    <div class="rw-pin">
+      <div class="rw-center"><!-- statements injected --></div>
+      <div class="rw-cards"><!-- fact cards injected --></div>
+      <div class="rw-eyebrow microlabel">MEANWHILE, IN THE REAL WORLD —</div>
+    </div>
+  </section>
+
+  <section id="acts" class="lsection">
+    <div class="acts-head">
+      <div class="microlabel">THE LADDER — FIVE ACTS</div>
+      <h2>Sand <em>to</em> superclusters</h2>
+    </div>
+    <div class="acts-table">
+      <button class="act-row playable" data-begin data-label="act-row-1">
+        <span class="microlabel idx">ACT 1</span>
+        <span class="nm">The Physics of a Switch <em>— dope silicon, build a transistor, a MOSFET, CMOS</em></span>
+        <span class="microlabel tag play">PLAY ▸</span>
+      </button>
+      <div class="act-row locked"><span class="microlabel idx">ACT 2</span><span class="nm">From Switches to Logic, Math &amp; Memory</span><span class="microlabel tag">LOCKED</span></div>
+      <div class="act-row locked"><span class="microlabel idx">ACT 3</span><span class="nm">From Cell to Chip — fabrication at scale</span><span class="microlabel tag">LOCKED</span></div>
+      <div class="act-row locked"><span class="microlabel idx">ACT 4</span><span class="nm">The GPU — machines built for mathematics</span><span class="microlabel tag">LOCKED</span></div>
+      <div class="act-row locked"><span class="microlabel idx">ACT 5</span><span class="nm">The Data Centre — your own supercluster</span><span class="microlabel tag">LOCKED</span></div>
+    </div>
+    <div class="acts-cta">
+      <button class="btn primary big" data-begin data-label="start-act-1">Start Act 1 ▸</button>
+      <div class="microlabel">BEGIN AT THE ATOM · NO EQUATIONS · ~10 MINUTES</div>
+    </div>
+  </section>
+
+  <footer id="colophon" class="lsection">
+    <div class="microlabel">BYODC — AN INSTRUMENT, NOT A TEXTBOOK</div>
+    <p>Every diagram is drawn in code. Every sound is synthesized in code. Nothing here is a stock asset,
+    and nothing you'll build is a metaphor — it's the real mechanism, simplified but never falsified.</p>
+    <div class="microlabel foot-rule">SET IN INSTRUMENT SERIF · EB GARAMOND · IBM PLEX MONO — ANIMATED WITH GSAP — NO NETWORK, NO TRACKING</div>
+  </footer>
+</div>
+
+<!-- ============ GAME ============ -->
+<div id="game">
+  <header id="hud">
+    <div class="wordmark">BYODC<em>·</em></div>
+    <div class="stepmark" id="stepmark">ACT 1 · STEP <b>1 / 4</b></div>
+    <div class="money" id="money">SPENT $0.0000</div>
+    <div class="inv" id="inv">YOU HAVE: <b>a pile of very pure sand</b></div>
+    <button id="mute" aria-label="toggle sound" title="toggle sound">♪</button>
+  </header>
+  <main id="stage-wrap">
+    <div id="stage" class="ticks"><span class="tk"></span></div>
+    <aside id="guide" aria-live="polite">
+      <div class="nav-row" id="guide-nav"></div>
+      <div id="guide-scroll"></div>
+    </aside>
+  </main>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

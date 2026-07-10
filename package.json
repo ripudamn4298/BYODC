@@ -1,0 +1,6 @@
+{
+  "name": "byodc",
+  "private": true,
+  "type": "module",
+  "description": "Build your own Data Centre — an interactive course from sand to superclusters. No build step; serve statically."
+}

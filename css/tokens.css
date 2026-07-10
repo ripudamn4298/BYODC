@@ -1,0 +1,34 @@
+/* BYODC v2 — design tokens · "a living instrument on paper" */
+:root{
+  --paper:#E8DFC9;
+  --paper-high:#F2ECDC;
+  --ink:#1D2117;
+  --ink-soft:#565D4C;
+  --ink-faint:#989C8C;
+  --hairline:rgba(29,33,23,.16);
+  --hairline-soft:rgba(29,33,23,.09);
+  --hairline-strong:rgba(29,33,23,.34);
+  --dark:#181B12;
+  --dark-soft:#242819;
+  --cream:#EFECE0;
+
+  --blue:#2946CC;        /* electrons / N-type */
+  --blue-soft:rgba(41,70,204,.08);
+  --red:#D9481E;         /* holes / P-type */
+  --red-soft:rgba(217,72,30,.07);
+  --amber:#A8741F;       /* cost / heat / power */
+  --amber-soft:rgba(168,116,31,.10);
+  --green:#5C6B45;       /* success / olive accent */
+
+  --grid-fine:rgba(150,96,44,.075);   /* graph-paper texture, warm sepia */
+  --grid-bold:rgba(150,96,44,.12);
+
+  --font-display:'Instrument Serif', 'New York', ui-serif, Georgia, serif;
+  --font-body:'EB Garamond', 'Iowan Old Style', Palatino, Georgia, serif;
+  --font-mono:'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, monospace;
+
+  --label-size:10.5px;
+  --label-track:.16em;
+  --radius:2px;          /* the paper world is nearly square-cornered */
+  --ease:cubic-bezier(.22,.9,.24,1);
+}
