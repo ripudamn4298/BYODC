@@ -1,1 +1,28 @@
+# ── OS / editor cruft ─────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+.claude/
+
+# ── Superseded assets (the site loads animation-frames-hd/ only) ───
+animation-frames/
+
+# ── Reference material — inspiration, not part of the site ────────
 website_inspiration/
+animation_inspiration/
+hf_landing_page_scroll_animation.mp4
+legacy/
+untitled folder/
+
+# ── Internal docs / notes — not needed to host ───────────────────
+HANDOFF_ACTS_3-5.md
+HANDOFF_V3_ACT1_PHYSICS_ACT4_MATH.md
+PLAYTEST_FINDINGS.md
+PROGRESS.md
+transcript.txt
+
+# ── Loose images not referenced by the site ──────────────────────
+GPU.png
+chip.png
+rack.png
+server.png
+transistor.png

@@ -14,7 +14,9 @@ export async function step4(){
   const { svg, controls } = newStage('04', 'CMOS inverter build');
   guide.title('STEP 4 / 4 · NANOVOLT LOGIC', 'Build <em>CMOS</em> — the switch that runs the world');
 
-  guide.say(`Meet the twins. <b>NMOS</b> is your switch from last step — it opens when its gate is <em>HIGH</em>. <b>PMOS</b> is its mirror image: it opens when its gate is <em>LOW</em>. Feed one input wire to both gates at once, and exactly <b>one twin is always open, one always shut</b>.`);
+  guide.say(`One MOSFET wastes power. Pairing two opposite ones fixes that — that pairing is called <b>CMOS</b>, and it's what every modern chip is built from. Aim: wire a matched pair into the simplest useful cell and see why it draws almost no power.`);
+  await guide.next();
+  guide.say(`Meet the twins. <b>NMOS</b> is the switch you just built — a <em>HIGH</em> gate switches it ON. <b>PMOS</b> is its mirror: built the opposite way, so a <em>LOW</em> gate switches it ON instead. (All you need is the behaviour — opposite gate, opposite switch.) Wire one input to <b>both</b> gates at once, and in every state exactly <b>one twin is ON and the other is OFF</b>.`);
   await guide.next();
 
   /* ---------- rails + skeleton ---------- */
@@ -66,7 +68,7 @@ export async function step4(){
   const tiles = [mosTile('PMOS'), mosTile('NMOS')];
   tiles[0].home = { x: 528, y: 312 }; tiles[1].home = { x: 528, y: 392 };
 
-  guide.say(`Build the classic first cell of every chip — the <b>inverter</b>. Power rail on top, ground below, output tapped from the middle. <em>Place the twins.</em>`);
+  guide.say(`Build the classic first cell of every chip — the <b>inverter</b>, a cell whose output is the opposite of its input. The <b>power rail</b> along the top is the high voltage (a 1); the <b>ground</b> rail along the bottom is the low voltage (a 0); the output is tapped from the middle. <em>Place the twins.</em>`);
 
   const placer = makePlacer({
     svg, tiles, slots,
@@ -150,7 +152,7 @@ export async function step4(){
   }
   setIN(1, true); meter.fill.style.width = '2%';
 
-  guide.say(`<b>Your test, chipmaker:</b> flip the input and watch the output — and the meter.`);
+  guide.say(`<b>Your test:</b> flip the input and watch the output — and the meter.`);
 
   const t1 = guide.task('Set the input so OUT = 1');
   await flow.ask(async replay => {
@@ -172,6 +174,10 @@ export async function step4(){
   });
   t2.done();
 
-  guide.aha(`Now flip it a few times and <b>watch the power meter</b>. Holding a state, it sits at ≈ zero — whichever twin is switched OFF breaks the path from power to ground, so nothing leaks through. Energy is spent only in the instant of the flip. <b>That's the whole secret of CMOS</b> — and it's why a chip can hold <em>billions</em> of these without melting.`);
+  guide.aha(`Flip it a few times and watch the <b>power meter</b>. Here's what trips everyone up: the battery is connected the <em>whole time</em>, yet the meter only twitches for an instant at each flip, then drops back to ≈ zero. Why no steady current? Because the two twins sit <b>in series</b> between <b>power</b> and <b>ground</b>, and in any resting state <b>one of them is always OFF</b> — so the path from power to ground is <b>broken</b>. The voltage is there, but with no complete path, no current flows. The only current is a brief pulse that charges the output wire the moment it flips 0→1 (or drains it, 1→0).`,
+    `Voltage applied does not mean current flowing — not without a complete path. A resting CMOS gate has none, so it burns almost nothing.`);
+  await guide.next();
+
+  guide.note(`This is why chips are built from these voltage-controlled MOSFETs and <b>not</b> the current-driven transistor you built in Step 2. That one needs a steady base current the entire time it's held ON — a billion of those, all drinking power at once, would cook the chip. The MOSFET holds its state on <b>voltage alone</b>, spending power only in the flick of the switch. That one difference is the reason billions of switches can share a single sliver of silicon.`);
   await guide.next();
 }

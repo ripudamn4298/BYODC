@@ -6,7 +6,7 @@ export const SFX = {
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain();
-      this.master.gain.value = .11;
+      this.master.gain.value = .24;   // task SFX always sit above the music bed
       this.master.connect(this.ctx.destination);
     } catch (e){ this.ctx = null; }
   },

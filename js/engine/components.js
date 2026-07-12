@@ -74,11 +74,14 @@ export function makeSeg(controls, opts, onPick){
   const seg = el('div', { class: 'seg', role: 'group' });
   const btns = opts.map(o => {
     const b = el('button', { 'aria-pressed': 'false', 'data-label': o.id }, o.label);
-    b.addEventListener('click', () => onPick(o.value));
+    // self-highlight on click so the pressed state always tracks the selection,
+    // even if the caller's onPick forgets to call set()
+    b.addEventListener('click', () => { api.set(o.value); onPick(o.value); });
     seg.appendChild(b); return { b, value: o.value };
   });
   controls.appendChild(seg);
-  return { el: seg, set(v){ btns.forEach(x => x.b.setAttribute('aria-pressed', String(x.value === v))); } };
+  const api = { el: seg, set(v){ btns.forEach(x => x.b.setAttribute('aria-pressed', String(x.value === v))); } };
+  return api;
 }
 export function makeMeter(controls, label = 'POWER DRAW'){
   const m = el('div', { class: 'meter' },

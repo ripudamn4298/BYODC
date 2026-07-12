@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BYODC — Build your own Data Centre · frame-scrub test</title>
+<meta name="description" content="TEST PAGE — landing page scroll animation driven by hand-drawn frames.">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/landing.css">
+<link rel="stylesheet" href="css/game.css">
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<style>
+/* ---- test-only overrides: the artifact is now a hand-drawn frame sequence ---- */
+/* the sketch frames are cream-on-cream; multiply melts their paper into ours,
+   leaving only the pencil ink sitting on the site's own background */
+#artifact{
+  mix-blend-mode:multiply;
+  opacity:1;
+}
+/* a paper wash between the sketch and the copy column keeps text readable
+   without ever reading as a "box" — it's just more paper */
+#landing>#scrim{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,
+    var(--paper) 0%,
+    var(--paper) 26%,
+    color-mix(in srgb, var(--paper) 88%, transparent) 44%,
+    color-mix(in srgb, var(--paper) 38%, transparent) 58%,
+    transparent 74%);
+}
+@media (max-width:880px){
+  #landing>#scrim{background:linear-gradient(180deg,
+    color-mix(in srgb, var(--paper) 92%, transparent) 0%,
+    color-mix(in srgb, var(--paper) 78%, transparent) 48%,
+    color-mix(in srgb, var(--paper) 42%, transparent) 72%,
+    transparent 96%)}
+}
+#landing>*:not(#artifact):not(#scrim){position:relative;z-index:2}
+</style>
+</head>
+<body>
+
+<!-- ============ LANDING (test copy — frame-scrub artifact) ============ -->
+<div id="landing">
+  <canvas id="artifact" aria-hidden="true"></canvas>
+  <div id="scrim" aria-hidden="true"></div>
+
+  <nav id="lnav">
+    <a class="wordmark" href="index.html">BYODC<span class="dot">·</span></a>
+    <div class="links microlabel">
+      <a href="#journey">The journey</a>
+      <a href="#acts">Acts</a>
+      <a href="#colophon">Colophon</a>
+    </div>
+    <button id="lmute" aria-label="toggle sound" title="toggle sound">♪</button>
+    <button class="btn primary" data-label="play-act-1" data-begin>Play Act 1 ▸</button>
+  </nav>
+
+  <header id="hero" class="lsection">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <div class="microlabel reveal"><span class="idx">AN INTERACTIVE COURSE</span> — FIVE ACTS, ZERO EQUATIONS</div>
+        <h1 class="reveal">Build your own<br><em>Data Centre.</em></h1>
+        <p class="lede reveal">From a single grain of sand to the machines that think — doped crystal by
+        transistor by chip by cluster. You won't read about any of it. <b>You'll build it, with your own hands.</b></p>
+        <div class="scroll-cue reveal" aria-hidden="true">
+          <span class="microlabel">Scroll to go all the way in</span>
+          <span class="cue-arrow">↓</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-strip microlabel reveal">
+      <span>ACT 1 TOTAL SPEND — <b>$0.0015</b></span><span class="sep"></span>
+      <span>SWITCHES BUILT BY HAND — <b>4</b></span><span class="sep"></span>
+      <span>SCARY EQUATIONS — <b>0</b></span><span class="sep"></span>
+      <span class="drag-hint">↓ SCROLL — THE DRAWING TAKES ITSELF APART</span>
+    </div>
+  </header>
+
+  <section id="journey">
+    <div class="journey-pin">
+      <div class="journey-copy">
+        <!-- phases injected by script below -->
+      </div>
+    </div>
+  </section>
+
+  <section id="realworld" aria-label="facts from the real semiconductor world">
+    <div class="rw-pin">
+      <div class="rw-center"><!-- statements injected --></div>
+      <div class="rw-cards"><!-- fact cards injected --></div>
+      <div class="rw-eyebrow microlabel">MEANWHILE, IN THE REAL WORLD —</div>
+    </div>
+  </section>
+
+  <section id="acts" class="lsection">
+    <div class="acts-head">
+      <div class="microlabel">THE LADDER — FIVE ACTS</div>
+      <h2>Sand <em>to</em> superclusters</h2>
+    </div>
+    <div class="acts-table">
+      <button class="act-row playable" data-begin data-label="act-row-1">
+        <span class="microlabel idx">ACT 1</span>
+        <span class="nm">The Physics of a Switch <em>— dope silicon, build a transistor, a MOSFET, CMOS</em></span>
+        <span class="microlabel tag play">PLAY ▸</span>
+      </button>
+      <button class="act-row playable" data-begin="2" data-label="act-row-2">
+        <span class="microlabel idx">ACT 2</span>
+        <span class="nm">From Switches to Logic, Math &amp; Memory <em>— a NAND, an adder, a latch, a heartbeat</em></span>
+        <span class="microlabel tag play">PLAY ▸</span>
+      </button>
+      <button class="act-row playable" data-begin="3" data-label="act-row-3">
+        <span class="microlabel idx">ACT 3</span>
+        <span class="nm">From Cell to Chip <em>— grow an ingot, print with light, play the yield game</em></span>
+        <span class="microlabel tag play">PLAY ▸</span>
+      </button>
+      <button class="act-row playable" data-begin="4" data-label="act-row-4">
+        <span class="microlabel idx">ACT 4</span>
+        <span class="nm">The GPU — machines built for mathematics <em>— Build the multiply engine, park the weights, and assemble the NV-1 — the machine for mathematics.</em></span>
+        <span class="microlabel tag play">PLAY ▸</span>
+      </button>
+      <button class="act-row playable" data-begin="5" data-label="act-row-5">
+        <span class="microlabel idx">ACT 5</span>
+        <span class="nm">The Data Centre — your own supercluster <em>— racks, megawatts, the globe</em></span>
+        <span class="microlabel tag play">PLAY ▸</span>
+      </button>
+    </div>
+    <div class="acts-cta">
+      <button class="btn primary big" data-begin data-label="start-act-1">Start Act 1 ▸</button>
+      <div class="microlabel">BEGIN AT THE ATOM · NO EQUATIONS · ~10 MINUTES</div>
+    </div>
+  </section>
+
+  <footer id="colophon" class="lsection">
+    <div class="microlabel">BYODC — AN INSTRUMENT, NOT A TEXTBOOK</div>
+    <p>Every diagram is drawn in code. Every sound is synthesized in code. Nothing here is a stock asset,
+    and nothing you'll build is a metaphor — it's the real mechanism, simplified but never falsified.</p>
+    <div class="microlabel foot-rule">SET IN INSTRUMENT SERIF · EB GARAMOND · IBM PLEX MONO — ANIMATED WITH GSAP — NO NETWORK, NO TRACKING</div>
+  </footer>
+</div>
+
+<script type="module">
+// BYODC — TEST: landing scroll story, artifact = hand-drawn frame sequence.
+// The 151 sketches in animation-frames/ are one continuous camera move:
+//   rack room → the rack alone → a 1U server tray → the GPU → the die → one transistor.
+// Scroll scrubs through them; the drawing dwells on a frame while each phase's
+// copy is readable, and travels in the gap between phases (same dwell contract
+// as the dot-morph on the real landing page).
+import { $, el, RM, clamp } from './js/engine/util.js';
+
+/* ---------------- copy (identical to landing.js) ---------------- */
+const PHASES = [
+  { idx: '01', label: 'THE DATA CENTRE', title: 'This is where it <em>ends up.</em>', body: `A rack in a data centre — servers, switches, and the cabling that ties them into one machine. <b>Data centres are what make today's internet possible</b> — every search, stream and sentence you've ever typed lives in a room like this. You're going to build one from nothing. So let's go <b>all the way in.</b>` },
+  { idx: '02', label: 'THE SERVER', title: 'Pull out <em>one server.</em>', body: `Slide a single tray from the stack: fans, CPUs, memory and storage packed into a box <b>one rack-unit tall</b>. Everything a data centre does happens inside thousands of these. Keep going.` },
+  { idx: '03', label: 'THE GPU', title: 'Inside it — <em>the GPU.</em>', body: `The card doing the real work. Under the shroud: a heatsink, stacks of high-bandwidth memory, and <b>thousands of small cores</b> built for one job — multiplying numbers, all at once, without rest. Closer.` },
+  { idx: '04', label: 'THE CHIP', title: 'At its heart — <em>the die.</em>', body: `Lift the package open and you reach a sliver of silicon smaller than a fingernail — cache, logic gates, and the metal wiring that stitches <b>tens of billions</b> of switches together. Closer still.` },
+  { idx: '05', label: 'THE TRANSISTOR', title: 'All the way down — <em>one transistor.</em>', body: `A single 7nm FinFET: a source, a drain, and a gate that creates a channel where there was none. No moving parts — just doped silicon, switching billions of times a second. <b>That's where you begin.</b> One switch — then we climb every rung back up to the machine.` },
+];
+
+const RW_STATEMENTS = [
+  `A modern GPU carries <span class="hl">208 billion</span> of the switches you're about to build — <em>each one smaller than a virus.</em>`,
+  `They're printed with light that <span class="hl">doesn't occur naturally on Earth</span> — struck from droplets of molten tin, <em>50,000 times a second.</em>`,
+  `Sand to superclusters is the most precise thing <span class="hl">humans have ever manufactured.</span> <em>Time to climb it.</em>`,
+];
+const RW_FACTS = [
+  { seg: 0, x: 4,  y: 14, spd: 1.0,  label: 'SCALE',                body: `A human hair is ~<b>90,000 nm</b> across. A transistor gate: ~<b>5 nm</b>. Eighteen thousand of them, side by side, in one hair.` },
+  { seg: 0, x: 72, y: 10, spd: .55,  label: 'PURITY',               body: `Chip-grade silicon is <b>99.9999999%</b> pure. Nine nines — one stray atom per billion.` },
+  { seg: 0, x: 66, y: 72, spd: 1.35, label: 'RELIABILITY',          body: `A switch you build today will flip <b>3 billion times a second</b>, for twenty years, without failing once.` },
+  { seg: 1, x: 6,  y: 64, spd: .8,   label: 'ASML · VELDHOVEN, NL', body: `Exactly <b>one company on Earth</b> can build an EUV lithography machine — the printer of modern chips.` },
+  { seg: 1, x: 70, y: 18, spd: 1.25, label: 'PRICE TAG',            body: `A single High-NA EUV machine: ~<b>$380,000,000</b>. It ships in <b>40 freight containers</b>.` },
+  { seg: 1, x: 10, y: 12, spd: .5,   label: 'THE MIRRORS',          body: `Its mirrors are the <b>flattest objects ever made</b> — scaled to the size of Germany, the tallest bump would be 1 mm.` },
+  { seg: 2, x: 68, y: 62, spd: 1.1,  label: 'TSMC · HSINCHU, TW',   body: `~<b>90%</b> of the world's most advanced chips are printed by <b>one company</b> in Taiwan.` },
+  { seg: 2, x: 5,  y: 20, spd: .65,  label: 'CLEANROOM',            body: `The air in a chip fab is ~<b>1,000× cleaner</b> than a hospital operating theatre.` },
+  { seg: 2, x: 8,  y: 70, spd: 1.4,  label: 'OUTPUT',               body: `Humanity now makes <b>more transistors every year</b> than there are grains of sand on Earth.` },
+];
+
+function initRealWorld(){
+  const center = document.querySelector('.rw-center');
+  const cardsWrap = document.querySelector('.rw-cards');
+  const states = RW_STATEMENTS.map(html => {
+    const p = el('div', { class: 'rw-state' }, html);
+    center.appendChild(p); return p;
+  });
+  const cards = RW_FACTS.map(f => {
+    const c = el('div', { class: 'fact-card', style: `left:${f.x}%;top:${f.y}%` },
+      `<div class="fc-label">${f.label}</div><div class="fc-body">${f.body}</div>`);
+    cardsWrap.appendChild(c); return { el: c, f };
+  });
+  if (RM || typeof gsap === 'undefined'){
+    states.forEach(s => s.style.opacity = 1);
+    return;
+  }
+  gsap.set(states[0], { opacity: 1 });
+  ScrollTrigger.create({
+    trigger: '#realworld', start: 'top top', end: 'bottom bottom', scrub: true,
+    onUpdate(self){
+      const P = self.progress * 3;
+      states.forEach((s, k) => {
+        const local = P - k;
+        const o = local <= 0 || local >= 1 ? 0 : Math.sin(Math.PI * clamp(local, 0, 1));
+        s.style.opacity = Math.min(1, o * 1.5).toFixed(3);
+        s.style.transform = `translateY(calc(-50% + ${(0.5 - clamp(local, 0, 1)) * 40}px))`;
+      });
+      cards.forEach(({ el: c, f }) => {
+        const local = clamp(P - f.seg, 0, 1);
+        const o = local <= 0 || local >= 1 ? 0 : Math.min(1, Math.sin(Math.PI * local) * 1.7);
+        c.style.opacity = o.toFixed(3);
+        c.style.transform = `translateY(${(0.5 - local) * 130 * f.spd}px)`;
+      });
+    },
+  });
+}
+
+/* ---------------- the frame artifact ---------------- */
+const FRAME_COUNT = 151;
+const framePath = i => `animation-frames-hd/ezgif-frame-${String(i + 1).padStart(3, '0')}.jpg`;
+
+// where the camera RESTS for each phase (0-indexed frames, mapped from the sketch):
+//   0   — the rack in its room, cables overhead          (01 · THE INTERNET)
+//   77  — the 1U tray pulled from the stack              (02 · THE CHIP)
+//   103 — the GPU laid open under the tray               (03 · THE FIELD)
+//   127 — the bare die, micro-architecture labelled      (04 · THE SWITCH)
+//   150 — the single 7nm FinFET, fully drawn             (05 · THE BEGINNING)
+const ANCHORS = [0, 77, 103, 127, 150];
+
+function frameArtifact(){
+  const cv = $('#artifact'), ctx = cv.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+
+  function fit(){
+    DPR = Math.min(2, devicePixelRatio || 1);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    drawn = -1; // force redraw at new size
+  }
+
+  // progressive preload — a small worker pool walks the sequence in order;
+  // until a frame arrives we draw the nearest loaded one below it
+  const imgs = new Array(FRAME_COUNT).fill(null);
+  const loaded = new Array(FRAME_COUNT).fill(false);
+  let next = 0;
+  function pump(){
+    if (next >= FRAME_COUNT) return;
+    const i = next++;
+    const im = new Image();
+    im.onload = () => { imgs[i] = im; loaded[i] = true; if (i === nearest(target)) drawn = -1; pump(); };
+    im.onerror = () => pump();
+    im.src = framePath(i);
+  }
+  for (let k = 0; k < 8; k++) pump();
+
+  function nearest(i){
+    i = Math.round(clamp(i, 0, FRAME_COUNT - 1));
+    for (let d = 0; d < FRAME_COUNT; d++){
+      if (loaded[i - d] && i - d >= 0) return i - d;
+      if (loaded[i + d] && i + d < FRAME_COUNT) return i + d;
+    }
+    return -1;
+  }
+
+  // dwell: hold while the copy is readable, travel in the gap between phases
+  const dwell = t => {
+    const a = .24, b = .76;
+    if (t <= a) return 0;
+    if (t >= b) return 1;
+    const u = (t - a) / (b - a);
+    return u * u * (3 - 2 * u);
+  };
+
+  let target = 0;      // fractional frame the scroll asks for
+  let current = 0;     // smoothed frame we actually show
+  let progress = 0;    // 0..PHASES.length-1, for the gentle push-in
+  let drawn = -1;      // frame index currently on the canvas
+  function setMorph(p){
+    progress = clamp(p, 0, ANCHORS.length - 1);
+    const seg = Math.min(ANCHORS.length - 2, Math.floor(progress));
+    const t = progress - seg;
+    target = ANCHORS[seg] + (ANCHORS[seg + 1] - ANCHORS[seg]) * dwell(t);
+  }
+
+  function draw(){
+    const idx = nearest(current);
+    if (idx < 0 || idx === drawn) return;
+    drawn = idx;
+    const im = imgs[idx];
+    ctx.clearRect(0, 0, W, H);
+    // on phones the sketch is a background texture, same as the dot artifact
+    ctx.globalAlpha = W <= 880 ? .5 : 1;
+    // cover-fit with a slow push-in as we go deeper; on wide screens the
+    // drawing leans right so it lives beside the copy column, not under it
+    const zoom = 1.02 + progress * .02;
+    const s = Math.max(W / im.naturalWidth, H / im.naturalHeight) * zoom;
+    const dw = im.naturalWidth * s, dh = im.naturalHeight * s;
+    // the rack scene fills its frame edge to edge; the later diagrams sit
+    // centre-left with blank paper on the right — so as the zoom leaves the
+    // rack (frames 0→77) the whole drawing eases right to fill that space
+    const t01 = clamp(current / ANCHORS[1], 0, 1);
+    const lean = W > 880 ? W * (.06 + .14 * t01) : 0;
+    ctx.drawImage(im, (W - dw) / 2 + lean, (H - dh) / 2, dw, dh);
+  }
+
+  let raf = null, last = performance.now();
+  function frame(t){
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min(.05, (t - last) / 1000); last = t;
+    // exponential follow — scrubbing feels like film being pulled, not stepped
+    current += (target - current) * Math.min(1, dt * 9);
+    if (Math.abs(target - current) < .02) current = target;
+    draw();
+  }
+
+  fit();
+  addEventListener('resize', fit);
+
+  if (RM){
+    // reduced motion: a single still of the completed drawing
+    const im = new Image();
+    im.onload = () => { imgs[FRAME_COUNT - 1] = im; loaded[FRAME_COUNT - 1] = true; current = target = FRAME_COUNT - 1; draw(); };
+    im.src = framePath(FRAME_COUNT - 1);
+  } else {
+    raf = requestAnimationFrame(frame);
+  }
+
+  const api = {
+    setMorph,
+    settle(){ current = target; drawn = -1; draw(); },   // debug/verification: snap + repaint now
+    get frame(){ return drawn; }, get target(){ return target; },
+  };
+  window.__byodcFrames = api;   // debug/verification hook
+  return api;
+}
+
+/* ---------------- scroll choreography (same contract as landing.js) ---------------- */
+const landing = $('#landing');
+if (RM) landing.classList.add('rm');
+
+const jc = $('.journey-copy');
+PHASES.forEach((ph, i) => {
+  jc.appendChild(el('div', { class: 'jphase', 'data-phase': i },
+    `<div class="microlabel"><span class="idx">${ph.idx}</span> — ${ph.label}</div>
+     <h3>${ph.title}</h3><p>${ph.body}</p>`));
+});
+
+const art = frameArtifact();
+
+// test page has no game shell — the play buttons hand over to the real page
+document.querySelectorAll('[data-begin]').forEach(b =>
+  b.addEventListener('click', () => location.href = 'index.html'));
+
+if (RM || typeof gsap === 'undefined'){
+  initRealWorld();
+  document.querySelectorAll('.reveal').forEach(r => r.classList.add('shown'));
+} else {
+  gsap.registerPlugin(ScrollTrigger);
+  initRealWorld();
+
+  gsap.to('#hero .reveal', {
+    opacity: 1, y: 0, duration: 1.1, ease: 'power3.out',
+    stagger: .12, delay: .15,
+    onComplete(){ document.querySelectorAll('#hero .reveal').forEach(r => r.classList.add('shown')); },
+  });
+
+  ScrollTrigger.create({
+    start: 40, onUpdate(self){ $('#lnav').classList.toggle('scrolled', self.scroll() > 40); },
+  });
+
+  const phaseEls = [...document.querySelectorAll('.jphase')];
+  gsap.set(phaseEls[0], { opacity: 1 });
+  ScrollTrigger.create({
+    trigger: '#journey', start: 'top top', end: 'bottom bottom',
+    scrub: 1.25,
+    snap: {
+      snapTo: 1 / (PHASES.length - 1),
+      duration: { min: .3, max: .9 },
+      delay: .08,
+      ease: 'power2.out',
+    },
+    onUpdate(self){
+      const P = self.progress * (PHASES.length - 1);
+      art.setMorph(P);
+      phaseEls.forEach((elp, k) => {
+        const d = Math.abs(P - k);
+        // tighter window than the dot-morph page: each copy is gone before its
+        // neighbour is halfway in, so adjacent phases never sit on each other
+        const o = clamp((.62 - d) / .28, 0, 1);
+        elp.style.opacity = o.toFixed(3);
+        elp.style.transform = `translateY(calc(-50% + ${(P - k) * -56}px))`;
+      });
+    },
+  });
+
+  // hand the stage to the dark section — sketch and scrim leave together
+  const artCv = $('#artifact'), scrim = $('#scrim');
+  ScrollTrigger.create({
+    trigger: '#journey', start: 'bottom 96%', end: 'bottom 45%', scrub: true,
+    onUpdate(self){
+      const o = (1 - self.progress).toFixed(3);
+      artCv.style.opacity = o; scrim.style.opacity = o;
+    },
+  });
+
+  gsap.fromTo('.act-row', { opacity: 0, y: 18 }, {
+    opacity: 1, y: 0, duration: .7, ease: 'power3.out', stagger: .08,
+    scrollTrigger: { trigger: '#acts', start: 'top 72%' },
+  });
+}
+</script>
+</body>
+</html>

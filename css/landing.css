@@ -4,8 +4,29 @@
 #artifact{
   position:fixed;inset:0;width:100%;height:100%;
   z-index:1;pointer-events:none;
+  /* the sketch frames are cream-on-cream; multiply melts their paper into
+     ours, leaving only the pencil ink on the site's own background */
+  mix-blend-mode:multiply;
 }
-#landing>*:not(#artifact){position:relative;z-index:2}
+/* a paper wash between the sketch and the copy column keeps text readable
+   without ever reading as a "box" — it's just more paper */
+#landing>#scrim{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,
+    var(--paper) 0%,
+    var(--paper) 26%,
+    color-mix(in srgb, var(--paper) 88%, transparent) 44%,
+    color-mix(in srgb, var(--paper) 38%, transparent) 58%,
+    transparent 74%);
+}
+@media (max-width:880px){
+  #landing>#scrim{background:linear-gradient(180deg,
+    color-mix(in srgb, var(--paper) 92%, transparent) 0%,
+    color-mix(in srgb, var(--paper) 78%, transparent) 48%,
+    color-mix(in srgb, var(--paper) 42%, transparent) 72%,
+    transparent 96%)}
+}
+#landing>*:not(#artifact):not(#scrim){position:relative;z-index:2}
 
 /* ---------- nav ---------- */
 #lnav{
@@ -72,7 +93,7 @@
 }
 
 /* ---------- journey (pinned scroll morph) ---------- */
-#journey{height:840vh;position:relative}
+#journey{height:1080vh;position:relative}
 .rm #journey{height:auto}
 .journey-pin{
   position:sticky;top:0;height:100vh;overflow:hidden;

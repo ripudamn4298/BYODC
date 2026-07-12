@@ -59,6 +59,59 @@ export const guide = {
     const t = this.beat(el('div', { class: 'task' }, `<span class="box"></span><span>${text}</span>`));
     return { done(){ t.classList.add('done'); if (!flow.instant) SFX.success(); } };
   },
+  /* interactive truth table: player fills the OUT column by tapping cells (blank→0→1),
+     then checks. Wrong answers shake + hint; resolves (and records) once all correct.
+     spec: { heads:['A','B','OUT'], rows:[[0,0],[0,1],[1,0],[1,1]], expected:[1,1,1,0], hint } */
+  truthTable(spec){
+    const t = el('div', { class: 'tt' });
+    t.innerHTML = `<div class="tt-row tt-head">${spec.heads.map(h => `<span>${h}</span>`).join('')}</div>`;
+    const cells = spec.rows.map((row, ri) => {
+      const r = el('div', { class: 'tt-row' });
+      row.forEach(v => r.appendChild(el('span', {}, String(v))));
+      const c = el('button', { class: 'tt-cell', 'data-label': `tt-row-${ri}` }, '·');
+      c.state = null;
+      c.addEventListener('click', () => {
+        SFX.click();
+        c.state = c.state === null ? 0 : c.state === 0 ? 1 : 0;
+        c.textContent = String(c.state);
+        c.classList.add('filled');
+      });
+      r.appendChild(c);
+      t.appendChild(r);
+      return c;
+    });
+    const rowBtn = el('div', { class: 'btn-row', style: 'margin-top:12px' });
+    const check = el('button', { class: 'btn ghost', 'data-label': 'check-table' }, 'Check my table');
+    rowBtn.appendChild(check);
+    t.appendChild(rowBtn);
+    this.beat(t);
+
+    return flow.ask(replay => {
+      const applyCorrect = () => {
+        cells.forEach((c, i) => { c.textContent = String(spec.expected[i]); c.classList.add('filled', 'good'); c.disabled = true; });
+        check.disabled = true; check.classList.add('used');
+      };
+      if (replay !== undefined){ applyCorrect(); return true; }
+      return new Promise(res => {
+        check.addEventListener('click', () => {
+          SFX.click();
+          if (cells.some(c => c.state === null)){
+            guide.note(`Fill every row first — tap a cell to cycle it.`);
+            return;
+          }
+          const wrong = cells.filter((c, i) => c.state !== spec.expected[i]);
+          if (!wrong.length){
+            applyCorrect();
+            if (!flow.instant) SFX.success();
+            res(true);
+          } else {
+            wrong.forEach(c => { c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); c.classList.add('bad'); setTimeout(() => c.classList.remove('bad'), 900); });
+            if (spec.hint) guide.note(spec.hint);
+          }
+        });
+      });
+    });
+  },
   card(c){
     this.beat(el('div', { class: 'biz-card' },
       `<div class="eyebrow">VENTURE UPDATE</div>

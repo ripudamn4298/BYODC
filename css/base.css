@@ -116,6 +116,7 @@ img,svg{display:block;max-width:100%}
 .chip b{color:var(--blue);font-weight:500}
 .chip.warm b{color:var(--amber)}
 .chip.state-off b{color:var(--ink-faint)}
+.chip.state-on b{color:var(--blue)}
 
 /* ---------- range inputs ---------- */
 input[type=range]{

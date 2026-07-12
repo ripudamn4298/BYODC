@@ -39,7 +39,7 @@ export async function step1(){
     if (pass === 0){
       guide.say(`This is <b>pure silicon</b> — refined from ordinary sand, frozen into a perfect crystal. Look closely at the bonds: each one holds a <b>pair of electrons</b>, one contributed by each neighbour. Four bonds per atom, every electron accounted for. <em>Tap an atom</em> — its bond electrons strain and settle back. They are locked. Nothing is free to move, so nothing can carry a current.`);
       await guide.next();
-      guide.say(`Time for the oldest trick in chipmaking: swap a few silicon atoms for a different element — deliberately, atom by atom. It's called <b>doping</b>. Choose your flavor:`);
+      guide.say(`Your aim in this step: turn this dead crystal into something that carries current, by swapping a few silicon atoms for a different element — deliberately, atom by atom. Adding foreign atoms on purpose is called <b>doping</b>, and the foreign atom is a <b>dopant</b>. It comes in two flavors. Choose one:`);
     } else {
       guide.say(`A fresh crystal on the bench — every bond full, every electron locked, exactly where we started. Same trick, other flavor:`);
     }
@@ -84,10 +84,19 @@ export async function step1(){
       : `Count with me: boron arrived carrying only <b>three</b> outer electrons. Three bonds filled — and the fourth was left with a single electron and an empty seat: a <span class="e-red"><b>hole</b></span> (the red ring). Keep watching it. Every second or so, an electron from a <em>neighbouring</em> bond hops into the empty seat — so the hole itself wanders through the crystal like a positive charge. You've made <b>P-type silicon</b>.`);
     await guide.next();
 
-    /* ---------- wire it up ---------- */
-    const wirePath = 'M318 402 H76 V202 H644 V402 H402';
-    const wire = svgEl('path', { d: wirePath, class: 'wire' });
-    svg.insertBefore(wire, lat.g);
+    /* ---------- wire it up: the crystal sits IN SERIES in the loop ----------
+       The wire enters the crystal's LEFT edge and leaves its RIGHT edge, so the
+       current has to pass THROUGH the silicon — the crystal is a component, not
+       something the wire runs behind. The flow route below stays continuous across
+       the crystal so the carriers visibly cross it. */
+    const wirePath = 'M318 402 H76 V202 H644 V402 H402';   // full loop (invisible flow route)
+    const wireL = svgEl('path', { d: 'M318 402 H76 V202 H184', class: 'wire' });
+    const wireR = svgEl('path', { d: 'M536 202 H644 V402 H402', class: 'wire' });
+    svg.insertBefore(wireL, lat.g);
+    svg.insertBefore(wireR, lat.g);
+    // contact terminals where the wire meets the two faces of the crystal
+    svg.insertBefore(svgEl('circle', { cx: 184, cy: 202, r: 3.4, class: 'node-dot' }), lat.g);
+    svg.insertBefore(svgEl('circle', { cx: 536, cy: 202, r: 3.4, class: 'node-dot' }), lat.g);
     makeBattery(svg, 360, 402);
     const lamp = makeLamp(svg, 644, 300, { label: 'indicator' });
     const flowLayer = svgEl('g'); svg.appendChild(flowLayer);
@@ -118,7 +127,7 @@ export async function step1(){
     if (!shownConvention){
       shownConvention = true;
       await guide.next();
-      guide.say(`One honest footnote before we go further. Those blue dots are <b>electron flow</b> — the thing that's physically moving. But circuits are traditionally described by <b>conventional current</b>, which — thanks to a guess made centuries before anyone saw an electron — points the <em>opposite</em> way: out of the battery's <b>+</b>, around, and into <b>−</b>.`);
+      guide.say(`One note before we go further. Those blue dots are <b>electron flow</b> — the thing that's physically moving. But circuits are traditionally described by <b>conventional current</b>, which — thanks to a guess made centuries before anyone saw an electron — points the <em>opposite</em> way: out of the battery's <b>+</b>, around, and into <b>−</b>.`);
       await guide.button('Switch to conventional current ▸');
       eFlow.setSpeed(0);
       iFlow.setSpeed(-120);

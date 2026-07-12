@@ -1,193 +1,28 @@
-// BYODC — landing page: the ARTIFACT (a draggable constellation of ink dots that
-// morphs lattice → transistor → MOSFET → chip → rack as you scroll) + scroll story.
-// Canvas 2D, ~430 points, spring physics; GSAP ScrollTrigger drives the morph.
-import { $, el, RM, clamp, rand } from './engine/util.js';
-import { EARTH_DOTS } from './earth-dots.js';
+// BYODC — landing page: the ARTIFACT (a hand-drawn camera move through the
+// machine — rack room → one server → the GPU → the die → a single transistor —
+// scrubbed by scroll from 151 sketch frames) + scroll story.
+// Canvas 2D; GSAP ScrollTrigger drives the scrub. The frames live in
+// animation-frames-hd/ (2568×1432, multiply-blended into the paper).
+import { $, el, RM, clamp } from './engine/util.js';
 
-const N = 880;
-const INK = '#1D2117', BLUE = '#2946CC', RED = '#D9481E', AMBER = '#A8741F', FAINT = '#989C8C';
+/* ---------------- the frames ---------------- */
+const FRAME_COUNT = 151;
+const framePath = i => `animation-frames-hd/ezgif-frame-${String(i + 1).padStart(3, '0')}.jpg`;
 
-/* ---------------- formation generators (normalized [0,1]² + color + radius) ---------------- */
-function pad(pts){
-  const out = pts.slice(0, N);
-  let i = 0;
-  while (out.length < N){
-    const p = pts[i % pts.length];
-    out.push({ x: p.x + rand(-.006, .006), y: p.y + rand(-.006, .006), c: p.c, r: p.r * .8 });
-    i++;
-  }
-  return out;
-}
-const P = (x, y, c = INK, r = 2) => ({ x, y, c, r });
-function rectPerim(x, y, w, h, n, c, r = 1.8){
-  const pts = [], per = 2 * (w + h);
-  for (let i = 0; i < n; i++){
-    let d = (i / n) * per;
-    if (d < w) pts.push(P(x + d, y, c, r));
-    else if ((d -= w) < h) pts.push(P(x + w, y + d, c, r));
-    else if ((d -= h) < w) pts.push(P(x + w - d, y + h, c, r));
-    else pts.push(P(x, y + h - (d - w), c, r));
-  }
-  return pts;
-}
-function linePts(x1, y1, x2, y2, n, c, r = 1.8){
-  const pts = [];
-  for (let i = 0; i < n; i++){
-    const t = n === 1 ? .5 : i / (n - 1);
-    pts.push(P(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, c, r));
-  }
-  return pts;
-}
-
-function fLattice(){
-  const pts = [], cols = 5, rows = 4;
-  const x0 = .16, y0 = .14, gx = (1 - 2 * x0) / (cols - 1), gy = (1 - 2 * y0) / (rows - 1);
-  for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++){
-    const cx = x0 + j * gx, cy = y0 + i * gy;
-    for (let k = 0; k < 6; k++){ // atom = ring of 6
-      const a = k * Math.PI / 3 + (i + j);
-      pts.push(P(cx + Math.cos(a) * .018, cy + Math.sin(a) * .026, INK, 2.1));
-    }
-    if (j < cols - 1){ pts.push(P(cx + gx * .44, cy, BLUE, 1.9)); pts.push(P(cx + gx * .56, cy, BLUE, 1.9)); }
-    if (i < rows - 1){ pts.push(P(cx, cy + gy * .44, BLUE, 1.9)); pts.push(P(cx, cy + gy * .56, BLUE, 1.9)); }
-  }
-  return pad(pts);
-}
-function fTransistor(){
-  const pts = [
-    ...rectPerim(.08, .30, .20, .40, 64, BLUE),          // emitter (small)
-    ...rectPerim(.31, .30, .10, .40, 40, RED),           // base (thin)
-    ...rectPerim(.44, .30, .40, .40, 104, BLUE),         // collector (wide)
-    ...linePts(.36, .06, .36, .30, 22, RED, 1.6),        // base stem
-    ...linePts(.02, .50, .08, .50, 8, INK, 1.6),
-    ...linePts(.84, .50, .96, .50, 10, INK, 1.6),
-  ];
-  return pad(pts);
-}
-function fMosfet(){
-  const pts = [
-    ...rectPerim(.06, .42, .88, .38, 130, RED, 1.6),     // p substrate
-    ...rectPerim(.10, .42, .20, .16, 44, BLUE),          // source well
-    ...rectPerim(.70, .42, .20, .16, 44, BLUE),          // drain well
-    ...linePts(.32, .40, .68, .40, 30, AMBER, 2),        // oxide
-    ...rectPerim(.32, .22, .36, .12, 56, INK),           // gate
-    ...linePts(.50, .06, .50, .22, 14, INK, 1.6),        // gate stem
-  ];
-  return pad(pts);
-}
-function fChip(){
-  const pts = [...rectPerim(.18, .16, .64, .64, 150, INK, 1.8)];
-  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++)
-    pts.push(P(.25 + j * .07, .23 + i * .07, (i * 8 + j) % 9 === 0 ? BLUE : FAINT, 1.9));
-  for (let k = 0; k < 12; k++){ // pins
-    const t = .21 + k * .05;
-    pts.push(...linePts(t, .16, t, .09, 3, INK, 1.4));
-    pts.push(...linePts(t, .80, t, .87, 3, INK, 1.4));
-  }
-  return pad(pts);
-}
-/* ---------------- THE GLOBE — formation 0, alive ----------------
-   A rotating dotted Earth: landmasses in ink, data-centre hubs in amber,
-   great-circle connection arcs in blue. Draggable to spin. Its projected
-   positions refresh every frame while it's on stage, then morph away.   */
-const DEG = Math.PI / 180;
-// landmasses come pre-baked from real Natural Earth coastlines (js/earth-dots.js)
-// data-centre hubs (lat, lon): Ashburn, Oregon, São Paulo, London, Frankfurt,
-// Stockholm, Mumbai, Singapore, Tokyo, Sydney, Dubai, Hsinchu, Dublin, Johannesburg
-const HUBS = [[39,-77],[45,-122],[-23,-46],[51,0],[50,9],[59,18],[19,73],[1,104],[35,140],[-34,151],[25,55],[25,121],[53,-6],[-26,28]];
-const ARC_PAIRS = [[0,3],[0,2],[3,6],[6,7],[7,8],[8,1],[7,9],[4,10]];
-
-function ll2v(lat, lon){
-  const la = lat * DEG, lo = lon * DEG;
-  return [Math.cos(la) * Math.cos(lo), Math.sin(la), Math.cos(la) * Math.sin(lo)];
-}
-function slerp(a, b, t){
-  let dot = a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
-  dot = clamp(dot, -1, 1);
-  const om = Math.acos(dot), so = Math.sin(om) || 1e-6;
-  const ka = Math.sin((1 - t) * om) / so, kb = Math.sin(t * om) / so;
-  return [a[0]*ka + b[0]*kb, a[1]*ka + b[1]*kb, a[2]*ka + b[2]*kb];
-}
-function buildGlobe3d(){
-  const feats = [];
-  // silhouette rim (screen-space circle, doesn't rotate)
-  for (let k = 0; k < 60; k++) feats.push({ kind: 'rim', th: k / 60 * Math.PI * 2 });
-  // hubs + arcs first so they never get truncated
-  const hubV = HUBS.map(([la, lo]) => ll2v(la, lo));
-  hubV.forEach(v => feats.push({ kind: 'hub', v, c: AMBER, r: 2.9 }));
-  for (const [ia, ib] of ARC_PAIRS){
-    for (let k = 1; k < 12; k++){
-      const t = k / 12;
-      const v = slerp(hubV[ia], hubV[ib], t);
-      const lift = 1 + .07 * Math.sin(Math.PI * t);
-      feats.push({ kind: 'arc', v: [v[0]*lift, v[1]*lift, v[2]*lift], c: BLUE, r: 1.4 });
-    }
-  }
-  // real coastlines — tiny jitter keeps the dot texture organic
-  for (const [lat, lon] of EARTH_DOTS)
-    feats.push({ kind: 'land', v: ll2v(lat + rand(-.8, .8), lon + rand(-.8, .8)), c: INK, r: rand(1.5, 1.85) });
-  // fit to N: truncate or duplicate with jitter
-  const out = feats.slice(0, N);
-  let i = 0;
-  while (out.length < N){
-    const f = feats[i % feats.length];
-    out.push(f.v ? { ...f, v: [f.v[0] + rand(-.02,.02), f.v[1] + rand(-.02,.02), f.v[2] + rand(-.02,.02)] } : { ...f });
-    i++;
-  }
-  return out;
-}
-const GLOBE3D = buildGlobe3d();
-// yaw −1.05 opens on Europe · Africa · Asia (the fullest hemisphere); gentle tilt
-const globe = { yaw: -1.05, pitch: .14, vyaw: .14, vpitch: 0, dragging: false, autoSpin: .14 };
-const GLOBE_RAD = .46;
-
-/* fills `out[i] = {x,y,c,r,a}` with the globe's current projection */
-function projectGlobe(out){
-  const cy = Math.cos(globe.yaw), sy = Math.sin(globe.yaw);
-  const cp = Math.cos(globe.pitch), sp = Math.sin(globe.pitch);
-  for (let i = 0; i < N; i++){
-    const f = GLOBE3D[i], o = out[i];
-    if (f.kind === 'rim'){
-      o.x = .5 + Math.cos(f.th) * GLOBE_RAD;
-      o.y = .5 + Math.sin(f.th) * GLOBE_RAD;
-      o.c = FAINT; o.r = 1.1; o.a = .5;
-      continue;
-    }
-    const [x0, y0, z0] = f.v;
-    const x1 = x0 * cy + z0 * sy, z1 = -x0 * sy + z0 * cy;
-    const y2 = y0 * cp - z1 * sp, z2 = y0 * sp + z1 * cp;
-    o.x = .5 + x1 * GLOBE_RAD;
-    o.y = .5 - y2 * GLOBE_RAD;
-    o.c = f.c;
-    const front = z2 > 0;
-    o.r = front ? f.r : f.r * .45;
-    o.a = front ? 1 : .08;
-  }
-}
-function stepGlobe(dt){
-  if (!globe.dragging){
-    globe.vyaw += (globe.autoSpin - globe.vyaw) * .6 * dt;
-    globe.vpitch *= Math.exp(-2.2 * dt);
-  }
-  globe.yaw += globe.vyaw * dt;
-  globe.pitch = clamp(globe.pitch + globe.vpitch * dt, -.9, .9);
-}
-
-const fGlobeStatic = (() => {   // static slot; refreshed live each frame while on stage
-  const arr = Array.from({ length: N }, () => ({ x: .5, y: .5, c: INK, r: 1.8, a: 1 }));
-  projectGlobe(arr);
-  return arr;
-})();
-
-// hero → scroll: the internet's machinery dissolves all the way down to a single crystal
-const FORMATIONS = [fGlobeStatic, fChip(), fMosfet(), fTransistor(), fLattice()];
+// where the camera RESTS for each phase (0-indexed frames):
+//   0   — the rack in its room, cables overhead          (01 · THE DATA CENTRE)
+//   77  — the 1U tray pulled from the stack              (02 · THE SERVER)
+//   103 — the GPU laid open under the tray               (03 · THE GPU)
+//   127 — the bare die, micro-architecture labelled      (04 · THE CHIP)
+//   150 — the single 7nm FinFET, fully drawn             (05 · THE TRANSISTOR)
+const ANCHORS = [0, 77, 103, 127, 150];
 
 const PHASES = [
-  { idx: '01', label: 'THE INTERNET', title: 'This is where it <em>ends up.</em>', body: `Every amber dot is a data centre; every blue thread, a cable carrying the internet between them. <b>Data centres are what make today's internet possible</b> — every search, stream and sentence you've ever typed lives inside one. You're going to build one from nothing. So let's go <b>all the way in.</b>` },
-  { idx: '02', label: 'THE CHIP', title: 'Zoom in — <em>a single chip.</em>', body: `Pull one board from one rack and you reach a sliver of silicon smaller than a fingernail, carrying <b>tens of billions</b> of switches. Keep going.` },
-  { idx: '03', label: 'THE FIELD', title: 'Closer — <em>one switch.</em>', body: `Each switch is a MOSFET: a metal gate hovering over silicon on a whisker of glass. A breath of voltage conjures a channel out of nothing — no moving parts. Closer still.` },
-  { idx: '04', label: 'THE SWITCH', title: 'Before the gate, <em>the transistor.</em>', body: `Strip it back to the first idea — three layers of doped silicon where a tiny current commands a vast one. The invention that lit the whole world up.` },
-  { idx: '05', label: 'THE BEGINNING', title: 'All the way down — <em>a grain of sand.</em>', body: `And beneath all of it: a crystal of purified sand with a few atoms swapped by hand to make it conduct. <b>That's where you begin.</b> One atom — then we climb every rung back up to the machine.` },
+  { idx: '01', label: 'THE DATA CENTRE', title: 'This is where it <em>ends up.</em>', body: `A rack in a data centre — servers, switches, and the cabling that ties them into one machine. <b>Data centres are what make today's internet possible</b> — every search, stream and sentence you've ever typed lives in a room like this. You're going to build one from nothing. So let's go <b>all the way in.</b>` },
+  { idx: '02', label: 'THE SERVER', title: 'Pull out <em>one server.</em>', body: `Slide a single tray from the stack: fans, CPUs, memory and storage packed into a box <b>one rack-unit tall</b>. Everything a data centre does happens inside thousands of these. Keep going.` },
+  { idx: '03', label: 'THE GPU', title: 'Inside it — <em>the GPU.</em>', body: `The card doing the real work. Under the shroud: a heatsink, stacks of high-bandwidth memory, and <b>thousands of small cores</b> built for one job — multiplying numbers, all at once, without rest. Closer.` },
+  { idx: '04', label: 'THE CHIP', title: 'At its heart — <em>the die.</em>', body: `Lift the package open and you reach a sliver of silicon smaller than a fingernail — cache, logic gates, and the metal wiring that stitches <b>tens of billions</b> of switches together. Closer still.` },
+  { idx: '05', label: 'THE TRANSISTOR', title: 'All the way down — <em>one transistor.</em>', body: `A single 7nm FinFET: a source, a drain, and a gate that creates a channel where there was none. No moving parts — just doped silicon, switching billions of times a second. <b>That's where you begin.</b> One switch — then we climb every rung back up to the machine.` },
 ];
 
 /* ---------------- the real world — statements + flying fact cards ---------------- */
@@ -251,180 +86,108 @@ let raf = null, cleanup = [];
 
 function artifact(){
   const cv = $('#artifact'), ctx = cv.getContext('2d');
-  let W = 0, H = 0, DPR = 1, region = { x: 0, y: 0, s: 1 };
+  let W = 0, H = 0, DPR = 1;
+  let drawn = -1;      // frame index currently on the canvas
 
   function fit(){
     DPR = Math.min(2, devicePixelRatio || 1);
     W = innerWidth; H = innerHeight;
     cv.width = W * DPR; cv.height = H * DPR;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    if (W > 880){
-      const s = Math.min(W * .40, H * .74);
-      region = { x: W * .58 + (W * .40 - s) / 2, y: (H - s) / 2 + H * .02, s };
-    } else {
-      const s = Math.min(W * .82, H * .36);
-      region = { x: (W - s) / 2, y: H * .62, s };
+    drawn = -1; // force redraw at the new size
+  }
+
+  // progressive preload — a small worker pool walks the sequence in order;
+  // until a frame arrives we draw the nearest loaded one below it
+  const imgs = new Array(FRAME_COUNT).fill(null);
+  const loaded = new Array(FRAME_COUNT).fill(false);
+  let next = 0;
+  function pump(){
+    if (next >= FRAME_COUNT) return;
+    const i = next++;
+    const im = new Image();
+    im.onload = () => { imgs[i] = im; loaded[i] = true; if (i === nearest(target)) drawn = -1; pump(); };
+    im.onerror = () => pump();
+    im.src = framePath(i);
+  }
+  for (let k = 0; k < 8; k++) pump();
+
+  function nearest(i){
+    i = Math.round(clamp(i, 0, FRAME_COUNT - 1));
+    for (let d = 0; d < FRAME_COUNT; d++){
+      if (loaded[i - d] && i - d >= 0) return i - d;
+      if (loaded[i + d] && i + d < FRAME_COUNT) return i + d;
     }
-  }
-  fit();
-  addEventListener('resize', fit);
-  cleanup.push(() => removeEventListener('resize', fit));
-
-  // points
-  const pts = [];
-  const order = [...Array(N).keys()].sort(() => Math.random() - .5); // stagger order
-  for (let i = 0; i < N; i++){
-    const f = FORMATIONS[0][i];
-    pts.push({
-      x: Math.random(), y: Math.random(),
-      vx: 0, vy: 0,
-      tx: f.x, ty: f.y, c: f.c, r: f.r, a: f.a ?? 1,
-      stag: order[i] / N,
-    });
+    return -1;
   }
 
-  let morphP = 0; // 0..FORMATIONS.length-1
-  // dwell timing: each formation HOLDS while its text is readable, and the whole
-  // morph happens in the gap between text phases — no drift while you read.
+  // dwell: hold while the copy is readable, travel in the gap between phases
   const dwell = t => {
-    const a = .42, b = .64;
+    const a = .24, b = .76;
     if (t <= a) return 0;
     if (t >= b) return 1;
     const u = (t - a) / (b - a);
     return u * u * (3 - 2 * u);
   };
-  function setMorph(p){
-    morphP = clamp(p, 0, FORMATIONS.length - 1);
-    const seg = Math.min(FORMATIONS.length - 2, Math.floor(morphP));
-    const t = morphP - seg;
-    if (seg === 0) projectGlobe(FORMATIONS[0]);   // the globe is alive while on stage
-    const mT = dwell(t);
-    const A = FORMATIONS[seg], B = FORMATIONS[seg + 1];
-    for (let i = 0; i < N; i++){
-      const p0 = pts[i];
-      // per-point stagger inside the morph window for an organic wave
-      const tt = clamp((mT - p0.stag * .25) / .75, 0, 1);
-      const e = tt * tt * (3 - 2 * tt);
-      const aA = A[i].a ?? 1, aB = B[i].a ?? 1;
-      p0.tx = A[i].x + (B[i].x - A[i].x) * e;
-      p0.ty = A[i].y + (B[i].y - A[i].y) * e;
-      p0.c = e > .5 ? B[i].c : A[i].c;
-      p0.r = A[i].r + (B[i].r - A[i].r) * e;
-      p0.a = aA + (aB - aA) * e;
-    }
-  }
-  setMorph(0);
 
-  // drag interaction — while the globe is on stage, dragging SPINS it;
-  // after it has morphed away, dragging grabs nearby dots (fling + spring back)
-  const ptr = { x: 0, y: 0, px: 0, py: 0, down: false, has: false };
-  function toWorld(px, py){ return { x: (px - region.x) / region.s, y: (py - region.y) / region.s }; }
-  const globeMode = () => morphP < .5;
-  const overGlobe = w => Math.hypot(w.x - .5, w.y - .5) < GLOBE_RAD + .06;
-  function onDown(e){
-    if (e.target.closest('a,button,input')) return;
-    const w = toWorld(e.clientX, e.clientY);
-    if (globeMode()){
-      if (!overGlobe(w)) return;
-      globe.dragging = true;
-    } else {
-      if (!pts.some(p => Math.hypot(p.x - w.x, p.y - w.y) < .12)) return;
-    }
-    ptr.down = true; ptr.has = true;
-    ptr.x = ptr.px = w.x; ptr.y = ptr.py = w.y;
-    document.body.style.cursor = 'grabbing';
+  let target = 0;      // fractional frame the scroll asks for
+  let current = 0;     // smoothed frame we actually show
+  let progress = 0;    // 0..PHASES.length-1, for the gentle push-in
+  function setMorph(p){
+    progress = clamp(p, 0, ANCHORS.length - 1);
+    const seg = Math.min(ANCHORS.length - 2, Math.floor(progress));
+    const t = progress - seg;
+    target = ANCHORS[seg] + (ANCHORS[seg + 1] - ANCHORS[seg]) * dwell(t);
   }
-  function onMove(e){
-    const w = toWorld(e.clientX, e.clientY);
-    if (globe.dragging){
-      const dx = w.x - ptr.x, dy = w.y - ptr.y;
-      globe.yaw += dx * 3.0;
-      globe.pitch = clamp(globe.pitch + dy * 3.0, -.9, .9);
-      globe.vyaw = dx * 90;   // release inertia
-    }
-    ptr.px = ptr.x; ptr.py = ptr.y; ptr.x = w.x; ptr.y = w.y;
-    if (!ptr.down){
-      const near = globeMode() ? overGlobe(w)
-        : pts.some(p => Math.hypot(p.x - w.x, p.y - w.y) < .1);
-      document.body.style.cursor = near ? 'grab' : '';
-      ptr.has = near;
-    }
-  }
-  function onUp(){ ptr.down = false; globe.dragging = false; document.body.style.cursor = ''; }
-  if (!RM){
-    addEventListener('pointerdown', onDown);
-    addEventListener('pointermove', onMove);
-    addEventListener('pointerup', onUp);
-    cleanup.push(() => { removeEventListener('pointerdown', onDown); removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); });
+
+  function draw(){
+    const idx = nearest(current);
+    if (idx < 0 || idx === drawn) return;
+    drawn = idx;
+    const im = imgs[idx];
+    ctx.clearRect(0, 0, W, H);
+    // on phones the sketch is a background texture, same as the dot artifact was
+    ctx.globalAlpha = W <= 880 ? .5 : 1;
+    // cover-fit with a slow push-in as we go deeper. The rack scene fills its
+    // frame edge to edge; the later diagrams sit centre-left with blank paper
+    // on the right — so as the zoom leaves the rack (frames 0→77) the whole
+    // drawing eases right to live beside the copy column, not under it.
+    const zoom = 1.02 + progress * .02;
+    const s = Math.max(W / im.naturalWidth, H / im.naturalHeight) * zoom;
+    const dw = im.naturalWidth * s, dh = im.naturalHeight * s;
+    const t01 = clamp(current / ANCHORS[1], 0, 1);
+    const lean = W > 880 ? W * (.06 + .14 * t01) : 0;
+    ctx.drawImage(im, (W - dw) / 2 + lean, (H - dh) / 2, dw, dh);
+    ctx.globalAlpha = 1;
   }
 
   let last = performance.now();
-  function step(dt, time){
-    stepGlobe(dt);
-    if (morphP < 1) setMorph(morphP);   // keep the live globe's projection flowing into targets
-    ctx.clearRect(0, 0, W, H);
-
-    // faint frame around the region (corner ticks)
-    ctx.strokeStyle = 'rgba(29,33,23,.22)'; ctx.lineWidth = 1;
-    const { x: rx, y: ry, s } = region, tk = 10;
-    ctx.beginPath();
-    ctx.moveTo(rx, ry + tk); ctx.lineTo(rx, ry); ctx.lineTo(rx + tk, ry);
-    ctx.moveTo(rx + s - tk, ry); ctx.lineTo(rx + s, ry); ctx.lineTo(rx + s, ry + tk);
-    ctx.moveTo(rx + s, ry + s - tk); ctx.lineTo(rx + s, ry + s); ctx.lineTo(rx + s - tk, ry + s);
-    ctx.moveTo(rx + tk, ry + s); ctx.lineTo(rx, ry + s); ctx.lineTo(rx, ry + s - tk);
-    ctx.stroke();
-
-    const baseAlpha = W <= 880 ? .5 : 1;   // on phones the artifact is a background texture
-    const spring = morphP < 1 ? 120 : 46;  // crisp tracking while the globe rotates
-    const dragVX = (ptr.x - ptr.px) / Math.max(dt, .001), dragVY = (ptr.y - ptr.py) / Math.max(dt, .001);
-    for (const p of pts){
-      // spring to target
-      let ax = (p.tx - p.x) * spring, ay = (p.ty - p.y) * spring;
-      // gentle idle breath
-      ax += Math.sin(time * .8 + p.stag * 12) * .12;
-      ay += Math.cos(time * .7 + p.stag * 9) * .12;
-      if (ptr.down && !globe.dragging){
-        const d = Math.hypot(p.x - ptr.x, p.y - ptr.y);
-        if (d < .14){
-          const k = 1 - d / .14;
-          ax += (ptr.x - p.x) * 140 * k + dragVX * 3.2 * k;
-          ay += (ptr.y - p.y) * 140 * k + dragVY * 3.2 * k;
-        }
-      }
-      p.vx = (p.vx + ax * dt) * .88;
-      p.vy = (p.vy + ay * dt) * .88;
-      p.x += p.vx * dt; p.y += p.vy * dt;
-
-      ctx.globalAlpha = baseAlpha * (p.a ?? 1);
-      ctx.fillStyle = p.c;
-      ctx.beginPath();
-      ctx.arc(region.x + p.x * region.s, region.y + p.y * region.s, p.r, 0, 7);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  }
   function frame(t){
     raf = requestAnimationFrame(frame);
     const dt = Math.min(.05, (t - last) / 1000); last = t;
-    step(dt, t / 1000);
+    // exponential follow — scrubbing feels like film being pulled, not stepped
+    current += (target - current) * Math.min(1, dt * 9);
+    if (Math.abs(target - current) < .02) current = target;
+    draw();
   }
 
+  fit();
+  addEventListener('resize', fit);
+  cleanup.push(() => removeEventListener('resize', fit));
+
   if (RM){
-    // one static frame of the lattice
-    ctx.clearRect(0, 0, W, H);
-    for (const p of pts){
-      ctx.fillStyle = p.c;
-      ctx.beginPath();
-      ctx.arc(region.x + p.tx * region.s, region.y + p.ty * region.s, p.r, 0, 7);
-      ctx.fill();
-    }
+    // reduced motion: a single still of the completed drawing
+    const im = new Image();
+    im.onload = () => { imgs[FRAME_COUNT - 1] = im; loaded[FRAME_COUNT - 1] = true; current = target = FRAME_COUNT - 1; draw(); };
+    im.src = framePath(FRAME_COUNT - 1);
   } else {
     raf = requestAnimationFrame(frame);
   }
 
   const api = {
     setMorph,
-    settle(){ for (const p of pts){ p.x = p.tx; p.y = p.ty; p.vx = 0; p.vy = 0; } step(.016, performance.now() / 1000); },
+    settle(){ current = target; drawn = -1; draw(); },   // debug/verification: snap + repaint now
+    get frame(){ return drawn; }, get target(){ return target; },
   };
   window.__byodcArt = api;   // debug/verification hook (harmless)
   return api;
@@ -466,12 +229,12 @@ export function initLanding(){
     start: 40, onUpdate(self){ $('#lnav').classList.toggle('scrolled', self.scroll() > 40); },
   });
 
-  // the journey: pin (CSS sticky) + scrubbed morph + phase copy swaps
+  // the journey: pin (CSS sticky) + scrubbed frames + phase copy swaps
   const phaseEls = [...document.querySelectorAll('.jphase')];
   gsap.set(phaseEls[0], { opacity: 1 });
   ScrollTrigger.create({
     trigger: '#journey', start: 'top top', end: 'bottom bottom',
-    scrub: .6,                                          // soften hard scrolls
+    scrub: 1.25,                                        // let scroll momentum settle into each transition
     snap: {                                             // always settle on a phase
       snapTo: 1 / (PHASES.length - 1),
       duration: { min: .3, max: .9 },
@@ -481,23 +244,27 @@ export function initLanding(){
     onUpdate(self){
       const P = self.progress * (PHASES.length - 1);   // 0..4
       art.setMorph(P);
-      // generous reading windows: text holds until d≈.40 and eases out by .52,
-      // while the formation morphs inside [.42,.64] — nothing feels clipped
       phaseEls.forEach((elp, k) => {
         const d = Math.abs(P - k);
-        const o = clamp((.52 - d) / .12, 0, 1);
+        // tight window: each copy is gone before its neighbour is halfway in,
+        // so adjacent phases never sit on each other
+        const o = clamp((.62 - d) / .28, 0, 1);
         elp.style.opacity = o.toFixed(3);
-        elp.style.transform = `translateY(calc(-50% + ${(P - k) * -26}px))`;
+        elp.style.transform = `translateY(calc(-50% + ${(P - k) * -56}px))`;
       });
     },
   });
 
-  // the artifact belongs to the hero + journey only — fade it out as the
-  // journey hands over to the dark section, so dots never sit under later content
-  const artCv = $('#artifact');
+  // the artifact belongs to the hero + journey only — fade sketch and scrim
+  // together as the journey hands over to the dark section
+  const artCv = $('#artifact'), scrim = $('#scrim');
   ScrollTrigger.create({
     trigger: '#journey', start: 'bottom 96%', end: 'bottom 45%', scrub: true,
-    onUpdate(self){ artCv.style.opacity = (1 - self.progress).toFixed(3); },
+    onUpdate(self){
+      const o = (1 - self.progress).toFixed(3);
+      artCv.style.opacity = o;
+      if (scrim) scrim.style.opacity = o;
+    },
   });
 
   // acts rows

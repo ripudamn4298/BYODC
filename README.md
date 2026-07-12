@@ -17,6 +17,11 @@ No runtime network: GSAP is vendored in `vendor/`, fonts (Instrument Serif, EB G
 - **Landing** — hero with a draggable 430-dot constellation that morphs lattice → transistor → MOSFET →
   chip → rack as you scroll the pinned Journey; a dark "Meanwhile, in the real world" interlude with
   flying fact cards (ASML, TSMC, nm-vs-hair…); acts ladder; colophon.
+- **Act 2 — From Switches to Logic, Math & Memory** (4 steps): wire CMOS twins into a **NAND**
+  and pass its truth-table test; build a full adder from gates, compress it into a tile, stamp
+  four and watch the **carry ripple**; cross-couple two NANDs by hand into a **latch** that
+  remembers after you let go; then loop register → adder → register with a **clock** and make
+  the machine count to a target. Ends at a working datapath — a CPU's heartbeat at 1 press/second.
 - **Act 1 — The Physics of a Switch** (4 steps, each hands-on):
   1. Dope a silicon crystal (bond electron *pairs* drawn honestly; holes = vacancy rings that hop
      between bonds; electron-flow vs conventional-current beat, then chevrons everywhere after).
@@ -35,8 +40,11 @@ js/landing.js                          hero artifact + scroll choreography (GSAP
 js/engine/…                            util, anim, sfx, field, pathflow (dots + current chevrons),
                                        lattice (bond pairs, dopants, hole-hopping), components,
                                        guide, hud, stage, flow (back/replay)
-js/steps/act.js + step1–4 + summary    Act 1 content — extend later acts by appending configs
+js/steps/act.js + step1–4 + summary    Act 1 content + generic act summary
+js/acts/act2/index.js + step1–4        Act 2 content (gates.js vocabulary: makeGate, sigWire,
+                                       makeBits, makeToggleBits, guide.truthTable)
 legacy/act1_v1.html                    archived v1 (dark theme, single file)
 ```
 Debug hooks: `window.__byodcArt` (landing artifact), `window.__byodcFlow` (act runner — e.g. `.start(2)`
-jumps to step 3).
+jumps to step 3 of the running act), `window.__byodcStartAct(n)` (launch a specific act),
+`window.__byodcMusic` (background track).

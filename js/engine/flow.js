@@ -75,12 +75,20 @@ export const flow = {
     const guard = () => ep === this._epoch;
     while (this.stepIndex < this.steps.length){
       const step = this.steps[this.stepIndex];
-      hud.setStep(this.stepIndex, this.steps.length);
+      hud.setStep(this.stepIndex, this.steps.length, this.actLabel);
       Music.setIntensity(this.steps.length > 1 ? this.stepIndex / (this.steps.length - 1) : 0);
-      hud.setCost(this.steps.slice(0, this.stepIndex).reduce((s, x) => s + x.costDelta, 0));
+      hud.setCost(this.baseCost + this.steps.slice(0, this.stepIndex).reduce((s, x) => s + x.costDelta, 0));
       guide.clear();
       this.updateNav();
-      await step.run();
+      try {
+        await step.run();
+      } catch (err){
+        if (!guard()) return;
+        console.error('[BYODC] step crashed:', err);
+        this._exitInstant();
+        guide.note(`Something glitched on the bench — hit <b>↺ Restart step</b> above to reset it. (The fault is ours, not yours.)`);
+        return;   // halt this runner; Restart/Back still work
+      }
       if (!guard()) return;
       // post-step: venture card, cost tick, premise, CTA
       guide.card(step.businessCard);
@@ -126,9 +134,15 @@ export const flow = {
     this._restartBtn.disabled = this.answers.length === 0;
   },
 
-  run(steps, onComplete){
+  /* opts: { onComplete, actLabel='ACT 1', baseCost=0 } — baseCost carries the
+     cumulative spend from earlier acts into the HUD. */
+  run(steps, opts = {}){
+    if (typeof opts === 'function') opts = { onComplete: opts };
     this.steps = steps;
-    this.onComplete = onComplete;
+    this.onComplete = opts.onComplete || null;
+    this.actLabel = opts.actLabel || 'ACT 1';
+    this.baseCost = opts.baseCost || 0;
+    this.saved = [];
     this.initNav();
     window.__byodcFlow = this;   // debug/verification hook (harmless)
     this.start(0, []);
