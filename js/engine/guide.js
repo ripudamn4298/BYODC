@@ -112,12 +112,19 @@ export const guide = {
       });
     });
   },
+  milestone({ eyebrow = 'MILESTONE', title, meta = '', body = '', footer = '', className = '' }){
+    return this.beat(el('div', { class: `biz-card milestone-card ${className}`.trim() },
+      `<div class="eyebrow">${eyebrow}</div>
+       <div class="co">${title}</div>
+       ${meta ? `<div class="loc">${meta}</div>` : ''}
+       ${body ? `<p>${body}</p>` : ''}
+       ${footer ? `<div class="cost-line">${footer}</div>` : ''}`));
+  },
   card(c){
-    this.beat(el('div', { class: 'biz-card' },
-      `<div class="eyebrow">VENTURE UPDATE</div>
-       <div class="co">${c.company}</div>
-       <div class="loc">${c.location} · REVENUE ${c.revenue}</div>
-       <p>${c.body}</p>
-       <div class="cost-line">${c.cost}</div>`));
+    return this.milestone({
+      eyebrow: 'VENTURE UPDATE', title: c.company,
+      meta: `${c.location} · REVENUE ${c.revenue}`,
+      body: c.body, footer: c.cost,
+    });
   },
 };

@@ -8,6 +8,7 @@
      ours, leaving only the pencil ink on the site's own background */
   mix-blend-mode:multiply;
 }
+[data-theme="dark"] #artifact{mix-blend-mode:screen;opacity:.5}
 /* a paper wash between the sketch and the copy column keeps text readable
    without ever reading as a "box" — it's just more paper */
 #landing>#scrim{
@@ -18,6 +19,14 @@
     color-mix(in srgb, var(--paper) 88%, transparent) 44%,
     color-mix(in srgb, var(--paper) 38%, transparent) 58%,
     transparent 74%);
+}
+[data-theme="dark"] #landing>#scrim{
+  background:linear-gradient(90deg,
+    var(--paper) 0%,
+    var(--paper) 28%,
+    color-mix(in srgb, var(--paper) 86%, transparent) 48%,
+    color-mix(in srgb, var(--paper) 44%, transparent) 63%,
+    transparent 78%);
 }
 @media (max-width:880px){
   #landing>#scrim{background:linear-gradient(180deg,

@@ -1,50 +1,76 @@
-# BYODC — Build your own Data Centre
-### From a grain of sand to the machines that think · an interactive course you play, not read
+# Techarium
 
-**v2 — "a living instrument on paper."** Ink-on-ivory editorial design (Antimetal-inspired palette/type/lines,
-Spade-inspired scroll storytelling), draggable morphing landing artifact, scroll-driven journey, and
-Act 1 fully playable with physically honest visualizations.
+Technology you learn by doing.
 
-## Run it
-Serve the folder statically and open it — no build step:
-```
-cd BYODC && python3 -m http.server 4173   # then http://localhost:4173
-```
-(Native ES modules require a server; opening index.html via file:// won't work.)
-No runtime network: GSAP is vendored in `vendor/`, fonts (Instrument Serif, EB Garamond, IBM Plex Mono) in `fonts/`.
+Techarium is a browser-based platform for interactive technology courses. The platform provides the course catalog, learner profiles, progress tracking, and resume links. Each course owns its simulations, narrative, and visual vocabulary.
 
-## What's inside
-- **Landing** — hero with a draggable 430-dot constellation that morphs lattice → transistor → MOSFET →
-  chip → rack as you scroll the pinned Journey; a dark "Meanwhile, in the real world" interlude with
-  flying fact cards (ASML, TSMC, nm-vs-hair…); acts ladder; colophon.
-- **Act 2 — From Switches to Logic, Math & Memory** (4 steps): wire CMOS twins into a **NAND**
-  and pass its truth-table test; build a full adder from gates, compress it into a tile, stamp
-  four and watch the **carry ripple**; cross-couple two NANDs by hand into a **latch** that
-  remembers after you let go; then loop register → adder → register with a **clock** and make
-  the machine count to a target. Ends at a working datapath — a CPU's heartbeat at 1 press/second.
-- **Act 1 — The Physics of a Switch** (4 steps, each hands-on):
-  1. Dope a silicon crystal (bond electron *pairs* drawn honestly; holes = vacancy rings that hop
-     between bonds; electron-flow vs conventional-current beat, then chevrons everywhere after).
-  2. NPN transistor (emitter small / base thin / collector wide; current INTO base; LED ×100 test).
-  3. MOSFET (gate+glass+silicon = a capacitor; channel forms past threshold; 0 A into the gate, always).
-  4. CMOS inverter (place the twins; power blips only at the flip).
-- **Back / Restart everywhere** — record-and-replay navigation (`js/engine/flow.js`): every interaction
-  is recorded; Back re-runs the step instantly to one answer earlier (works across steps).
-- Running cost HUD ($0.0015 total), Nanovolt venture storyline, summary ledger, locked Act 2 tease.
-- Synthesized audio only (Web Audio), `prefers-reduced-motion` honored, keyboard accessible.
+Available courses:
 
-## Architecture (see DESIGN.md for the binding spec)
+- **Build Your Own Data Centre**: 21 interactive builds across semiconductor physics, digital logic, fabrication, GPU architecture, and data-centre systems.
+- **Build a Neural Network**: 16 guided experiments from one neuron to a tiny next-token transformer.
+
+## Run locally
+
+No package installation or build step is required.
+
+```bash
+npm run serve
 ```
-css/tokens|base|landing|game.css      design system
-js/landing.js                          hero artifact + scroll choreography (GSAP ScrollTrigger)
-js/engine/…                            util, anim, sfx, field, pathflow (dots + current chevrons),
-                                       lattice (bond pairs, dopants, hole-hopping), components,
-                                       guide, hud, stage, flow (back/replay)
-js/steps/act.js + step1–4 + summary    Act 1 content + generic act summary
-js/acts/act2/index.js + step1–4        Act 2 content (gates.js vocabulary: makeGate, sigWire,
-                                       makeBits, makeToggleBits, guide.truthTable)
-legacy/act1_v1.html                    archived v1 (dark theme, single file)
+
+Open `http://localhost:4173`. Native ES modules require HTTP; `file://` is not supported.
+
+Validate source modules and course registrations with:
+
+```bash
+npm run check
 ```
-Debug hooks: `window.__byodcArt` (landing artifact), `window.__byodcFlow` (act runner — e.g. `.start(2)`
-jumps to step 3 of the running act), `window.__byodcStartAct(n)` (launch a specific act),
-`window.__byodcMusic` (background track).
+
+## Routes
+
+- `index.html`: Techarium platform home, catalog, dashboard, and local profile management.
+- `course.html`: Build Your Own Data Centre landing and interactive runtime.
+- `ai-course.html`: Build a Neural Network landing and interactive runtime.
+- `course.html?act=3&start=1`: directly launch an act, used by resume links.
+- `test.html`: standalone visual harness for the BYODC frame-scrub landing animation.
+
+## Architecture
+
+```text
+index.html + css/platform.css + js/platform/app.js
+  Platform shell: catalog, profiles, dashboard
+
+js/platform/course-registry.js
+  Course manifests and launch routing
+
+js/platform/profile-store.js
+  Browser-local profile and progress adapter
+
+course.html + js/main.js
+  BYODC course entry and five-act router
+
+js/engine/
+  Reusable interactive runtime: flow, guide, HUD, stage, controls
+
+js/steps/ + js/acts/
+  BYODC course content
+
+js/courses/neural-networks/
+  AI course router, four labs, presenter, deterministic engine, and landing
+```
+
+Profiles are deliberately local for the MVP. Data is stored under `techarium:mvp:v1` in `localStorage`; there is no email, authentication service, tracking request, or cross-device sync. Platform code imports the store through a small API so it can later be replaced with an authenticated backend.
+
+## Add a course
+
+Read [COURSE_AUTHORING.md](COURSE_AUTHORING.md). A course is registered through one manifest in `js/platform/course-registry.js`. Available manifests must point to an existing launch page. The platform catalog and dashboard render from registry data—do not add course cards directly to `index.html`.
+
+## Important runtime rule
+
+BYODC uses deterministic record-and-replay navigation. Every learner interaction inside a step must pass through `flow.ask()`. Back and Restart reconstruct a step from recorded answers; bypassing `flow.ask()` breaks that contract.
+
+## Current MVP boundaries
+
+- Browser-local profiles only.
+- Progress saves after completed steps; resume returns to the beginning of the last active act.
+- Two available courses; future-course manifests demonstrate broader cross-domain catalog support.
+- No analytics, backend, certificates, payments, or cross-device synchronization.

@@ -31,6 +31,7 @@ export const hud = {
     this.stepEl.innerHTML = `${actLabel} · STEP <b>${i + 1} / ${total}</b>`;
   },
   setCost(v){ this.cost = v; this.moneyEl.textContent = `SPENT ${formatMoney(v)}`; },
+  setInventory(inv){ if (inv) this.invEl.innerHTML = `YOU HAVE: <b>${inv}</b>`; },
   addCost(d, inv, instant = false){
     const from = this.cost; this.cost += d;
     if (instant) this.moneyEl.textContent = `SPENT ${formatMoney(this.cost)}`;
@@ -38,6 +39,6 @@ export const hud = {
       animateNumber(from, this.cost, 1000, v => { this.moneyEl.textContent = `SPENT ${formatMoney(v)}`; });
       this.moneyEl.classList.remove('pulse'); void this.moneyEl.offsetWidth; this.moneyEl.classList.add('pulse');
     }
-    if (inv) this.invEl.innerHTML = `YOU HAVE: <b>${inv}</b>`;
+    this.setInventory(inv);
   },
 };

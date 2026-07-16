@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Your Own Data Centre — Techarium</title>
+<meta name="description" content="Build a data centre from semiconductor physics to a global supercluster in one interactive course.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/landing.css">
+<link rel="stylesheet" href="css/game.css">
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<script src="vendor/Draggable.min.js"></script>
+<script src="vendor/InertiaPlugin.min.js"></script>
+<script type="module" src="js/platform/theme.js"></script>
+</head>
+<body>
+<div id="landing">
+  <canvas id="artifact" aria-hidden="true"></canvas>
+  <div id="scrim" aria-hidden="true"></div>
+
+  <nav id="lnav">
+    <a class="wordmark" href="index.html" title="Back to Techarium">BYODC<span class="dot">·</span></a>
+    <div class="links microlabel">
+      <a href="index.html">← Techarium</a>
+      <a href="#journey">The journey</a>
+      <a href="#acts">Acts</a>
+      <a href="#colophon">Colophon</a>
+    </div>
+    <button id="lmute" aria-label="toggle sound" title="toggle sound">♪</button>
+    <button class="btn primary" data-label="play-act-1" data-begin>Play Act 1 ▸</button>
+  </nav>
+
+  <header id="hero" class="lsection">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <div class="microlabel reveal"><span class="idx">A TECHARIUM INTERACTIVE COURSE</span> — FIVE ACTS, ZERO EQUATIONS</div>
+        <h1 class="reveal">Build your own<br><em>Data Centre.</em></h1>
+        <p class="lede reveal">From a single grain of sand to the machines that think — doped crystal by
+        transistor by chip by cluster. You won't read about any of it. <b>You'll build it, with your own hands.</b></p>
+        <div class="scroll-cue reveal" aria-hidden="true">
+          <span class="microlabel">Scroll to go all the way in</span>
+          <span class="cue-arrow">↓</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-strip microlabel reveal">
+      <span>FIVE ACTS — <b>21 BUILDS</b></span><span class="sep"></span>
+      <span>FROM SAND — <b>TO SUPERCLUSTER</b></span><span class="sep"></span>
+      <span>SCARY EQUATIONS — <b>0</b></span><span class="sep"></span>
+      <span class="drag-hint">↓ SCROLL — THE DRAWING TAKES ITSELF APART</span>
+    </div>
+  </header>
+
+  <section id="journey"><div class="journey-pin"><div class="journey-copy"></div></div></section>
+
+  <section id="realworld" aria-label="facts from the real semiconductor world">
+    <div class="rw-pin">
+      <div class="rw-center"></div><div class="rw-cards"></div>
+      <div class="rw-eyebrow microlabel">MEANWHILE, IN THE REAL WORLD —</div>
+    </div>
+  </section>
+
+  <section id="acts" class="lsection">
+    <div class="acts-head"><div class="microlabel">THE LADDER — FIVE ACTS</div><h2>Sand <em>to</em> superclusters</h2></div>
+    <div class="acts-table">
+      <button class="act-row playable" data-begin data-label="act-row-1"><span class="microlabel idx">ACT 1</span><span class="nm">The Physics of a Switch <em>— dope silicon, build a transistor, a MOSFET, CMOS</em></span><span class="microlabel tag play">PLAY ▸</span></button>
+      <button class="act-row playable" data-begin="2" data-label="act-row-2"><span class="microlabel idx">ACT 2</span><span class="nm">From Switches to Logic, Math &amp; Memory <em>— a NAND, an adder, a latch, a heartbeat</em></span><span class="microlabel tag play">PLAY ▸</span></button>
+      <button class="act-row playable" data-begin="3" data-label="act-row-3"><span class="microlabel idx">ACT 3</span><span class="nm">From Cell to Chip <em>— grow an ingot, print with light, play the yield game</em></span><span class="microlabel tag play">PLAY ▸</span></button>
+      <button class="act-row playable" data-begin="4" data-label="act-row-4"><span class="microlabel idx">ACT 4</span><span class="nm">The GPU — machines built for mathematics <em>— build the multiply engine, park the weights, and assemble the NV-1</em></span><span class="microlabel tag play">PLAY ▸</span></button>
+      <button class="act-row playable" data-begin="5" data-label="act-row-5"><span class="microlabel idx">ACT 5</span><span class="nm">The Data Centre — your own supercluster <em>— racks, megawatts, the globe</em></span><span class="microlabel tag play">PLAY ▸</span></button>
+    </div>
+    <div class="acts-cta"><button class="btn primary big" data-begin data-label="start-act-1">Start Act 1 ▸</button><div class="microlabel">BEGIN AT THE ATOM · NO EQUATIONS · PROGRESS SAVES LOCALLY</div></div>
+  </section>
+
+  <footer id="colophon" class="lsection">
+    <div class="microlabel">BYODC — A TECHARIUM INTERACTIVE COURSE</div>
+    <p>Every diagram is drawn in code. Every interaction exists to reveal the real mechanism, simplified but never falsified.</p>
+    <div class="microlabel foot-rule">SET IN INSTRUMENT SERIF · EB GARAMOND · IBM PLEX MONO — NO TRACKING</div>
+  </footer>
+</div>
+
+<div id="game">
+  <header id="hud">
+    <a class="wordmark" href="index.html" title="Back to Techarium">BYODC<em>·</em></a>
+    <div class="stepmark" id="stepmark">ACT 1 · STEP <b>1 / 4</b></div>
+    <div class="money" id="money">SPENT $0.0000</div>
+    <div class="inv" id="inv">YOU HAVE: <b>a pile of very pure sand</b></div>
+    <button id="mute" aria-label="toggle sound" title="toggle sound">♪</button>
+  </header>
+  <main id="stage-wrap">
+    <div id="stage" class="ticks"><span class="tk"></span></div>
+    <aside id="guide" aria-live="polite"><div class="nav-row" id="guide-nav"></div><div id="guide-scroll"></div></aside>
+  </main>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

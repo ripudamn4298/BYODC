@@ -2,5 +2,10 @@
   "name": "byodc",
   "private": true,
   "type": "module",
-  "description": "Build your own Data Centre — an interactive course from sand to superclusters. No build step; serve statically."
+  "description": "Techarium — a platform for interactive technology courses.",
+  "scripts": {
+    "serve": "python3 -m http.server 4173",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node scripts/check-project.mjs && npm test"
+  }
 }

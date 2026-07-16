@@ -84,7 +84,7 @@ export const ACT1_SUMMARY = {
     { nm: 'CMOS inverter', amt: '$0.0006', icon: ico(`<path d="M17 3v6M17 25v6M17 13v8" stroke="var(--ink-soft)" stroke-width="1.4"/><rect x="11" y="7" width="12" height="8" rx="2" fill="var(--red-soft)" stroke="var(--red)" stroke-width="1.3"/><rect x="11" y="19" width="12" height="8" rx="2" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.3"/><circle cx="27" cy="17" r="2.6" fill="var(--ink)"/>`) },
   ],
   totalNote: ' — still less than a grain of rice',
-  locked: { title: 'ACT 3 — From Cell to Chip: fabrication at scale', note: 'first, teach your switches to think — act 2 awaits' },
+  locked: { title: 'ACT 2 — From Switches to Logic, Math & Memory', note: 'your inverter is ready to learn how to think' },
   next: { label: 'Continue to Act 2 ▸' },
   debrief: {
     eyebrow: 'ACT 1 · DEBRIEF',

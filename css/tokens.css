@@ -32,3 +32,26 @@
   --radius:2px;          /* the paper world is nearly square-cornered */
   --ease:cubic-bezier(.22,.9,.24,1);
 }
+
+html[data-theme="dark"]{
+  --paper:#111611;
+  --paper-high:#171E18;
+  --ink:#F6F1DD;
+  --ink-soft:#C9D1BA;
+  --ink-faint:#8F9A84;
+  --hairline:rgba(246,241,221,.18);
+  --hairline-soft:rgba(246,241,221,.09);
+  --hairline-strong:rgba(246,241,221,.36);
+  --dark:#090C09;
+  --dark-soft:#101610;
+  --cream:#FFF7DC;
+  --blue:#78A7FF;
+  --blue-soft:rgba(120,167,255,.16);
+  --red:#FF714D;
+  --red-soft:rgba(255,113,77,.14);
+  --amber:#FFD166;
+  --amber-soft:rgba(255,209,102,.16);
+  --green:#9DE08F;
+  --grid-fine:rgba(255,247,220,.055);
+  --grid-bold:rgba(255,247,220,.11);
+}

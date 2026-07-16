@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile - Techarium</title>
+<meta name="description" content="Manage your browser-local Techarium profile and resume interactive courses.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/platform.css">
+</head>
+<body class="platform-body">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="platform-nav">
+  <a class="platform-brand" href="index.html" aria-label="Techarium home"><span>Techarium</span><em>.</em></a>
+  <nav aria-label="Primary navigation">
+    <a href="catalog.html">Catalog</a>
+    <a href="profile.html" aria-current="page">Profile</a>
+    <a href="about.html">About us</a>
+  </nav>
+  <div class="nav-actions">
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false">
+      <span class="theme-icon" aria-hidden="true"></span>
+      <span id="theme-label">Dark</span>
+    </button>
+    <button class="profile-trigger" id="profile-trigger" type="button" aria-haspopup="dialog" aria-label="Create local profile">
+      <span class="profile-avatar" id="profile-avatar" aria-hidden="true">+</span>
+      <span id="profile-label">Create profile</span>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="platform-section dashboard-section profile-page" id="dashboard" aria-labelledby="dashboard-title">
+    <div class="dashboard-head">
+      <div>
+        <p class="platform-kicker">Your learning</p>
+        <h1 id="dashboard-title">Pick up where<br><em>you left off.</em></h1>
+      </div>
+      <button class="btn ghost" id="dashboard-profile" type="button">Manage profile</button>
+    </div>
+    <div id="dashboard-content"></div>
+  </section>
+</main>
+
+<footer class="platform-footer">
+  <a class="platform-brand" href="index.html"><span>Techarium</span><em>.</em></a>
+  <p>Technology you learn by doing.</p>
+  <p class="microlabel">PROFILE DATA STAYS IN THIS BROWSER · MVP 01</p>
+</footer>
+
+<dialog class="profile-dialog" id="profile-dialog" aria-labelledby="profile-dialog-title">
+  <form method="dialog" class="dialog-shell" id="profile-form">
+    <div class="dialog-topline">
+      <span class="microlabel">LOCAL LEARNER PROFILE</span>
+      <button class="dialog-close" id="profile-dialog-close" type="button" aria-label="Close profile dialog">×</button>
+    </div>
+    <div id="profile-create-view">
+      <h2 id="profile-dialog-title">Create your<br><em>learning profile.</em></h2>
+      <p>Your name and course progress stay in this browser. No account, email, or network request is required.</p>
+      <label for="profile-name">What should we call you?</label>
+      <input id="profile-name" name="profileName" type="text" minlength="2" maxlength="40" autocomplete="name" placeholder="Your name" required>
+      <p class="form-error" id="profile-error" role="alert"></p>
+      <button class="btn primary big" type="submit" value="create">Create profile →</button>
+    </div>
+    <div id="profile-switch-view" hidden>
+      <h2>Choose a<br><em>local profile.</em></h2>
+      <div class="profile-list" id="profile-list"></div>
+      <button class="btn ghost" id="new-profile" type="button">+ New profile</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module" src="js/platform/app.js"></script>
+</body>
+</html>

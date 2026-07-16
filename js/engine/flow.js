@@ -8,6 +8,21 @@ import { guide } from './guide.js';
 import { hud } from './hud.js';
 import { Music } from './music.js';
 
+// Default presenter preserves BYODC's money/inventory shell. Other courses can
+// supply { enterStep(context), completeStep(context) } without forking flow.
+const legacyPresenter = {
+  enterStep({ runner, stepIndex, totalSteps }){
+    const step = runner.steps[stepIndex];
+    hud.setStep(stepIndex, totalSteps, runner.actLabel);
+    Music.setIntensity(totalSteps > 1 ? stepIndex / (totalSteps - 1) : 0);
+    hud.setCost(runner.baseCost + runner.steps.slice(0, stepIndex).reduce((sum, item) => sum + item.costDelta, 0));
+  },
+  completeStep({ step, instant }){
+    guide.card(step.businessCard);
+    hud.addCost(step.costDelta, step.inventory, instant);
+  },
+};
+
 export const flow = {
   steps: [],
   stepIndex: 0,
@@ -75,9 +90,9 @@ export const flow = {
     const guard = () => ep === this._epoch;
     while (this.stepIndex < this.steps.length){
       const step = this.steps[this.stepIndex];
-      hud.setStep(this.stepIndex, this.steps.length, this.actLabel);
-      Music.setIntensity(this.steps.length > 1 ? this.stepIndex / (this.steps.length - 1) : 0);
-      hud.setCost(this.baseCost + this.steps.slice(0, this.stepIndex).reduce((s, x) => s + x.costDelta, 0));
+      this.presenter.enterStep({ runner: this, step, stepIndex: this.stepIndex, totalSteps: this.steps.length, instant: this.instant });
+      try { this.onStepStart?.({ stepIndex: this.stepIndex, totalSteps: this.steps.length, step, actLabel: this.actLabel }); }
+      catch (err){ console.warn('[BYODC] progress start hook failed:', err); }
       guide.clear();
       this.updateNav();
       try {
@@ -91,12 +106,13 @@ export const flow = {
       }
       if (!guard()) return;
       // post-step: venture card, cost tick, premise, CTA
-      guide.card(step.businessCard);
-      hud.addCost(step.costDelta, step.inventory, this.instant);
+      this.presenter.completeStep({ runner: this, step, stepIndex: this.stepIndex, totalSteps: this.steps.length, instant: this.instant });
       if (step.premise) guide.say(step.premise);
       await guide.button(step.cta);
       if (!guard()) return;
       this.saved[this.stepIndex] = this.answers.slice();
+      try { this.onStepComplete?.({ stepIndex: this.stepIndex, totalSteps: this.steps.length, step, actLabel: this.actLabel }); }
+      catch (err){ console.warn('[BYODC] progress completion hook failed:', err); }
       this.stepIndex++;
       this.answers = [];
       if (this.queue.length){ /* continuing a multi-step replay — not used, clear */ this.queue = []; }
@@ -142,6 +158,9 @@ export const flow = {
     this.onComplete = opts.onComplete || null;
     this.actLabel = opts.actLabel || 'ACT 1';
     this.baseCost = opts.baseCost || 0;
+    this.presenter = opts.presenter || legacyPresenter;
+    this.onStepStart = opts.onStepStart || null;
+    this.onStepComplete = opts.onStepComplete || null;
     this.saved = [];
     this.initNav();
     window.__byodcFlow = this;   // debug/verification hook (harmless)
