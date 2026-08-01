@@ -3,8 +3,10 @@
 **/.DS_Store
 .claude/
 
-# ── Superseded assets (the site loads animation-frames-hd/ only) ───
+# ── Superseded frame sets (the site loads animation-frames-webp/ only) ──
+# kept on disk as masters; the WebP set is what ships (20 MB vs 71 MB)
 animation-frames/
+animation-frames-hd/
 
 # ── Reference material — inspiration, not part of the site ────────
 website_inspiration/

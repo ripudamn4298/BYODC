@@ -18,6 +18,7 @@ export const flow = {
   _epoch: 0,
   _hints: new Set(),
   onComplete: null,
+  onProgress: null,     // (nextStepIndex) => … fires each time a step is finished
 
   get stale(){ return false; },
 
@@ -99,6 +100,7 @@ export const flow = {
       this.saved[this.stepIndex] = this.answers.slice();
       this.stepIndex++;
       this.answers = [];
+      if (this.onProgress) this.onProgress(this.stepIndex);   // remember the new position
       if (this.queue.length){ /* continuing a multi-step replay — not used, clear */ this.queue = []; }
       this._exitInstant();
     }
@@ -134,18 +136,25 @@ export const flow = {
     this._restartBtn.disabled = this.answers.length === 0;
   },
 
-  /* opts: { onComplete, actLabel='ACT 1', baseCost=0 } — baseCost carries the
-     cumulative spend from earlier acts into the HUD. */
+  /* opts: { onComplete, onProgress, actLabel='ACT 1', baseCost=0, startAt=0 } —
+     baseCost carries the cumulative spend from earlier acts into the HUD;
+     startAt resumes a saved session at a step boundary (the runner recomputes
+     cost from baseCost + the costDeltas below it, so the HUD lands correct). */
   run(steps, opts = {}){
     if (typeof opts === 'function') opts = { onComplete: opts };
     this.steps = steps;
     this.onComplete = opts.onComplete || null;
+    this.onProgress = opts.onProgress || null;
     this.actLabel = opts.actLabel || 'ACT 1';
     this.baseCost = opts.baseCost || 0;
     this.saved = [];
     this.initNav();
     window.__byodcFlow = this;   // debug/verification hook (harmless)
-    this.start(0, []);
+    const at = Math.min(Math.max(0, opts.startAt || 0), steps.length - 1);
+    // resuming mid-act: the bench is fresh, so carry over what the player was
+    // last holding — the cost line rebuilds itself in the runner
+    if (at > 0) hud.setInv(steps[at - 1]?.inventory);
+    this.start(at, []);
   },
 };
 

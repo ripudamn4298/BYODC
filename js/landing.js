@@ -7,7 +7,7 @@ import { $, el, RM, clamp } from './engine/util.js';
 
 /* ---------------- the frames ---------------- */
 const FRAME_COUNT = 151;
-const framePath = i => `animation-frames-hd/ezgif-frame-${String(i + 1).padStart(3, '0')}.jpg`;
+const framePath = i => `animation-frames-webp/ezgif-frame-${String(i + 1).padStart(3, '0')}.webp`;
 
 // where the camera RESTS for each phase (0-indexed frames):
 //   0   — the rack in its room, cables overhead          (01 · THE DATA CENTRE)

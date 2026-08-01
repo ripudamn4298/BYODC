@@ -68,6 +68,16 @@
 .hero-copy .lede b{color:var(--ink);font-weight:600}
 .cta-row{display:flex;gap:12px;margin-top:38px;flex-wrap:wrap}
 .cta-row .btn{text-decoration:none}
+/* resume — only present once there's a saved run. The top margin is applied
+   only when a button is actually showing, so a first-time hero keeps its
+   original spacing and a wrapped row doesn't double the gap. */
+.resume-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.resume-row:has(.btn:not([hidden])){margin-top:38px}
+/* the act/step label is written straight into the button, so it must never
+   be squeezed onto a second line by the row's flex shrinking */
+.btn[data-resume]{white-space:nowrap;flex:0 0 auto}
+.resume-row .btn[data-forget]{color:var(--ink-faint);border-color:transparent}
+.resume-row .btn[data-forget]:hover:not(:disabled){background:transparent;color:var(--ink);text-decoration:underline}
 .scroll-cue{display:flex;align-items:center;gap:15px;margin-top:44px;color:var(--ink-soft)}
 .scroll-cue .cue-arrow{
   display:inline-flex;align-items:center;justify-content:center;

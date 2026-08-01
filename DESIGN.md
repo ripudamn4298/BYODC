@@ -13,7 +13,9 @@ hairline rules, mono microlabels, editorial serif, restrained color used only fo
 ### Palette (CSS custom properties in `css/tokens.css`)
 NOTE (v2.4 — 2026-07-12, later; the user tested this on test.html, called it perfect,
 and asked for it on index.html): the landing artifact is now a HAND-DRAWN FRAME SCRUB —
-151 pencil sketches in `animation-frames-hd/` (2568×1432; one continuous camera move:
+151 pencil sketches in `animation-frames-webp/` (2568×1432 WebP, 20 MB total — the
+`animation-frames/` originals and the `animation-frames-hd/` JPEG upscale are kept
+on disk as masters but are gitignored; only the WebP set ships; one camera move:
 rack room → 1U server → GPU → die → single 7nm FinFET) drawn full-bleed on the #artifact
 canvas with `mix-blend-mode:multiply` so their cream paper melts into the site's paper
 and only the ink remains. A fixed `#scrim` paper gradient keeps the copy column legible
@@ -28,6 +30,18 @@ experiments, was the multiply blend + scrim + frame-anchored dwell sync; the ear
 dot-globe implementation survives in git history if ever needed. `test.html` is the
 standalone test harness for this animation. Background music is the track in
 `bg-music/` (looped, playbackRate 0.75, faint) via `js/engine/music.js`.
+
+NOTE (progress): the course remembers where a player got to — `js/engine/progress.js`
+writes `{act, step}` to localStorage after every completed step (`flow`'s `onProgress`
+hook), and `flow.run(steps, {startAt})` resumes at that step boundary. Resume is safe
+precisely because steps are deterministic and self-contained: the HUD's running cost is
+recomputed from `baseCost + the costDeltas below startAt`, and the inventory line is
+restored from `steps[startAt-1].inventory`. Nothing is sent anywhere — no accounts, no
+server; clearing site data forgets the run. The landing's Resume / start-over buttons
+(`[data-resume]` / `[data-forget]`) stay `hidden` until a saved run exists, so a
+first-time visitor sees the original hero exactly as designed. NB: `.btn` sets
+`display:inline-flex`, which beats the UA's `[hidden]` rule — base.css therefore
+carries a global `[hidden]{display:none !important}`; keep it.
 
 NOTE (v2.1): background warmed to a tan-cream and given a faint sepia graph-paper
 texture (`body::before`, masked to soft corner/edge patches so it lifts blank space

@@ -31,6 +31,7 @@ export const hud = {
     this.stepEl.innerHTML = `${actLabel} · STEP <b>${i + 1} / ${total}</b>`;
   },
   setCost(v){ this.cost = v; this.moneyEl.textContent = `SPENT ${formatMoney(v)}`; },
+  setInv(inv){ if (inv) this.invEl.innerHTML = `YOU HAVE: <b>${inv}</b>`; },
   addCost(d, inv, instant = false){
     const from = this.cost; this.cost += d;
     if (instant) this.moneyEl.textContent = `SPENT ${formatMoney(this.cost)}`;

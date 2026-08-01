@@ -1,5 +1,8 @@
 /* BYODC v2 — base + shared components */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* the UA's [hidden] rule loses to any author `display` (e.g. .btn's
+   inline-flex), so state the intent once, loudly, for the whole site */
+[hidden]{display:none !important}
 html{scroll-behavior:smooth}
 html,body{height:100%}
 body{

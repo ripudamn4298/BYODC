@@ -11,6 +11,7 @@ import { ACT3, ACT3_SUMMARY, ACT3_BASE_COST } from './acts/act3/index.js';
 import { ACT4, ACT4_SUMMARY, ACT4_BASE_COST } from './acts/act4/index.js';
 import { ACT5, ACT5_SUMMARY, ACT5_BASE_COST } from './acts/act5/index.js';
 import { showSummary } from './steps/summary.js';
+import { progress } from './engine/progress.js';
 import { initLanding, teardownLanding } from './landing.js';
 
 guide.init();
@@ -27,19 +28,26 @@ const ACTS = {
   5: { steps: ACT5, summary: ACT5_SUMMARY, label: 'ACT 5', baseCost: ACT5_BASE_COST, nextAct: null },
 };
 
-function startAct(n){
+function startAct(n, startAt = 0){
   const act = ACTS[n];
   if (!act) return;
   flow.run(act.steps, {
     actLabel: act.label,
     baseCost: act.baseCost,
-    onComplete: () => showSummary(act.summary, act.nextAct ? () => startAct(act.nextAct) : null),
+    startAt,
+    onProgress: step => progress.save(n, step),
+    onComplete: () => {
+      // park the player at the top of the next act — or forget the run
+      // entirely once the whole course is finished
+      if (act.nextAct) progress.save(act.nextAct, 0); else progress.clear();
+      showSummary(act.summary, act.nextAct ? () => startAct(act.nextAct) : null);
+    },
   });
 }
 window.__byodcStartAct = startAct;   // debug/verification hook (harmless)
 
 let started = false;
-function startGame(actId = 1){
+function startGame(actId = 1, startAt = 0){
   if (started) return;
   started = true;
   SFX.init(); SFX.click();
@@ -48,11 +56,31 @@ function startGame(actId = 1){
   $('#game').classList.add('active');
   window.scrollTo(0, 0);
   Music.start();   // idempotent — already playing if the landing kicked it off
-  startAct(actId);
+  startAct(actId, startAt);
 }
 
 document.querySelectorAll('[data-begin]').forEach(b =>
   b.addEventListener('click', () => startGame(+b.getAttribute('data-begin') || 1)));
+
+/* ---- pick up where you left off ----------------------------------------
+   A saved run turns on the resume buttons (hero + acts ladder). They stay
+   hidden for a first-time visitor, so nothing new appears until it's earned. */
+(function initResume(){
+  const saved = progress.load();
+  if (!saved) return;
+  const act = ACTS[saved.act];
+  if (!act || saved.step >= act.steps.length){ progress.clear(); return; }   // stale record
+
+  document.querySelectorAll('[data-resume]').forEach(el => {
+    el.hidden = false;
+    el.textContent = `Resume — ${act.label} · step ${saved.step + 1} / ${act.steps.length} ▸`;
+    el.addEventListener('click', () => startGame(saved.act, saved.step));
+  });
+  document.querySelectorAll('[data-forget]').forEach(el => {
+    el.hidden = false;
+    el.addEventListener('click', () => { progress.clear(); location.reload(); });
+  });
+})();
 
 // one mute, two buttons (landing nav + game HUD): silences music AND effects together
 const muteBtns = [...document.querySelectorAll('#mute, #lmute')];
