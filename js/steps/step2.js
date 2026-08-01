@@ -15,15 +15,15 @@ import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
 import { CurrentFlow } from '../engine/pathflow.js';
 import { makeLamp, makeBattery, makeSlider, makeChip, makePlacer, cornerTicks } from '../engine/components.js';
-import { makeCarrierGrid, makeDepletionBands, hopElectrons, makeBracket } from '../engine/junction.js';
+import { makeCarrierGrid, makeDepletionBands, hopElectrons, makeBracket, makeBarrierHill, makeOvershootDemo } from '../engine/junction.js';
 
 export async function step2(){
   const { svg, controls } = newStage('02', 'PN junction: the depletion layer builds itself');
   guide.title('STEP 2 / 4 · NANOVOLT SEMICONDUCTORS', 'Build your own <em>transistor</em>');
 
-  guide.say(`Your doped wafer conducts, but right now it's just a wire. A <b>transistor</b> is a switch with no moving parts: a small signal controls a large current. To build one, you first need the piece it's made of — the boundary where N-type silicon meets P-type. That boundary is called a <b>PN junction</b>, and this step is about what happens there.`);
+  guide.say(`Your doped wafer conducts, but a wire that always conducts is not a switch. Everything useful starts where N-type silicon meets P-type. That boundary is a <b>PN junction</b>.`);
   await guide.next();
-  guide.say(`Aim: press an N block and a P block together, watch the junction form on its own, and test what it does to current. Take an <b>N</b> block (spare <span class="e-blue">electrons</span>) and a <b>P</b> block (spare <span class="e-red">holes</span>) and push them together.`);
+  guide.say(`<b>Your goal: press the two blocks together and see what forms at the seam.</b> <span class="e-blue">N</span> has spare electrons, <span class="e-red">P</span> has spare holes.`);
   await guide.next();
 
   /* ==================================================================
@@ -84,7 +84,7 @@ export async function step2(){
   await sleep(400);
 
   /* ---------- the hop ceremony (auto, no interaction — let it breathe) ---------- */
-  guide.say(`Watch the boundary. With no battery and no voltage, the spare electrons next to it cross over and fill the nearest holes. Each electron that leaves the N side turns its atom into a <b>fixed positive charge</b>; where it lands on the P side, it creates a <b>fixed negative charge</b>. These charges can't move.`);
+  guide.say(`No battery yet. Watch the seam: the nearest electrons cross and drop into the nearest holes, leaving <b>fixed charges</b> behind that cannot move.`);
   await sleep(600);
 
   // two N columns nearest the seam (c=0 at x=374, c=1 at x=402) map to the two
@@ -105,7 +105,7 @@ export async function step2(){
     await sleep(500);
   }
 
-  guide.say(`It stops quickly. The P side of the boundary is now <span class="e-blue">slightly negative</span> and the N side is <span class="e-red">slightly positive</span>. That charge difference creates a voltage that pushes any further electrons back, so the crossing halts on its own. This thin region, now empty of free carriers, is the <b>depletion layer</b>. It acts as a barrier to current.`);
+  guide.say(`It stops on its own. The P side is now <span class="e-blue">slightly negative</span>, the N side <span class="e-red">slightly positive</span>, and that difference pushes the next electron back. The emptied strip is the <b>depletion layer</b>.`);
   await sleep(500);
 
   /* the measurement bracket — the ~0.7 V barrier, earned not stated */
@@ -114,6 +114,14 @@ export async function step2(){
     bracket.style.opacity = '0';
     gsap.to(bracket, { opacity: 1, duration: 0.4, ease: 'power2.out' });
   }
+  await guide.next();
+
+  /* the same barrier drawn as a hill, directly above the seam. The bands say
+     WHERE the barrier is; the hill says how HIGH, which is the part that makes
+     0.7 V mean something. Its electron keeps sliding back until the hill drops. */
+  const hill = makeBarrierHill(jg, { cx: 360, base: 148, w: 250, hMax: 66 });
+  hill.start();
+  guide.say(`Same barrier, drawn as a hill. An electron has to get over it to cross. Watch it try.`);
   await guide.next();
 
   /* ---------- wiring: battery + lamp for the bias tests ----------
@@ -146,12 +154,14 @@ export async function step2(){
       // reverse bias: any voltage only widens the empty zone further; never any flow.
       bands.quiver(false);
       bands.setWidth(1.6 + v * 0.4);
+      hill.setBias(v, { reverse: true });   // the hill grows instead of shrinking
       jFlow.setSpeed(0);
       jLamp.set(0);
       chipWall.set('wall: <b>wider</b>');
       chipFlow.set('flow: <b>0</b>'); chipFlow.cls('state-on', false);
       return;
     }
+    hill.setBias(v);
     if (v < 0.7){
       bands.setWidth(1 - v * 0.35);       // wall thins as carriers lean on it (~0.75 at 0.65 V)
       bands.quiver(v > 0.45);
@@ -173,7 +183,7 @@ export async function step2(){
   slider.on(apply);
   apply(0);
 
-  guide.say(`Now connect a battery to push electrons toward the boundary. To cross, an electron needs enough energy to get over the barrier. Raise the voltage slowly and find the point where current starts to flow.`);
+  guide.say(`More voltage, shorter hill. <b>Your goal: find the voltage where it gets low enough to cross.</b>`);
 
   /* ---------- ASK #2: forward-bias test ---------- */
   const tFwd = guide.task('Find the voltage where current starts to flow');
@@ -186,11 +196,11 @@ export async function step2(){
   });
   tFwd.done();
 
-  guide.note(`About 0.7 V is the height of the barrier. Below it, electrons don't have enough energy to cross, so no current flows. Above it, they cross freely and the lamp lights.`);
+  guide.note(`0.7 V is the height of that hill, in volts. Below it the electron always slides back. At it, the climb is gone and the lamp lights.`);
   await guide.next();
 
   /* ---------- ASK #3: flip the battery (reverse bias) ---------- */
-  guide.say(`Now reverse the battery and try again.`);
+  guide.say(`Now flip the battery and try the same thing.`);
   await guide.button('Flip the battery ↺');
 
   // swap the battery's polarity marks (the −/+ texts inside the battery glyph)
@@ -200,13 +210,13 @@ export async function step2(){
   // route chevrons reverse direction but speed stays 0 (nothing flows); the wall widens
   apply(slider.value);   // recompute in reverse mode from the current slider value
 
-  guide.say(`Same blocks, opposite direction, and no current at any voltage. Reversing the battery pulls carriers <b>away</b> from the boundary instead of toward it, so the depletion layer gets wider. It won't conduct this way no matter how high you go.`);
+  guide.say(`Now the battery pulls carriers <b>away</b> from the seam, so the strip widens and the hill grows. Turn it up: the climb only gets worse.`);
 
   /* ---------- ASK #4: reverse-bias test ---------- */
   const tRev = guide.task('Confirm: no current at any voltage');
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
-    const cancel = flow.hintAfter(12000, 'Turn the voltage all the way up. The barrier only gets wider — still no current.');
+    const cancel = flow.hintAfter(12000, 'Turn the voltage all the way up. The barrier only gets wider, so there is still no current.');
     await waitFor(() => slider.value >= 1.2, { hold: 500 });
     cancel();
     return slider.value;
@@ -214,8 +224,8 @@ export async function step2(){
   tRev.done();
 
   /* ---------- the aha ---------- */
-  guide.aha(`You built a <b>diode</b>: it passes current in one direction and blocks it in the other. The useful part is the barrier — voltage can raise or lower it. That control is the basis of every switch in a chip.`,
-    `The transistor you'll build next is two of these junctions back-to-back.`);
+  guide.aha(`You built a <b>diode</b>. It passes current one way and blocks the other. The useful part is that a voltage raises or lowers that hill, which is how every switch in a chip gets controlled.`,
+    `The transistor you'll build next is two of these junctions back to back.`);
   await guide.next();
 
   /* ---------- clear the junction apparatus (reuse the same svg — no newStage) ---------- */
@@ -225,13 +235,14 @@ export async function step2(){
     await new Promise(res => gsap.to(jg, { opacity: 0, duration: 0.5, ease: 'power2.out', onComplete: res }));
     jg.remove();
   }
+  hill.stop();          // the hill's frame loop outlives its node otherwise
   jFlow.destroy();
   controls.innerHTML = '';
 
   /* ==================================================================
      PART TWO — THE NPN TRANSISTOR (two walls back-to-back)
      ================================================================== */
-  guide.say(`Now build the transistor itself. It's two of these junctions back-to-back: N, then a thin layer of P, then N. The three parts have names — the <b>emitter</b> sends electrons, the thin <b>base</b> in the middle is the control, and the <b>collector</b> gathers them. Aim: arrange the blocks so a tiny current into the base can switch a much larger current through the device.`);
+  guide.say(`Now the transistor: two of those junctions back to back, N then a thin P then N. <b>Your goal: arrange the blocks so a tiny current can switch a large one.</b>`);
   await guide.next();
 
   /* ---------- slots (collector is physically larger) ---------- */
@@ -270,7 +281,7 @@ export async function step2(){
   ];
   const tiles = tray.map(([v, w, h, cap, x]) => { const t = makeTile(v, w, h, cap); t.home = { x, y: 340 }; return t; });
 
-  guide.say(`Three blocks, three sizes, on purpose: a small <b>emitter</b>, a thin <b>base</b>, and a wide <b>collector</b>. Place them left to right. Drag them in, or tap a block then tap a slot.`);
+  guide.say(`Three sizes, on purpose: small <b>emitter</b>, thin <b>base</b>, wide <b>collector</b>. Left to right. <em>Drag a block in, or tap a block then a slot.</em>`);
 
   const placer2 = makePlacer({
     svg, tiles, slots,
@@ -306,8 +317,9 @@ export async function step2(){
   if (!flow.instant) SFX.success();
 
   /* ---------- the two self-built depletion walls (narrow, at each seam) ---------- */
-  const wallL = makeDepletionBands(svg, { cx: 222, y: 158, h: 118, wNeg: 14, wPos: 14 });   // emitter–base
-  const wallR = makeDepletionBands(svg, { cx: 306, y: 158, h: 118, wNeg: 14, wPos: 14 });   // base–collector
+  // labels off: two walls this close would stack four captions on one another
+  const wallL = makeDepletionBands(svg, { cx: 222, y: 158, h: 118, wNeg: 14, wPos: 14, labels: false });   // emitter–base
+  const wallR = makeDepletionBands(svg, { cx: 306, y: 158, h: 118, wNeg: 14, wPos: 14, labels: false });   // base–collector
   // too tight for microlabels here — suppress them (and the dashed outer edges, which would
   // double up with the device's own junction lines); tooltip titles instead
   [wallL, wallR].forEach(w => {
@@ -322,7 +334,32 @@ export async function step2(){
     gsap.to([wallL.el, wallR.el], { opacity: 1, duration: 0.5, ease: 'power2.out' });
   }
 
-  guide.say(`<b>N–P–N</b>. The <span class="e-blue">emitter</span> is small — its job is to send electrons. The <span class="e-red">base</span> is thin, and it's the control. The <span class="e-blue">collector</span> is wide because it has to collect nearly all of them. Notice the <b>two depletion barriers</b>, one at each junction. For current flowing straight through, one barrier always blocks it — so the device stays <b>OFF</b> until you inject a small current into the base.`);
+  guide.say(`<b>N–P–N</b>, and now <b>two</b> barriers, one per junction. Whichever way you push, one of them faces the wrong way, so the device sits <b>OFF</b>.`);
+  await guide.next();
+
+  /* ---------- why the base current exists (predict, then count it) ----------
+     The old text jumped straight to "inject a small current into the base" and
+     never said why a trickle controls a flood. The answer is the base's width,
+     so the player guesses first and then watches 100 electrons get tallied. */
+  guide.say(`Open just the left junction, using the base lead, and the emitter floods the thin base with electrons. First, a guess: <b>where do they end up?</b>`);
+  const guess = await guide.choose([
+    { label: 'Out through the base wire', value: 'base', hint: 'the base lead is right there' },
+    { label: 'Straight on into the collector', value: 'coll', hint: 'they arrived with momentum' },
+  ]);
+
+  const tally = svgEl('text', { x: 360, y: 118, class: 'depl-lbl', 'text-anchor': 'middle' });
+  svg.appendChild(tally);
+  const demo = makeOvershootDemo(svg, { xStart: 130, xBase: 264, xEnd: 470, y: 217, yBaseTop: 74, total: 100, perBase: 100 });
+  demo.onTally((b, c) => { tally.textContent = `OUT VIA BASE ${b}   ·   REACHED COLLECTOR ${c}`; });
+  if (flow.instant || RM) demo.settle(); else demo.start();
+  guide.note(`Releasing 100 electrons from the emitter. Watch where they go.`);
+  await guide.next();
+  demo.stop();
+
+  guide.aha(guess === 'coll'
+    ? `<b>Right.</b> The base is a sliver, a fraction of the width of the other two. An electron crossing into it is already close enough for the collector to take it, so it carries straight on. Only about <b>1 in 100</b> leaves by the base wire.`
+    : `<b>Not quite.</b> The base is a sliver, a fraction of the width of the other two. An electron crossing into it is already close enough for the collector to take it, so it carries straight on. Only about <b>1 in 100</b> leaves by the base wire.`,
+    `That ratio is the whole trick: pay 1 electron at the base, move 100 through the device.`);
   await guide.next();
 
   /* ---------- wiring: conventional current battery+ → collector → device → emitter → battery− ---------- */
@@ -372,7 +409,7 @@ export async function step2(){
   slider2.set(4);
   apply2(4);
 
-  guide.say(`Now it's wired up. The <b>arrows</b> show conventional current: out of the battery's <b>+</b>, into the <b>collector</b>, through the device, out of the <b>emitter</b>, back to <b>−</b>. A small current into the <b>base</b> lowers the emitter-side barrier so the main current can cross. It's half-open right now. Try the dial.`);
+  guide.say(`The base dial sets how many electrons you inject. <b>Your goal: switch the big current using only the small one.</b>`);
   await guide.next();
 
   /* ---------- the test ---------- */
@@ -388,7 +425,7 @@ export async function step2(){
   });
   t1.done();
 
-  const t2 = guide.task('Now full brightness — max control signal');
+  const t2 = guide.task('Now full brightness: max control signal');
   await flow.ask(async replay => {
     if (replay !== undefined){ slider2.set(replay); apply2(replay); return replay; }
     const cancel = flow.hintAfter(12000, 'Turn the control signal to maximum. The small base current holds the device fully on.');
@@ -398,10 +435,10 @@ export async function step2(){
   });
   t2.done();
 
-  guide.aha(`<b>10 µA in, 1,000 µA out.</b> The control current is a hundred times smaller than the current it switches. Switch it on and off and you have a digital switch; vary it smoothly and you have an amplifier. This is the transistor.`,
+  guide.aha(`<b>10 µA in, 1,000 µA out.</b> Flick it and you have a switch. Vary it smoothly and you have an amplifier.`,
     `The base current lowers the emitter-side barrier and holds it down — that's the mechanism.`);
   await guide.next();
 
-  guide.note(`Note: inside the crystal the electrons move opposite to the arrows — from emitter to collector. Conventional current points the other way, as you saw in Step 1.`);
+  guide.note(`Note: inside the crystal the electrons move opposite to the arrows, from emitter to collector. Conventional current points the other way, as you saw in Step 1.`);
   await guide.next();
 }

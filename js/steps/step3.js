@@ -31,9 +31,9 @@ export async function step3(){
   const SLOT_X = Array.from({ length: 8 }, (_, i) => 274 + i * 24);
   const ROW_A = 240, ROW_B = 252;
 
-  guide.say(`Now the switch that actually runs every chip: the <b>MOSFET</b>. It's built from the same N and P silicon, arranged so that a voltage — not a current — opens and closes it. Aim: build one and find the voltage that switches it on.`);
+  guide.say(`Your transistor works, but it drinks base current the entire time it's ON. Billions of those would melt the chip. The fix is a switch controlled by <b>voltage</b> instead of current: the <b>MOSFET</b>.`);
   await guide.next();
-  guide.say(`Same ingredients, new arrangement. Two <b>N regions</b> sit in a block of P silicon, with a gap of P between them. Above the gap: a thin layer of <b>glass</b> (an insulator — nothing electrical crosses it), and on the glass a metal pad called the <b>gate</b>. The metal never touches the silicon. Build it: the two wells, the glass, then the gate on top. <em>Drag a tile in, or tap a tile then tap a slot.</em>`);
+  guide.say(`Two <b>N regions</b> in a block of P with a gap between them, a thin layer of <b>glass</b> over the gap, and a metal <b>gate</b> on top that never touches the silicon. <b>Your goal: build it, then find the voltage that switches it on.</b>`);
 
   /* ================= 1. the player PLACES the parts ================= */
   const SLOTS = [
@@ -192,7 +192,7 @@ export async function step3(){
     await sleep(260);
   }
 
-  guide.note(`Note the hatched bands: wherever N touches P, a depletion layer forms — the same barrier you built in the last step. There are two junctions here, so there are two barriers.`);
+  guide.note(`Note the hatched bands: wherever N touches P, a depletion layer forms, the same barrier you built in the last step. There are two junctions here, so there are two barriers.`);
   await guide.next();
 
   /* ================= 3. prove it's OFF — the missing motivation (HANDOFF_V3 §3.2) ================= */
@@ -230,7 +230,7 @@ export async function step3(){
   }
   chipFlow.set('flow: <b>blocked</b>'); chipFlow.cls('state-off', true);
 
-  guide.say(`Blocked. To get from drain to source, current would have to cross an N–P junction and then a P–N junction — and whichever direction you push, <b>one of the two is the reverse direction you saw fail in the last step</b>. With no gate voltage, this device cannot conduct. The gate exists to create a path — that's next.`);
+  guide.say(`Blocked, for the reason you already know: two junctions, one always facing the wrong way. The gate's job is to build a path around them.`);
   await guide.next();
 
   /* ================= 4. the capacitor reveal (keep near-verbatim, §3.3) ================= */
@@ -253,7 +253,7 @@ export async function step3(){
   if (flow.instant) cap.setAttribute('opacity', 1);
   else gsap.to(cap, { attr: { opacity: 1 }, duration: .4 });
 
-  guide.say(`Look at the stack: <b>gate metal → thin glass → p-silicon</b>. Strip away the labels and it's an ordinary <b>capacitor</b> — two conductive plates separated by an insulator. Put a voltage on the top plate and it charges. Its electric field reaches through the glass and attracts the opposite charge — <span class="e-blue">electrons</span> — up against the underside, forming a thin sheet pressed to the glass. <b>That sheet of electrons is the channel.</b> No current ever crosses the glass; the gate works only through its field.`);
+  guide.say(`<b>Metal, glass, silicon.</b> That's a capacitor. Put voltage on the top plate and its field reaches through the glass, pulling <span class="e-blue">electrons</span> into a thin sheet underneath. <b>That sheet is the channel</b>, and it costs no current to hold.`);
   await guide.next();
   if (flow.instant) cap.setAttribute('opacity', 0);
   else gsap.to(cap, { attr: { opacity: 0 }, duration: .4 });
@@ -356,7 +356,7 @@ export async function step3(){
   slider.set(0);
   apply(0);
 
-  guide.say(`Because of that glass, current <b>cannot flow into the gate</b> — ever. The gate works by field alone. Raise the voltage <em>slowly</em> and watch two things happen in order: first the field <b>shoves the holes down</b>, clearing the ground under the glass — then it <b>pulls electrons up</b> out of the islands and the sea, pinning them against the underside. Watch the gap.`);
+  guide.say(`Raise the gate voltage <em>slowly</em> and watch the gap. Two things happen in order: the field <b>pushes the holes down</b>, then it <b>pulls electrons up</b> against the glass.`);
 
   /* ---- free exploration until first threshold crossing ---- */
   await flow.ask(async replay => {
@@ -367,8 +367,8 @@ export async function step3(){
     return slider.value;
   });
 
-  guide.aha(`There — the moment the electron sheet touches both N regions, there is a <b>continuous N-type path from source to drain</b>, and the two barriers no longer stand in the way. Current flows. Drop the gate voltage and the sheet disperses; the path is gone. A switch with no moving parts, controlled by voltage alone.`,
-    `Push past 2 V and watch the channel thicken — more voltage pulls up more electrons, a wider path, more current. It's a switch that can also act as a valve.`);
+  guide.aha(`The moment that sheet touches both N regions, there's an unbroken path from source to drain. Drop the voltage and it scatters. A switch with no moving parts.`,
+    `Push past 2 V and the channel thickens: more voltage, more electrons, more current. It's also a valve.`);
   await guide.next();
 
   /* ================= 6. certification tasks (keep verbatim) ================= */
@@ -377,7 +377,7 @@ export async function step3(){
   const t1 = guide.task('Turn the switch fully ON');
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
-    const cancel = flow.hintAfter(12000, 'Push the gate voltage well above the threshold — 2.6 V or more.');
+    const cancel = flow.hintAfter(12000, 'Push the gate voltage well above the threshold, 2.6 V or more.');
     await waitFor(() => slider.value >= 2.6, { hold: 600 });
     cancel();
     return slider.value;
@@ -387,7 +387,7 @@ export async function step3(){
   const t2 = guide.task('Now turn it fully OFF');
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
-    const cancel = flow.hintAfter(12000, 'Bring the gate voltage down near zero — below ~0.3 V the channel is gone.');
+    const cancel = flow.hintAfter(12000, 'Bring the gate voltage down near zero. Below about 0.3 V the channel is gone.');
     await waitFor(() => slider.value <= 0.3, { hold: 600 });
     cancel();
     return slider.value;
@@ -401,13 +401,13 @@ export async function step3(){
     { label: 'The transistor (current-driven)', value: 'bjt', hint: 'keep the base trickle flowing' },
   ]);
   if (ans === 'mosfet'){
-    guide.aha(`Exactly. Holding a voltage is like keeping a magnet stuck to the fridge — it takes <b>no ongoing current</b>, so almost no energy. The transistor has to keep pulling base current the whole time it's ON. That one difference is why <em>billions</em> of these fit on a chip.`);
+    guide.aha(`Exactly. Holding a voltage costs <b>no ongoing current</b>. The transistor has to keep drinking base current the whole time it's ON, and that one difference is why <em>billions</em> of these fit on a chip.`);
   } else {
-    guide.note(`Almost — it's the other way around. The transistor keeps pulling base current the whole time it's ON. The MOSFET just <b>holds a voltage</b> across the glass: no current, almost no energy. That's why chips are built from MOSFETs.`);
+    guide.note(`Other way around. The transistor keeps drinking base current while ON. The MOSFET just <b>holds a voltage</b>, which costs almost nothing.`);
   }
   await guide.next();
 
-  guide.note(`What you built is an <b>N-channel enhancement MOSFET</b> — the exact type that fills every processor die. From Act 2 on, you'll use them by the billion.`);
+  guide.note(`What you built is an <b>NMOS</b>: N-channel, switched ON by a HIGH gate. That's the name it goes by from here on.`);
   await guide.next();
 }
 

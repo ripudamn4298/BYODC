@@ -37,23 +37,24 @@ export async function step1(){
     });
 
     if (pass === 0){
-      guide.say(`This is <b>pure silicon</b> — refined from ordinary sand, frozen into a perfect crystal. Look closely at the bonds: each one holds a <b>pair of electrons</b>, one contributed by each neighbour. Four bonds per atom, every electron accounted for. <em>Tap an atom</em> — its bond electrons strain and settle back. They are locked. Nothing is free to move, so nothing can carry a current.`);
+      guide.say(`Pure silicon, refined from sand. Every atom holds four bonds, every bond holds two electrons. <em>Tap an atom.</em> The bonds strain and settle back.`);
       await guide.next();
-      guide.say(`Your aim in this step: turn this dead crystal into something that carries current, by swapping a few silicon atoms for a different element — deliberately, atom by atom. Adding foreign atoms on purpose is called <b>doping</b>, and the foreign atom is a <b>dopant</b>. It comes in two flavors. Choose one:`);
+      guide.say(`Nothing came loose. With no electron free to move, this crystal cannot carry current, which makes it useless as a switch.
+        <b>Your goal: make it conduct.</b> You'll do it by swapping a few silicon atoms for a different element. Pick which:`);
     } else {
-      guide.say(`A fresh crystal on the bench — every bond full, every electron locked, exactly where we started. Same trick, other flavor:`);
+      guide.say(`Fresh crystal, every bond full again. Same move, other element:`);
     }
 
     /* ---------- choose dopant ---------- */
     const choice = await guide.choose([
-      { label: 'Make N-type — add phosphorus', value: 'N', hint: 'phosphorus brings five outer electrons — one too many' },
-      { label: 'Make P-type — add boron', value: 'P', hint: 'boron brings three — one bond will come up short' },
+      { label: 'Make N-type, add phosphorus', value: 'N', hint: 'five outer electrons, one too many' },
+      { label: 'Make P-type, add boron', value: 'P', hint: 'three outer electrons, one bond short' },
     ]);
 
     /* ---------- hands-on doping (recorded as the list of clicked atoms) ---------- */
     guide.say(choice === 'N'
-      ? `<span class="e-blue"><b>Phosphorus</b></span> it is. The dashed atoms are up for replacement — <em>click any 3</em>. Watch what each newcomer does with its five electrons.`
-      : `<span class="e-red"><b>Boron</b></span> it is. The dashed atoms are up for replacement — <em>click any 3</em>. Watch what happens when an atom shows up one electron short.`);
+      ? `<span class="e-blue"><b>Phosphorus.</b></span> It brings five outer electrons, and there are only four bonds waiting. <em>Click any 3 dashed atoms</em> and watch where the spare goes.`
+      : `<span class="e-red"><b>Boron.</b></span> It brings three outer electrons, and there are four bonds to fill. <em>Click any 3 dashed atoms</em> and watch what the missing one leaves behind.`);
 
     await flow.ask(async replay => {
       const dope = a => (choice === 'N' ? dopeN(lat, a, field) : dopeP(lat, a));
@@ -80,8 +81,8 @@ export async function step1(){
     });
 
     guide.say(choice === 'N'
-      ? `Count with me: phosphorus arrived carrying <b>five</b> outer electrons. Four snapped into the four bonds — and the fifth had <em>no bond left to join</em>. There it goes: a <span class="e-blue"><b>free electron</b></span>, roaming the crystal. Compare it with the little pairs sleeping in the bonds — yours is bigger, bluer, and it moves. You've made <b>N-type silicon</b>.`
-      : `Count with me: boron arrived carrying only <b>three</b> outer electrons. Three bonds filled — and the fourth was left with a single electron and an empty seat: a <span class="e-red"><b>hole</b></span> (the red ring). Keep watching it. Every second or so, an electron from a <em>neighbouring</em> bond hops into the empty seat — so the hole itself wanders through the crystal like a positive charge. You've made <b>P-type silicon</b>.`);
+      ? `Four of the five electrons took the four bonds. The fifth had nowhere to go, so it roams. That loose <span class="e-blue"><b>free electron</b></span> is a carrier, and you now have <b>N-type silicon</b>.`
+      : `Three bonds filled, and the fourth came up one electron short. That empty seat is a <span class="e-red"><b>hole</b></span>. Keep watching it: an electron from a neighbouring bond keeps hopping in, so the empty seat itself drifts across the crystal. A moving hole carries charge just like a moving electron, and you now have <b>P-type silicon</b>.`);
     await guide.next();
 
     /* ---------- wire it up: the crystal sits IN SERIES in the loop ----------
@@ -106,7 +107,7 @@ export async function step1(){
     const iFlow = new CurrentFlow(route, { n: 12, layer: flowLayer });     // conventional current (chevrons)
 
     guide.say(pass === 0
-      ? `Talk is cheap — let's push on those carriers. Your crystal is wired to a battery and an indicator lamp. Yesterday, this exact circuit would have done <b>nothing</b>.`
+      ? `Battery, lamp, your crystal wired in between. Before you doped it, this exact circuit did <b>nothing</b>.`
       : `Same bench test. Battery, lamp, your freshly doped crystal.`);
     await guide.button('Send current ⚡');
 
@@ -119,20 +120,20 @@ export async function step1(){
 
     guide.aha(
       choice === 'N'
-        ? `<b>It conducts.</b> The lamp is lit because the free electrons <em>you</em> placed are drifting through the crystal.`
-        : `<b>It conducts.</b> Inside the crystal it's the <em>holes</em> that wander — electrons hopping seat to seat — while ordinary electrons carry the current through the metal wire.`,
-      `Silicon didn't change its mind — you gave it carriers. That's doping: the first tool of every chipmaker.`);
+        ? `<b>It conducts.</b> The lamp is lit by the free electrons you placed, drifting through the crystal.`
+        : `<b>It conducts.</b> Inside the crystal the holes wander, electrons hopping seat to seat. In the metal wire, ordinary electrons carry the current.`,
+      `Silicon did not change. You gave it carriers. That is doping, the first tool of every chipmaker.`);
 
     /* ---------- electron flow vs conventional current (once) ---------- */
     if (!shownConvention){
       shownConvention = true;
       await guide.next();
-      guide.say(`One note before we go further. Those blue dots are <b>electron flow</b> — the thing that's physically moving. But circuits are traditionally described by <b>conventional current</b>, which — thanks to a guess made centuries before anyone saw an electron — points the <em>opposite</em> way: out of the battery's <b>+</b>, around, and into <b>−</b>.`);
+      guide.say(`Those blue dots are the electrons, the thing physically moving. Schematics are drawn the other way round, using <b>conventional current</b>: out of the battery's <b>+</b> and back into <b>−</b>. It comes from a guess made before anyone knew electrons existed, and it stuck.`);
       await guide.button('Switch to conventional current ▸');
       eFlow.setSpeed(0);
       iFlow.setSpeed(-120);
       SFX.blip();
-      guide.say(`Same physics, opposite arrows — the ink chevrons now show <b>current</b>. <em>From here on, every circuit in this course shows conventional current</em>, exactly like every real schematic you'll ever meet. When it matters, we'll remind you the electrons are secretly going the other way.`);
+      guide.say(`Same physics, opposite arrows. Every circuit from here shows conventional current, like every real schematic. When it matters, we'll remind you the electrons run the other way.`);
     } else {
       await guide.next();
       eFlow.setSpeed(0);
@@ -143,9 +144,9 @@ export async function step1(){
 
     /* ---------- try the other flavor? ---------- */
     if (pass === 0){
-      guide.say(`You'll need <b>both flavors</b> of silicon before this act is over — and a doped crystal can't simply be re-doped with the opposite element and behave the same. Chipmakers grow it fresh.`);
+      guide.say(`You'll need <b>both kinds</b> of silicon before this act is over. A doped crystal can't be re-doped with the opposite element and behave the same way, so chipmakers grow a fresh one.`);
       const again = await guide.choose([
-        { label: 'Melt it down — try the other flavor ↺', value: 'again', hint: 'fresh crystal, other dopant. Recommended.' },
+        { label: 'Melt it down, try the other flavor ↺', value: 'again', hint: 'fresh crystal, other dopant. Recommended.' },
         { label: 'Move on with this wafer ▸', value: 'continue', hint: 'you can always come back' },
       ]);
       if (again === 'again'){

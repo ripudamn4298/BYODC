@@ -116,6 +116,14 @@
 
 /* ---------- SVG vocabulary ---------- */
 .wm{font-family:var(--font-display);font-size:150px;fill:rgba(29,33,23,.05);pointer-events:none}
+/* Most label classes below default to text-anchor:middle. A CSS declaration beats
+   an SVG presentation attribute, so any element that deliberately asks for start
+   or end was being re-centred and landing on top of its neighbour. These two rules
+   hand control back to whoever states the attribute explicitly. The element
+   selector keeps them a notch more specific than the class rules. */
+text[text-anchor="start"],tspan[text-anchor="start"]{text-anchor:start}
+text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
+
 .lbl{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;fill:var(--ink-soft);text-anchor:middle;pointer-events:none}
 .lbl-faint{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;fill:var(--ink-faint);text-anchor:middle;pointer-events:none}
 .lbl-strong{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;fill:var(--ink);text-anchor:middle;pointer-events:none;font-weight:500}
@@ -288,8 +296,16 @@
 .depl-band-neg{fill:var(--blue);opacity:.08}
 .depl-band-pos{fill:var(--red);opacity:.08}
 .depl-hatch-line{stroke:var(--hairline-soft);stroke-width:1}
-.depl-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;fill:var(--ink-soft);text-anchor:middle;pointer-events:none}
+/* no text-anchor here: a CSS declaration beats the SVG presentation attribute, so
+   setting it centred stacked the two charge captions on the same point. Each
+   label sets its own anchor (end / start / middle) at the call site. */
+.depl-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;fill:var(--ink-soft);pointer-events:none}
 .bracket text{pointer-events:none}
+/* barrier hill — the slope an electron has to climb */
+.barrier-hill{pointer-events:none}
+.hill-ground{stroke:var(--hairline-strong);stroke-width:1;stroke-dasharray:3 3}
+.hill-curve{stroke:var(--ink);stroke-width:1.6;stroke-linecap:round}
+.hill-e{fill:var(--blue)}
 
 /* mathengine */
 /* dot-column compression board */

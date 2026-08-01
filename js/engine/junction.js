@@ -71,7 +71,11 @@ export function ionise(dot, sign){
    bandPos on the N side [cx, cx+wPos] (red-8%). The hatch says "no free carriers
    live here". setWidth scales both bands about cx; quiver nudges the outer edges
    when a too-small forward voltage leans on the wall. */
-export function makeDepletionBands(svg, { cx, y, h, wNeg = 64, wPos = 64 }){
+/* `labels` draws the SLIGHTLY −/+ CHARGED captions. They read outward from the
+   seam, so a single junction can never collide with itself — but two walls sitting
+   84px apart (the NPN) put four 130px captions in the same 230px of stage. Pass
+   labels:false for the multi-junction views and caption them once, outside. */
+export function makeDepletionBands(svg, { cx, y, h, wNeg = 64, wPos = 64, labels = true }){
   // one shared hatch pattern per module — define once, reuse by id
   ensureHatch(svg);
   const g = svgEl('g', { class: 'depl-bands' });
@@ -89,13 +93,14 @@ export function makeDepletionBands(svg, { cx, y, h, wNeg = 64, wPos = 64 }){
   const edgeL = svgEl('line', { x1: cx - wNeg, y1: y, x2: cx - wNeg, y2: y + h, class: 'junction' });
   const edgeR = svgEl('line', { x1: cx + wPos, y1: y, x2: cx + wPos, y2: y + h, class: 'junction' });
 
-  // labels read OUTWARD from the seam so they can never collide, whatever the band width
+  // labels read OUTWARD from the seam, so one junction never collides with itself
   const lblNeg = svgEl('text', { x: cx - 8, y: y + h + 14, class: 'depl-lbl', 'text-anchor': 'end' });
   lblNeg.textContent = 'SLIGHTLY − CHARGED';
   const lblPos = svgEl('text', { x: cx + 8, y: y + h + 14, class: 'depl-lbl', 'text-anchor': 'start' });
   lblPos.textContent = 'SLIGHTLY + CHARGED';
 
-  g.append(bandNeg, bandPos, edgeL, edgeR, lblNeg, lblPos);
+  g.append(bandNeg, bandPos, edgeL, edgeR);
+  if (labels) g.append(lblNeg, lblPos);
   svg.appendChild(g);
 
   let quiverFn = null;
@@ -215,4 +220,138 @@ export function makeBracket(svg, { x1, x2, y, label }){
   g.appendChild(t);
   svg.appendChild(g);
   return g;
+}
+
+/* ---- the barrier as a hill ---------------------------------------------------
+   The bands show WHERE the barrier is. They don't show WHY 0.7 V is the number.
+   This draws the barrier as a slope an electron has to climb: raise the push
+   voltage and the hill shrinks, so the same electron gets further up it. Below
+   threshold it slides back every time; at threshold it crests and rolls away.
+   Reverse bias makes the hill taller instead. The height IS the argument, so
+   the curve is redrawn from `barrierV`, never merely scaled.                    */
+export function makeBarrierHill(svg, { cx, base, w = 250, hMax = 74, label = true }){
+  const g = svgEl('g', { class: 'barrier-hill' });
+  const x0 = cx - w / 2, x1 = cx + w / 2;
+
+  const ground = svgEl('line', { x1: x0 - 26, y1: base, x2: x1 + 26, y2: base, class: 'hill-ground' });
+  const hill = svgEl('path', { class: 'hill-curve', fill: 'none' });
+  const dot = svgEl('circle', { r: 4.6, class: 'carrier-e hill-e' });
+  g.append(ground, hill, dot);
+
+  let cap = null;
+  if (label){
+    cap = svgEl('text', { x: cx, y: base - hMax - 12, class: 'depl-lbl', 'text-anchor': 'middle' });
+    cap.textContent = 'BARRIER';
+    g.appendChild(cap);
+  }
+  svg.appendChild(g);
+
+  const BARRIER_V = 0.7;              // the hill's full height with no battery
+  let hV = BARRIER_V, t = 0, anim = null;
+
+  /* redraw the hill for a given barrier height in volts */
+  function shape(volts){
+    const h = clamp(volts / BARRIER_V, 0, 2.2) * hMax;
+    const top = base - h;
+    hill.setAttribute('d',
+      `M${x0} ${base} C${x0 + w * 0.30} ${base} ${cx - w * 0.18} ${top} ${cx} ${top}` +
+      ` C${cx + w * 0.18} ${top} ${x1 - w * 0.30} ${base} ${x1} ${base}`);
+    if (cap) cap.setAttribute('y', top - 12);
+  }
+  shape(hV);
+
+  /* place the electron a fraction along the curve (0 = far left, 1 = far right) */
+  function place(f){
+    const L = hill.getTotalLength();
+    const p = hill.getPointAtLength(clamp(f, 0, 1) * L);
+    dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y - 5);
+  }
+  place(0);
+
+  function frame(dt){
+    const clears = hV <= 0.02;
+    // the lower the remaining hill, the further up it gets before sliding back
+    const reach = clamp(1 - hV / BARRIER_V, 0.12, 0.94) * 0.5;
+    t += dt * (clears ? 0.55 : 0.75);
+    if (clears){
+      if (t > 1) t = 0;
+      place(t);
+    } else {
+      // climb to `reach`, slide back, repeat — the failed attempt is the point
+      const u = t % 2;
+      place(u <= 1 ? u * reach : (2 - u) * reach);
+      if (t > 2) t = 0;
+    }
+  }
+
+  return {
+    el: g,
+    /* forward bias eats into the hill; reverse piles more on top of it */
+    setBias(v, { reverse = false } = {}){
+      hV = reverse ? BARRIER_V + v * 0.55 : Math.max(0, BARRIER_V - v);
+      shape(hV);
+      if (cap) cap.textContent = reverse ? 'BARRIER, TALLER' : (hV <= 0.02 ? 'BARRIER GONE' : 'BARRIER');
+    },
+    start(){ if (!anim && !RM) anim = Anim.add(frame); if (RM) place(0); },
+    stop(){ if (anim){ Anim.remove(anim); anim = null; } },
+  };
+}
+
+/* ---- why a tiny base current unlocks a large one -----------------------------
+   The step used to assert that base current opens the device without ever saying
+   why the ratio is ~100:1. The reason is geometry: the base is only a sliver
+   wide, so an electron injected into it is already inside the collector's reach.
+   Nearly all of them overshoot; a trickle leaves by the base lead.
+   Releases `total` electrons and tallies where each one ends up, so the ratio is
+   counted on screen rather than claimed. Deterministic: every `perBase`-th
+   electron takes the base lead, no randomness (DESIGN.md replay rule).          */
+export function makeOvershootDemo(svg, { xStart, xBase, xEnd, y, yBaseTop, total = 100, perBase = 100 }){
+  const g = svgEl('g', { class: 'overshoot-demo' });
+  const thru = svgEl('path', { d: `M${xStart} ${y} H${xEnd}`, fill: 'none', stroke: 'none' });
+  const out  = svgEl('path', { d: `M${xStart} ${y} H${xBase} V${yBaseTop}`, fill: 'none', stroke: 'none' });
+  g.append(thru, out);
+  svg.appendChild(g);
+
+  const live = [];
+  let released = 0, viaBase = 0, viaCollector = 0, anim = null, onTally = null;
+
+  function spawn(){
+    const takesBase = released % perBase === perBase - 1;
+    const route = takesBase ? out : thru;
+    const dot = svgEl('circle', { r: 4, class: 'carrier-e' });
+    g.appendChild(dot);
+    live.push({ dot, route, len: route.getTotalLength(), t: 0, takesBase });
+    released++;
+  }
+
+  function frame(dt){
+    if (released < total && live.length < 26) spawn();
+    for (let i = live.length - 1; i >= 0; i--){
+      const e = live[i];
+      e.t += dt * 0.55;
+      if (e.t >= 1){
+        e.dot.remove(); live.splice(i, 1);
+        if (e.takesBase) viaBase++; else viaCollector++;
+        if (onTally) onTally(viaBase, viaCollector);
+        continue;
+      }
+      const p = e.route.getPointAtLength(e.t * e.len);
+      e.dot.setAttribute('cx', p.x); e.dot.setAttribute('cy', p.y);
+    }
+  }
+
+  return {
+    el: g,
+    onTally(fn){ onTally = fn; },
+    step: frame,          // drive one frame by hand (verification, and rAF-less hosts)
+    start(){ if (!anim) anim = Anim.add(frame); },
+    stop(){ if (anim){ Anim.remove(anim); anim = null; } live.forEach(e => e.dot.remove()); live.length = 0; },
+    /* replay/reduced-motion: jump straight to the finished tally */
+    settle(){
+      viaBase = Math.floor(total / perBase); viaCollector = total - viaBase;
+      released = total;
+      if (onTally) onTally(viaBase, viaCollector);
+    },
+    get counts(){ return { viaBase, viaCollector }; },
+  };
 }

@@ -327,6 +327,41 @@ Before → after:
   film; expose = shine the patterned light; …) Drag the five tiles left-to-right into the order
   they run."
 
+## 6b-2. THE BEAT ORDER AND THE WORD BUDGET (binding, 2026-08-01)
+
+Playtest verdict: the course had **8,069 words of teaching prose, about 40 minutes of pure
+reading**, against a landing page that promises ten minutes. The player was reading, not
+playing. Two rules fix that, and they apply to every step from Act 1 onward.
+
+**The five beats, in this order, and nothing else:**
+
+1. **What you built last step.** One clause. Skip in step 1 of an act.
+2. **Why it is not good enough.** The felt need. Never offer a tool before the player wants it.
+3. **What we are building now.** One sentence, no preamble.
+4. **The player's goal**, stated as a goal and bolded: `<b>Your goal: ...</b>`.
+5. **A hint, only after they are stuck.** Use `flow.hintAfter()` or the placer's `onWrong`.
+   Never pre-empt failure by explaining the answer up front.
+
+**Word budget: about 120 words of prose per step, 40 words per beat, hard ceiling 45.**
+Anything longer has to become something the player does, sees, or predicts. If a paragraph
+cannot be cut, it is usually a missing animation wearing a paragraph as a disguise.
+
+**Style rules** (from the humanizer pass, on top of §6):
+
+- **No em dashes in player-facing text.** They were the single most common tell: 210 of them.
+  Use a full stop, a comma, or a colon.
+- No rule-of-three lists, no "serves as / stands as / marks a", no promotional adjectives.
+- Vary sentence length. Short, then long, then short.
+- Build the thing first, name it second. The term is a label for something they already own.
+- Make them **predict before you reveal** at least once per act. `guide.choose()` before the
+  animation, then honour a wrong guess without scolding.
+- A visual must be load-bearing: delete it, and if the explanation still stands, it was
+  decoration. The barrier hill in step 2 is the reference example, since "the wall gets
+  narrower" never explained why 0.7 V is the number.
+
+**Naming happens once.** A device gets its real name at the moment the player finishes building
+it, not in the next step's preamble. Step 3 names the **NMOS**; step 4 must not re-introduce it.
+
 ## 6c. THE INTUITION FRAMEWORK — build a new idea on an answer they already trust (binding)
 
 Use this whenever a step teaches a *method* (an algorithm, a machine, a process) rather than a
