@@ -27,6 +27,10 @@ on a free port, then `preview_start` it by name.
     let id = 1; const map = new Map();
     window.requestAnimationFrame = cb => { const i = id++; map.set(i, setTimeout(()=>cb(performance.now()), 16)); return i; };
     window.cancelAnimationFrame = i => { clearTimeout(map.get(i)); map.delete(i); };
+    // gsap grabs the real rAF at import time, before this shim exists, so anything it
+    // drives (makeMuxRig.select, makeSystolic, the Act 3 and Act 5 loops) stays frozen
+    // and the step never advances past it. Drive gsap's ticker by hand as well.
+    if (window.gsap) setInterval(() => window.gsap.ticker.tick(), 16);
   }
   const s = document.createElement('style');
   s.textContent = '.focus-scrim{animation:none !important}';   // paused first keyframe in a hidden tab
@@ -76,6 +80,20 @@ mid-animation state and think something is broken.
    live run. Any difference means a `settle`/replay path is wrong and Back is broken.
 5. **A clean live run,** start to finish, with no console errors.
 6. **The other acts.** `__byodcStartAct(1|2|3|5)` must still render.
+
+## 4b. Two engine constraints you will hit
+
+Both were found building step 3. Neither is fixed yet; work around them for now and the
+engine pass will address them once every step has landed.
+
+**`stage.focus` re-parents the nodes it raises.** They move onto the SVG root, so a click
+listener sitting on an ancestor group no longer receives events from a focused child. If a
+card needs the player to click something, either put the listener on the element itself or
+run that card with no focus at all.
+
+**`flow.hintAfter` replaces the current card.** It calls `guide.note`, which in card mode
+writes into the one card slot, so a pending hint can wipe interaction feedback mid-task.
+Cancel the hint on the player's first interaction (`hintAfter` returns a cancel function).
 
 ## 5. Busting the module cache
 
