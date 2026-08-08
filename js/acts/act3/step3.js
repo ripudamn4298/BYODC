@@ -22,7 +22,7 @@ const SIZES = [
 export async function step3(){
   guide.title('STEP 3 / 4 · NANOVOLT FAB 3', 'The <em>yield game</em>');
 
-  guide.say(`First, two words you'll need. A <b>wafer</b> is the full disc of silicon you've been printing on. It gets carved into a grid of identical chips — each single chip is a <b>die</b>. Now the problem: even a clean room has some dust, and a speck of dust is <em>bigger</em> than your transistors. No wafer ever comes out perfect. Wherever a speck lands, it kills the whole <b>die</b> around it — and the fraction of dies that survive is the wafer's <b>yield</b>.`);
+  guide.say(`The <b>wafer</b> is the full disc you've been printing on. Carved into a grid, each single chip is a <b>die</b>. Even a clean room has dust, and a speck is bigger than your transistors, so wherever one lands it kills the die around it. The fraction that survive is the <b>yield</b>.`);
   await guide.next();
 
   const { svg, controls } = newStage('11', 'Wafer yield map');
@@ -51,7 +51,7 @@ export async function step3(){
   });
   seg.set('md');
 
-  guide.say(`Generating a real defect map — every wafer's dust pattern is different. Sprinkling today's.`);
+  guide.say(`Generating a real defect map, every wafer's dust pattern is different. Sprinkling today's.`);
 
   const seed1 = await flow.ask(async replay => {
     if (replay !== undefined){ wafer.scatter(replay, 12); return replay; }
@@ -61,12 +61,12 @@ export async function step3(){
   });
   refresh();
 
-  guide.say(`Here's how to read the stage: the <b>grid of squares</b> laid over the wafer is your dies, and the <span class="e-red">red dots</span> are the dust specks — twelve of them, where they happened to land. Any square a dot touches is a dead die. <b>Now the choice that decides everything: how big do you cut each die?</b> Pick a size below and watch three numbers — dies per wafer, survivors, and dollars per <em>good</em> die (the whole wafer costs $${WAFER_COST.toLocaleString()} to make, however you slice it).`);
+  guide.say(`Squares are dies, <span class="e-red">red dots</span> are dust. Any square a dot touches is dead. <b>Your goal: choose how big to cut each die.</b> Watch dies per wafer, survivors, and dollars per <em>good</em> die. The wafer costs $${WAFER_COST.toLocaleString()} however you slice it.`);
   await guide.next();
 
   /* ---------- test (a): hit a cost target on the clean-ish wafer ---------- */
   const TARGET_A = 70;
-  guide.say(`<b>Your target: get the cost under $${TARGET_A} per good die.</b> Feel the tradeoff as you try the sizes — a bigger die is worth more individually, but it's a bigger target for dust, and a wafer only holds so many to begin with. This single choice is the whole economics of a chip.`);
+  guide.say(`<b>Your target: get the cost under $${TARGET_A} per good die.</b> Feel the tradeoff as you try the sizes, a bigger die is worth more individually, but it's a bigger target for dust, and a wafer only holds so many to begin with. This single choice is the whole economics of a chip.`);
 
   const pick1 = await flow.ask(async replay => {
     if (replay !== undefined){ curSize = SIZES.find(s => s.id === replay); seg.set(replay); refresh(); return replay; }
@@ -80,11 +80,11 @@ export async function step3(){
     return curSize.id;
   });
 
-  guide.say(`There it is: <b>${SIZES.find(s => s.id === pick1).label}</b> dies cleared the target — medium and large never even got close. Notice the shape of the tradeoff — double a die's edge and you don't lose half the dies, you lose <em>three quarters</em> of them, because area grows with the square. That's the quadratic squeezing your economics from both ends: far fewer dies to begin with, and each one is a bigger target for dust.`);
+  guide.say(`<b>${SIZES.find(s => s.id === pick1).label}</b> cleared it. Look at the shape of the tradeoff: double a die's edge and you lose <em>three quarters</em> of them, not half, because area grows with the square. Fewer dies to start with, and each a bigger target.`);
   await guide.next();
 
   /* ---------- test (b): a dirtier wafer, tighter target ---------- */
-  guide.say(`Now a dirtier wafer rolls in — the cleanroom had a rough shift, nearly double the dust. Don't assume your last answer still holds. Check the number.`);
+  guide.say(`Now a dirtier wafer rolls in, the cleanroom had a rough shift, nearly double the dust. Don't assume your last answer still holds. Check the number.`);
 
   const seed2 = await flow.ask(async replay => {
     if (replay !== undefined){ wafer.scatter(replay, 24); return replay; }
@@ -95,7 +95,7 @@ export async function step3(){
   refresh();
 
   const TARGET_B = 75;
-  guide.say(`<b>This wafer needs $${TARGET_B} or less per good die.</b> Nearly double the dust of last time — prove the same choice still holds.`);
+  guide.say(`<b>This wafer needs $${TARGET_B} or less per good die.</b> Nearly double the dust of last time, prove the same choice still holds.`);
 
   const pick2 = await flow.ask(async replay => {
     if (replay !== undefined){ curSize = SIZES.find(s => s.id === replay); seg.set(replay); refresh(); return replay; }

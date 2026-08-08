@@ -15,12 +15,12 @@ export async function step4(){
   guide.title('STEP 4 / 4 · NANOVOLT SYSTEMS', 'Build a machine <em>that computes</em>');
 
   /* ===================== BEAT 1 — the three parts on the bench ===================== */
-  guide.say(`On your bench after three steps: a gate that <b>decides</b>, an adder that <b>adds</b>, a <b>register</b> that <b>holds</b> a number. Wired together so data flows from one to the next, they form a <b>datapath</b> — the part of a computer that actually moves and works on numbers. Your aim this step: wire the register and the adder into a loop, and drive it with a <b>clock</b> — a steady pulse where each beat, or <b>tick</b>, advances the machine one step. The result is a machine that computes on a heartbeat, one step per tick.`);
+  guide.say(`You now have a gate that decides, an adder that adds, and a register that holds. Wire them so data flows between them and you have a <b>datapath</b>. <b>Your goal: close the register and adder into a loop and drive it with a clock.</b>`);
   await guide.next();
 
   /* ===================== BEAT 2 — ASSEMBLY ===================== */
   const { svg, controls } = newStage('08', 'Datapath build');
-  guide.say(`Two big tiles left to place: a <b>REGISTER</b> — the thing that holds a number — and an <b>ADDER</b> — the thing that adds. The loop wires are already run. <em>Drag the tiles into the loop.</em>`);
+  guide.say(`Two tiles left: the <b>REGISTER</b> that holds and the <b>ADDER</b> that adds. The wires are already run. <em>Drag them into the loop.</em>`);
 
   /* pre-drawn loop skeleton: REG.out -> ADDER.in (top path), ADDER.out -> REG.in (return path),
      an ADDEND branch into the adder, and a CLOCK box at bottom-center */
@@ -68,12 +68,12 @@ export async function step4(){
   tiles[1].home = { x: 250, y: 300 };
   tiles[2].home = { x: 460, y: 300 };
 
-  guide.say(`One tile in the tray won't fit anywhere — the lone gate already had its moment back in step 1.`);
+  guide.say(`One tile in the tray won't fit anywhere, the lone gate already had its moment back in step 1.`);
 
   const placer = makePlacer({
     svg, tiles, slots,
     validate: v => v[0] === 'REG' && v[1] === 'ADD',
-    onWrong: () => guide.note(`The loop needs a thing that holds and a thing that adds — the lone gate had its moment in step 1.`),
+    onWrong: () => guide.note(`The loop needs a thing that holds and a thing that adds, the lone gate had its moment in step 1.`),
   });
 
   await flow.ask(async replay => {
@@ -90,7 +90,7 @@ export async function step4(){
   guide.say(`Wired. The register's output feeds the adder; the adder's output feeds straight back into the register. One loop, closed.`);
   await guide.next();
 
-  guide.note(`One rule makes a closed loop safe: the register only accepts a new value at the instant the clock <b>ticks</b>. Without that rule, the adder's output would pour straight back into its own input and the number would never hold still. The clock is what turns a runaway loop into one clean step at a time.`);
+  guide.note(`One rule keeps the loop safe: the register only accepts a new value on a clock <b>tick</b>. Without it, the adder's output pours back into its own input and never settles.`);
   await guide.next();
 
   /* ===================== BEAT 3 — the heartbeat ===================== */
@@ -128,7 +128,7 @@ export async function step4(){
       setTimeout(() => regBits.cells.forEach(c => { c.r.style.fill = ''; }), 480);
       if (!warnedWrap){
         warnedWrap = true;
-        guide.note(`That rolled past 15 and wrapped back around — like an odometer turning over. Four bits can only count to 15 before it happens again.`);
+        guide.note(`That rolled past 15 and wrapped back around, like an odometer turning over. Four bits can only count to 15 before it happens again.`);
       }
     }
 
@@ -145,7 +145,7 @@ export async function step4(){
   }
   tickBtn.addEventListener('click', () => { SFX.click(); tick(); });
 
-  guide.say(`Each tick runs three phases: <b>fetch</b> — read the number out of the register; <b>compute</b> — the adder adds your addend to it; <b>store</b> — the result drops back into the register. Set an addend below, then press <b>TICK THE CLOCK</b> a few times and feel the rhythm: fetch, compute, store.`);
+  guide.say(`Every tick runs three phases. <b>Fetch</b> the number out of the register, <b>compute</b> the sum, <b>store</b> it back. Set an addend and tick it a few times.`);
 
   await flow.ask(async replay => {
     if (replay !== undefined){
@@ -179,7 +179,7 @@ export async function step4(){
   });
   t1.done();
 
-  guide.aha(`<b>This is a computer.</b> Fetch, compute, store, repeat: a CPU's whole life is this loop — your loop — run three billion times a second while you did one press a second.`,
+  guide.aha(`<b>This is a computer.</b> Fetch, compute, store, repeat. A CPU does your loop three billion times a second.`,
     `Every program ever written is a longer to-do list for exactly this heartbeat.`);
   await guide.next();
 

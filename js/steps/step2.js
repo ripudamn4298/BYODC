@@ -8,7 +8,7 @@
 // conventional current flows battery+ → COLLECTOR → device → EMITTER → battery−;
 // base current flows INTO the base (down, from a small control source at top);
 // every wire uses CurrentFlow chevrons (conventional current), never PathFlow dots.
-import { svgEl, sleep, waitFor } from '../engine/util.js';
+import { svgEl, sleep, waitFor, RM } from '../engine/util.js';
 import { SFX } from '../engine/sfx.js';
 import { guide } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
@@ -286,7 +286,7 @@ export async function step2(){
   const placer2 = makePlacer({
     svg, tiles, slots,
     validate: v => v[0] === 'E' && v[1] === 'B' && v[2] === 'C',
-    onWrong: () => guide.note(`Not quite — the thin <b>P base</b> goes in the middle, and the wide <b>collector</b> goes on the right.`),
+    onWrong: () => guide.note(`Not quite. The thin <b>P base</b> goes in the middle, and the wide <b>collector</b> goes on the right.`),
   });
 
   await flow.ask(async replay => {
@@ -341,40 +341,57 @@ export async function step2(){
      The old text jumped straight to "inject a small current into the base" and
      never said why a trickle controls a flood. The answer is the base's width,
      so the player guesses first and then watches 100 electrons get tallied. */
-  guide.say(`Open just the left junction, using the base lead, and the emitter floods the thin base with electrons. First, a guess: <b>where do they end up?</b>`);
+  /* Draw the battery and the base wire BEFORE talking about them. The question
+     below asks the player to reason about a route out through the base, so that
+     route has to be visible on the stage while they answer it. */
+  const ctlRig = svgEl('g');
+  ctlRig.innerHTML = `
+    <path d="M264 158 V86" class="wire"/>
+    <path d="M228 69 H150 V158" class="wire"/>
+    <rect x="228" y="52" width="72" height="34" rx="8" class="batt-body"/>
+    <text x="264" y="74" class="batt-t" font-size="11">0.7 V</text>
+    <text x="286" y="126" class="lbl" text-anchor="start">base wire</text>
+    <circle cx="264" cy="158" r="3.4" class="node-dot"/>
+    <circle cx="150" cy="158" r="3.4" class="node-dot"/>`;
+  svg.insertBefore(ctlRig, dev);   // wires behind the silicon, like every other lead
+  if (!flow.instant && !RM){
+    ctlRig.style.opacity = '0';
+    gsap.to(ctlRig, { opacity: 1, duration: 0.45, ease: 'power2.out' });
+  }
+
+  guide.say(`You already know how to flatten one of these barriers: push about <b>0.7 V</b> across it and the hill drops. That's the battery now sitting on the stage, wired from the <b>base</b> down to the <b>emitter</b>, so it leans on the <b>left</b> barrier only. Electrons pour out of the emitter into the base.`);
+  await guide.next();
+  guide.say(`Now the question. Those electrons are in the base, and the <b>base wire</b> running up out of it is a way out. <b>Where do they actually go?</b>`);
   const guess = await guide.choose([
-    { label: 'Out through the base wire', value: 'base', hint: 'the base lead is right there' },
-    { label: 'Straight on into the collector', value: 'coll', hint: 'they arrived with momentum' },
+    { label: 'Out through the base wire', value: 'base', hint: 'that wire is right there' },
+    { label: 'Onward into the collector', value: 'coll', hint: 'they are already moving that way' },
   ]);
 
-  const tally = svgEl('text', { x: 360, y: 118, class: 'depl-lbl', 'text-anchor': 'middle' });
+  const tally = svgEl('text', { x: 470, y: 112, class: 'depl-lbl', 'text-anchor': 'middle' });
   svg.appendChild(tally);
-  const demo = makeOvershootDemo(svg, { xStart: 130, xBase: 264, xEnd: 470, y: 217, yBaseTop: 74, total: 100, perBase: 100 });
+  // yBaseTop stops just under the battery, so a departing electron visibly rides
+  // the base wire that is actually drawn rather than vanishing into the glyph
+  const demo = makeOvershootDemo(svg, { xStart: 130, xBase: 264, xEnd: 470, y: 217, yBaseTop: 92, total: 100, perBase: 100 });
   demo.onTally((b, c) => { tally.textContent = `OUT VIA BASE ${b}   ·   REACHED COLLECTOR ${c}`; });
   if (flow.instant || RM) demo.settle(); else demo.start();
   guide.note(`Releasing 100 electrons from the emitter. Watch where they go.`);
   await guide.next();
   demo.stop();
 
-  guide.aha(guess === 'coll'
-    ? `<b>Right.</b> The base is a sliver, a fraction of the width of the other two. An electron crossing into it is already close enough for the collector to take it, so it carries straight on. Only about <b>1 in 100</b> leaves by the base wire.`
-    : `<b>Not quite.</b> The base is a sliver, a fraction of the width of the other two. An electron crossing into it is already close enough for the collector to take it, so it carries straight on. Only about <b>1 in 100</b> leaves by the base wire.`,
-    `That ratio is the whole trick: pay 1 electron at the base, move 100 through the device.`);
+  guide.aha(`${guess === 'coll' ? '<b>Right.</b>' : '<b>Not what you picked.</b>'} Look how thin the base is next to the other two blocks. An electron only has to get a little way in before it is close enough for the collector to pull it across, so it keeps going. Barely <b>1 in 100</b> finds the base wire on the way past.`,
+    `That is the whole trick. Spend 1 electron at the base, move 100 through the device.`);
   await guide.next();
 
   /* ---------- wiring: conventional current battery+ → collector → device → emitter → battery− ---------- */
+  // The base-to-emitter rig from the prediction stays put: it is the control loop,
+  // and leaving it visible keeps that loop closed on screen instead of ending a
+  // wire in mid-air. Only its caption changes, since the dial below now sets a
+  // current rather than the fixed 0.7 V that opened the barrier.
+  ctlRig.querySelector('.batt-t').textContent = 'control';
   const mainWireR = svgEl('path', { d: 'M402 420 H644 V217 H488', class: 'wire' });
   const mainWireL = svgEl('path', { d: 'M118 217 H76 V420 H318', class: 'wire' });
   svg.insertBefore(mainWireL, dev);
   svg.insertBefore(mainWireR, dev);
-  const baseWire = svgEl('path', { d: 'M264 66 V158', class: 'wire' });
-  svg.insertBefore(baseWire, dev);
-
-  const ctlBox = svgEl('g');
-  ctlBox.innerHTML = `
-    <rect x="222" y="28" width="84" height="38" rx="9" class="batt-body"/>
-    <text x="264" y="52" class="batt-t" font-size="11">control</text>`;
-  svg.appendChild(ctlBox);
   makeBattery(svg, 360, 420);
   const led = makeLamp(svg, 644, 310, { label: 'LED' });
 
@@ -384,7 +401,8 @@ export async function step2(){
   const route = svgEl('path', { d: 'M402 420 H644 V217 H118 V420 H318', fill: 'none', stroke: 'none' });
   svg.appendChild(route);
   const mainFlow = new CurrentFlow(route, { n: 16, layer: flowLayer });
-  const baseRoute = svgEl('path', { d: 'M264 66 V158', fill: 'none', stroke: 'none' });
+  // matches the drawn base lead (battery bottom at y=86 down to the base at y=158)
+  const baseRoute = svgEl('path', { d: 'M264 86 V158', fill: 'none', stroke: 'none' });
   svg.appendChild(baseRoute);
   const baseFlow = new CurrentFlow(baseRoute, { n: 4, size: 3.6, layer: flowLayer });
 
@@ -413,7 +431,6 @@ export async function step2(){
   await guide.next();
 
   /* ---------- the test ---------- */
-  guide.say(`<b>Your test:</b> control the large current using only the small one.`);
 
   const t1 = guide.task('Take the LED to fully OFF');
   await flow.ask(async replay => {
@@ -439,6 +456,6 @@ export async function step2(){
     `The base current lowers the emitter-side barrier and holds it down — that's the mechanism.`);
   await guide.next();
 
-  guide.note(`Note: inside the crystal the electrons move opposite to the arrows, from emitter to collector. Conventional current points the other way, as you saw in Step 1.`);
+  guide.note(`Inside the crystal the electrons move opposite to the arrows, from emitter to collector. Conventional current points the other way, as you saw in Step 1.`);
   await guide.next();
 }

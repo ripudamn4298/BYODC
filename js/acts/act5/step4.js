@@ -37,8 +37,8 @@ export async function step4(){
   guide.title('STEP 4 / 4 · NANOVOLT CLOUD', 'Light <em>it up</em>');
 
   /* ===================== BEAT 1 — the campus assembles ===================== */
-  const { svg, controls } = newStage('21', 'The campus — halls, substation, cooling plant, fibre');
-  guide.say(`A <b>campus</b> is the whole site: the buildings and infrastructure on one plot of land. Everything you built across this course comes together here. In this final step you'll assemble the campus, then place it on a map of the world. <em>Watch the campus assemble.</em>`);
+  const { svg, controls } = newStage('22', 'The campus — halls, substation, cooling plant, fibre');
+  guide.say(`A <b>campus</b> is the whole site, every building on one plot of land. Everything you have built comes together here. <em>Watch it assemble.</em>`);
 
   const blocks = [
     { x: 90, y: 90, w: 130, h: 90, label: 'HALL A' },
@@ -61,7 +61,7 @@ export async function step4(){
     return true;
   });
 
-  guide.say(`Two <b>halls</b> full of racks; a <b>substation</b> that takes high-voltage grid power and steps it down to feed them; a <b>cooling plant</b> that carries the racks' heat back out; and a <b>fibre hub</b>, the optical-cable junction that ties the whole campus to the rest of the internet. All of it — from a single doped grain of sand.`);
+  guide.say(`Two <b>halls</b> of racks, a <b>substation</b> stepping grid power down to feed them, a <b>cooling plant</b> carrying their heat back out, and a <b>fibre hub</b> tying the site to the rest of the internet. All of it from a single doped grain of sand.`);
   await guide.next();
 
   /* ===================== BEAT 2 — choose the site ===================== */
@@ -72,7 +72,7 @@ export async function step4(){
   await guide.next();
 
   /* ===================== BEAT 3 — THE PAYOFF: the globe returns ===================== */
-  const { svg: gsvg } = newStage('21', 'The globe — your data centre, on the map of the world');
+  const { svg: gsvg } = newStage('22', 'The globe — your data centre, on the map of the world');
   guide.say(`Zoom all the way back out. This is the same globe you saw on the very first screen of this course.`);
 
   const cx = 360, cy = 240, R = 190;

@@ -38,12 +38,12 @@ export async function step1(){
     return true;
   });
 
-  guide.say(`One input only goes so far. To <b>decide</b> anything — is the tank full <em>and</em> the pressure right? should the alarm fire <em>unless</em> someone's silenced it? — you need a gate that weighs <b>two</b> inputs at once.`);
+  guide.say(`One input only goes so far. To <b>decide</b> anything, you need a gate that weighs <b>two</b> inputs at once. Is the tank full <em>and</em> the pressure right?`);
   await guide.next();
 
   /* ---------- build the NAND from CMOS twins ---------- */
   const { svg: svg2, controls: controls2 } = newStage('05', 'NAND gate build');
-  guide.say(`Here's what you're building: a gate whose output drops to <b>0 only when A <em>and</em> B are both 1</b> — and reads <b>1</b> the rest of the time. Same twins as before (<b>PMOS</b> opens on 0, <b>NMOS</b> opens on 1), two of each now. Power rail on top, ground below. <em>Place the four tiles so the circuit behaves that way.</em>`);
+  guide.say(`<b>Your goal: build a gate that outputs 0 only when A and B are both 1</b>, and 1 the rest of the time. Same twins, two of each. <em>Place the four tiles.</em>`);
 
   // every wire terminates on a rail, a slot edge, or a labelled terminal — no dangling ends
   const sk = svgEl('g');
@@ -104,7 +104,7 @@ export async function step1(){
   const placer = makePlacer({
     svg: svg2, tiles, slots,
     validate: v => v[0] === 'PMOS' && v[1] === 'PMOS' && v[2] === 'NMOS' && v[3] === 'NMOS',
-    onWrong: () => guide.note(`Work back from the goal — output <b>0 only when both inputs are 1</b>. So the two switches that turn on at 1 (the NMOS) go in a <b>chain to ground</b>: both must close before the output can be pulled down. The two that turn on at 0 (the PMOS) sit <b>side by side</b> on the power rail — if either input is 0, one of them holds the output up.`),
+    onWrong: () => guide.note(`Work back from the goal. Both inputs must be 1 to pull the output down, so the two NMOS go in a <b>chain</b> to ground. Either input being 0 must hold the output up, so the two PMOS sit <b>side by side</b> on the power rail.`),
   });
 
   await flow.ask(async replay => {
@@ -167,7 +167,7 @@ export async function step1(){
   }
   setAB(0, 0, true);
 
-  guide.say(`<em>Try all four combinations</em> of A and B — watch which single one turns the lamp off.`);
+  guide.say(`<em>Try all four combinations</em> of A and B, watch which single one turns the lamp off.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ setAB(1, 1, true); [0, 1, 2, 3].forEach(v => visited.add(v)); return replay; }
     const cancel = flow.hintAfter(12000, `Four combinations in all: 0-0, 0-1, 1-0, 1-1. Toggle A and B to visit each.`);
@@ -177,7 +177,7 @@ export async function step1(){
   });
 
   /* ---------- the test ---------- */
-  guide.say(`<b>The test.</b> Fill in the <b>OUT</b> column yourself — <b>click a cell to set it to 0, click again to flip it to 1</b> (each click toggles). Read each row off your own bench first: set A and B on the stage, watch the lamp (<b>1</b> = lit, <b>0</b> = dark), then click the cell to match. Hit <b>Check my table</b> once all four rows are filled.`);
+  guide.say(`<b>Your goal: fill in the OUT column.</b> Set A and B on the bench, read the lamp, then click the cell to match. Each click toggles it.`);
   await guide.truthTable({
     heads: ['A', 'B', 'OUT (LAMP)'],
     rows: [[0, 0], [0, 1], [1, 0], [1, 1]],
@@ -187,7 +187,7 @@ export async function step1(){
 
   /* ---------- the universality aha ---------- */
   guide.aha(
-    `This shape is called <b>NAND</b> — short for "not both." It is the only shape you will ever truly need. Tie its two inputs together and it becomes <b>NOT</b>. Feed its output through another NOT and you have <b>AND</b>. OR, XOR, everything left in this act, every chip on Earth — all foldable out of this one tile, stamped a billion times over.`,
+    `This shape is <b>NAND</b>, short for "not both". Tie its inputs together and it becomes <b>NOT</b>. Send that through another NOT and you have <b>AND</b>. Every other gate in this act folds out of this one tile.`,
     `One gate. Every decision a computer has ever made.`
   );
   await guide.next();

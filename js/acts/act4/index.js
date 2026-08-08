@@ -1,15 +1,20 @@
 // BYODC — Act 4: "The GPU: machines built for mathematics".
-// The ladder: the marching band (race) → the multiply engine (mac) → the stationary trick
-// (systolic) → feed the beast (feed) → assemble the NV-1 (nv1). One heartbeat is a CPU. AI's
-// math needs ten thousand identical workers marching in step — and a machine built to multiply.
+// The ladder: eight adders at once (race) → how a chip multiplies (mac) → registers
+// (registers) → move the data, not the weights (weights) → match memory to compute (feed)
+// → assemble the GPU (gpu). One general machine doing one sum at a time becomes thousands
+// of copies of one sum, and most of the work turns out to be delivering the numbers.
 import { step1 } from './step1.js';
 import { step2 } from './step2.js';
 import { step3 } from './step3.js';
 import { step4 } from './step4.js';
 import { step5 } from './step5.js';
+import { step6 } from './step6.js';
 
 export const ACT4_BASE_COST = 14000.0105;   // everything through Act 3
 
+// Six steps since the micro-learning makeover (DESIGN_MAKEOVER.md §5): the old
+// "stationary trick" was two lessons under one number and is now steps 3 and 4.
+// Its $260,000 splits into $60,000 + $200,000, so the act still ends at $2.43M.
 export const ACT4 = [
   {
     id: 'race',
@@ -29,93 +34,115 @@ export const ACT4 = [
   },
   {
     id: 'mac',
-    title: 'The multiply engine',
+    title: 'How a chip multiplies',
     costDelta: 120000,
     inventory: 'a multiply-accumulate engine',
     businessCard: {
       company: 'Nanovolt Graphics',
-      location: 'TENSOR MATH GROUP — SANTA CLARA, CALIFORNIA',
+      location: 'TENSOR MATH GROUP, SANTA CLARA, CALIFORNIA',
       revenue: '$44B / YR',
-      body: 'The maths team taped a memo to the fridge: "area is p times q — stop paying for bits nobody needs." Legal wanted it framed. Finance wanted it tattooed.',
+      body: 'The maths team settled the precision question. A multiplier\'s area is its bit-width times its bit-width, so halving the width buys four times as many engines in the same space.',
       cost: 'THIS MULTIPLY ENGINE: $120,000',
     },
-    premise: `Open any AI model and look at the arithmetic: it is one operation, repeated trillions of times — <b>multiply two numbers, add the result onto a pile</b>. Whole data centres exist to do that one move fast. Time to build the move itself.`,
-    cta: 'Meet the data-movement bill ▸',
+    premise: `Your engine can multiply. It still has to be handed its numbers every cycle, and those numbers have to wait somewhere in the meantime. Next: where they wait, and what fetching them costs.`,
+    cta: 'See where the numbers are stored ▸',
     run: step2,
   },
   {
-    id: 'systolic',
-    title: 'The stationary trick',
-    costDelta: 260000,
-    inventory: 'a systolic tensor engine',
+    id: 'registers',
+    title: 'Registers: where numbers are stored',
+    costDelta: 60000,
+    inventory: 'a register file and the mux that reads it',
     businessCard: {
       company: 'Nanovolt Graphics',
-      location: 'ARCHITECTURE LAB — SANTA CLARA & TAIPEI',
-      revenue: '$61B / YR',
-      body: 'Patent filing 4,410: "compute cell with resident operand." The lawyers called it a modest claim. The competition will call it the worst thing that ever happened to them.',
-      cost: 'THIS SYSTOLIC ENGINE: $260,000',
+      location: 'ARCHITECTURE LAB, SANTA CLARA',
+      revenue: '$52B / YR',
+      body: 'The lab measured the delivery bill: about 180 gates to fetch the numbers against 35 to compute with them. Every processor built so far has paid that on every operation.',
+      cost: 'THIS REGISTER FILE: $60,000',
     },
-    premise: `You've silenced the traffic <em>inside</em> the block. But zoom out one level and the same law is waiting: the whole chip is one engine, and its register file is a tower of memory chips sitting off-die. Same disease, bigger anatomy — and the cure is going to cost you.`,
-    cta: 'Feed the beast ▸',
+    premise: `Five gates of delivery for every gate of maths, paid on every cycle. In AI one of the two numbers barely changes from cycle to cycle, so the next step stops fetching it at all.`,
+    cta: 'Stop re-fetching the weights ▸',
     run: step3,
   },
   {
-    id: 'feed',
-    title: 'Feed the beast',
-    costDelta: 500000,
-    inventory: 'compute and memory, balanced',
+    id: 'weights',
+    title: 'Move the data, not the weights',
+    costDelta: 200000,
+    inventory: 'a systolic tensor engine',
     businessCard: {
       company: 'Nanovolt Graphics',
-      location: 'HBM PROGRAMME — HSINCHU & ICHEON',
+      location: 'ARCHITECTURE LAB, SANTA CLARA AND TAIPEI',
       revenue: '$61B / YR',
-      body: 'You stacked the memory right on top of the package, wired through thousands of vias drilled clean through silicon. Supply now (almost) keeps up with appetite. Almost.',
-      cost: 'THIS MEMORY SUBSYSTEM: $500,000',
+      body: 'Patent filing 4,410 covers a compute cell that keeps its weight in place. Only the data crosses the array now, so the same silicon does far more arithmetic per number fetched.',
+      cost: 'THIS SYSTOLIC ENGINE: $200,000',
     },
-    premise: `Compute and memory, finally in balance. Now bolt them together into one package and drop a cooler on top — because billions of switches flipping billions of times a second is no longer a tiny amount of heat. It's a <b>lot</b>. Time to assemble the whole machine.`,
-    cta: 'Assemble the NV-1 ▸',
+    premise: `Inside the array the numbers barely move. One level up, the same problem is waiting: the whole chip is one engine, and its memory sits off to the side. Next you make delivery match what the lanes ask for.`,
+    cta: 'Match memory to compute ▸',
     run: step4,
   },
   {
-    id: 'nv1',
-    title: 'Assemble the NV-1',
+    id: 'feed',
+    title: 'Match memory to compute',
+    costDelta: 500000,
+    inventory: 'compute and memory, matched',
+    businessCard: {
+      company: 'Nanovolt Graphics',
+      location: 'HBM PROGRAMME, HSINCHU AND ICHEON',
+      revenue: '$61B / YR',
+      body: 'The memory now sits in stacks on the package, wired through thousands of vias drilled straight through the silicon. Delivery finally matches what the lanes ask for.',
+      cost: 'THIS MEMORY SUBSYSTEM: $500,000',
+    },
+    premise: `Compute and memory match. Put them in one package, run every connection as short as it will go, and drop a lid on top, because billions of switches flipping billions of times a second makes a lot of heat.`,
+    cta: 'Assemble the GPU ▸',
+    run: step5,
+  },
+  {
+    id: 'gpu',
+    title: 'Assemble the GPU',
     costDelta: 1500000,
-    inventory: 'a GPU — your machine for mathematics',
+    inventory: 'a GPU, your machine for mathematics',
     businessCard: {
       company: 'Nanovolt AI',
       location: 'SANTA CLARA, CALIFORNIA',
       revenue: '$92B / YR',
-      body: 'The NV-1 Tensor taped out clean. Researchers who\'d never heard of you last year are now on a waiting list. Someone in the press keeps calling it "the engine of the AI boom." You let them.',
+      body: 'The first GPU shipped this quarter. Researchers are ordering it to train models that were too slow to attempt a year ago.',
       cost: 'THIS GPU: $1,500,000',
     },
     premise: null,
     cta: 'Finish Act 4 ▸',
-    run: step5,
+    run: step6,
   },
 ];
 
 const ico = inner => `<svg width="30" height="30" viewBox="0 0 34 34">${inner}</svg>`;
 export const ACT4_SUMMARY = {
   eyebrow: 'ACT 4 COMPLETE',
-  title: 'You built the engine <em>of the AI boom</em>',
-  sub: `A race won by the crowd, a multiply engine whose area is the square of its precision,
-    weights parked so the data can pulse through, memory stacked to feed it, and the whole
-    furnace sealed into a package. Graphics, physics, AI — one machine, one move:`,
+  title: 'You built the <em>GPU</em>',
+  sub: `Sixteen copies of one adder running off one instruction, a multiplier whose area is
+    its precision squared, weights parked so only data moves, memory matched to what the
+    lanes ask for, and the whole thing sealed under a lid:`,
   items: [
-    { nm: 'The parallel insight (race)', amt: '$40,000', icon: ico(`<path d="M5 11 h24 M5 17 h24 M5 23 h24" stroke="var(--hairline-strong)" stroke-width="1"/><rect x="5" y="8" width="10" height="5" fill="var(--hairline-strong)"/><rect x="5" y="20" width="24" height="5" fill="var(--blue)"/>`) },
-    { nm: 'Multiply engine — area is p×q', amt: '$120,000', icon: ico(`<g fill="var(--blue)">${[0,1,2,3].map(r=>[0,1,2,3].map(c=>`<circle cx="${8+c*6}" cy="${8+r*6}" r="2"/>`).join('')).join('')}</g>`) },
-    { nm: 'Systolic array — weights sit still', amt: '$260,000', icon: ico(`<g fill="var(--blue-soft)" stroke="var(--blue)" stroke-width=".9">${[0,1].map(r=>[0,1].map(c=>`<rect x="${8+c*10}" y="${5+r*10}" width="8" height="8" rx="1"/>`).join('')).join('')}</g><path d="M17 26 v5 M14 28 l3 3 3-3" stroke="var(--amber)" stroke-width="1.3" fill="none"/>`) },
-    { nm: 'Balanced memory (HBM)', amt: '$500,000', icon: ico(`<rect x="13" y="6" width="8" height="22" rx="1.5" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.2"/><rect x="5" y="9" width="6" height="16" rx="1.5" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1"/><rect x="23" y="9" width="6" height="16" rx="1.5" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1"/>`) },
-    { nm: 'NV-1 Tensor GPU', amt: '$1,500,000', icon: ico(`<rect x="6" y="6" width="22" height="22" rx="2" fill="var(--paper-high)" stroke="var(--ink)" stroke-width="1.3"/><rect x="11" y="11" width="12" height="12" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1"/><path d="M6 12 h-3 M6 17 h-3 M6 22 h-3 M28 12 h3 M28 17 h3 M28 22 h3" stroke="var(--ink-soft)" stroke-width="1"/>`) },
+    { nm: 'Sixteen lanes, one instruction', amt: '$40,000', icon: ico(`<path d="M5 11 h24 M5 17 h24 M5 23 h24" stroke="var(--hairline-strong)" stroke-width="1"/><rect x="5" y="8" width="10" height="5" fill="var(--hairline-strong)"/><rect x="5" y="20" width="24" height="5" fill="var(--blue)"/>`) },
+    { nm: 'Multiply engine, area is p × q', amt: '$120,000', icon: ico(`<g fill="var(--blue)">${[0,1,2,3].map(r=>[0,1,2,3].map(c=>`<circle cx="${8+c*6}" cy="${8+r*6}" r="2"/>`).join('')).join('')}</g>`) },
+    { nm: 'Register file, and its delivery bill', amt: '$60,000', icon: ico(`<g fill="var(--paper-high)" stroke="var(--ink)" stroke-width="1.1">${[0,1,2,3].map(r=>`<rect x="6" y="${6+r*7}" width="16" height="5" rx="1"/>`).join('')}</g><path d="M24 9 v16 M24 17 h5" stroke="var(--blue)" stroke-width="1.3" fill="none"/>`) },
+    { nm: 'Systolic array, weights parked', amt: '$200,000', icon: ico(`<g fill="var(--blue-soft)" stroke="var(--blue)" stroke-width=".9">${[0,1].map(r=>[0,1].map(c=>`<rect x="${8+c*10}" y="${5+r*10}" width="8" height="8" rx="1"/>`).join('')).join('')}</g><path d="M17 26 v5 M14 28 l3 3 3-3" stroke="var(--amber)" stroke-width="1.3" fill="none"/>`) },
+    { nm: 'Memory matched to compute', amt: '$500,000', icon: ico(`<rect x="13" y="6" width="8" height="22" rx="1.5" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1.2"/><rect x="5" y="9" width="6" height="16" rx="1.5" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1"/><rect x="23" y="9" width="6" height="16" rx="1.5" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1"/>`) },
+    { nm: 'The GPU', amt: '$1,500,000', icon: ico(`<rect x="6" y="6" width="22" height="22" rx="2" fill="var(--paper-high)" stroke="var(--ink)" stroke-width="1.3"/><rect x="11" y="11" width="12" height="12" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1"/><path d="M6 12 h-3 M6 17 h-3 M6 22 h-3 M28 12 h3 M28 17 h3 M28 22 h3" stroke="var(--ink-soft)" stroke-width="1"/>`) },
   ],
-  totalNote: ' — one chip family worth more than most companies',
-  locked: { title: 'ACT 5 — The Data Centre: your own supercluster', note: 'now buy ten thousand of them and make them think as one' },
+  totalNote: ', one chip family worth more than most companies',
+  locked: { title: 'ACT 5 · The Data Centre: your own supercluster', note: 'now buy ten thousand of them and make them think as one' },
   next: { label: 'Continue to Act 5 ▸' },
   debrief: {
     eyebrow: 'ACT 4 · DEBRIEF',
-    title: 'The GPU — <em>cleared</em>',
+    title: 'The GPU, <em>cleared</em>',
     paras: [
-      `You learned the one idea that runs all of modern AI: for math on <em>lists</em> — pixels, weights, tokens — many simple lanes running at once beat one fast processor. You built the multiply-accumulate they all run, learned why its area is the <b>square</b> of the precision, parked the weights so the data could pulse through, then fed it, cooled it, and sealed it into a package. <b>Graphics, physics, and AI are the same arithmetic, done in parallel.</b>`,
-      `Nanovolt is now a name the whole industry watches. <em>Next: one of these is powerful. Ten thousand of them, wired to work as a single machine, is a data centre — and a purchase the size of a small nation's budget.</em>`,
+      `For maths on lists, many simple lanes beat one fast processor. You built the multiply
+       and add that every lane runs, found that a multiplier's area is the <b>square</b> of
+       its precision, parked the weights so only data had to move, matched memory to what
+       the lanes could eat, and sealed the result under a cooler. The surprise of this act
+       is how much of it was delivery rather than arithmetic.`,
+      `<em>Next: one of these is fast. Ten thousand of them, wired to work as a single
+       machine, is a data centre, and a purchase the size of a small nation's budget.</em>`,
     ],
   },
 };

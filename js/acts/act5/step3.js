@@ -24,12 +24,12 @@ export async function step3(){
   guide.title('STEP 3 / 4 · NANOVOLT CLOUD', 'One machine, <em>many rooms</em>');
 
   /* ===================== BEAT 1 — the network is the computer ===================== */
-  guide.say(`Ten thousand GPUs, split across racks in different rooms, have to behave like <b>one machine</b>. The wiring that connects the racks is called the <b>network fabric</b>. It only works if any rack can reach any other quickly, so the fabric matters as much as anything inside the racks. This step: you'll wire that fabric so every rack can reach every other, then keep a running job alive when part of the fabric fails.`);
+  guide.say(`Ten thousand GPUs in different rooms have to behave like <b>one machine</b>. The wiring between racks is the <b>network fabric</b>, and it matters as much as anything inside them. <b>Your goal: wire it so every rack reaches every other, then keep a job alive when it breaks.</b>`);
   await guide.next();
 
   /* ===================== BEAT 2 — wire the leaf-spine ===================== */
-  const { svg, controls } = newStage('20', 'Leaf-spine fabric — wire the racks to the switches');
-  guide.say(`On the stage: four <b>racks</b> along the bottom, two <b>switches</b> across the top. A <b>switch</b> is a box that forwards data between whatever is plugged into it. Racks don't connect to each other directly — each connects <em>up</em> to switches, and the switches pass traffic between racks. This layout is called <b>leaf-spine</b>: the racks are the leaves, the switches are the spine. A <b>hop</b> is one step through a switch. Your aim: wire the fabric so <b>every rack reaches every other in at most 2 hops</b> (rack → switch → rack). <em>Click a rack, then a switch, to draw a link</em> — only rack↔switch links are allowed.`);
+  const { svg, controls } = newStage('21', 'Leaf-spine fabric — wire the racks to the switches');
+  guide.say(`Four <b>racks</b> below, two <b>switches</b> above. Racks never connect directly: each goes <em>up</em> to a switch, and switches pass traffic along. Racks are the leaves, switches the spine, so the layout is <b>leaf-spine</b>. One step through a switch is a <b>hop</b>. <b>Your goal: every rack reaches every other in at most 2 hops.</b>`);
 
   const { board } = buildBoard(svg);
   const statusChip = el('div', { class: 'chip' }, 'FABRIC: <b>not yet reachable</b>');
@@ -58,15 +58,15 @@ export async function step3(){
     return { links: board.links.map(l => [l.a, l.b]) };
   });
 
-  guide.say(`Wired. Every rack now reaches every other in at most two hops — up to a switch, then down to the target rack.`);
+  guide.say(`Wired. Every rack now reaches every other in at most two hops, up to a switch, then down to the target rack.`);
   await guide.next();
 
   /* ===================== BEAT 3 — the bad night ===================== */
-  guide.say(`Now the failure case. A training job is running across all four racks when a switch dies mid-run. At the scale of ten thousand machines, some part is always failing, so the fabric has to be built to survive that — this is called <b>design for failure</b>. Next you'll see what happens when the fabric has no spare capacity, and fix it.`);
+  guide.say(`Now the failure case. At ten thousand machines something is always broken, so the fabric has to survive it. That principle is <b>design for failure</b>.`);
   await guide.next();
 
-  const { svg: svg2, controls: controls2 } = newStage('20', 'The bad night — a switch fails mid-job');
-  guide.say(`This hall runs leaner: every rack has just <b>one uplink</b> — one link up to a switch — instead of two. The bar at the bottom shows a training job's progress. The instant a switch goes red, the job <b>stalls</b>, because racks that only connected through that switch can no longer reach the others in 2 hops. Your job: <em>repair the fabric</em> — wire each stranded rack up to the surviving switch — and the job resumes.`);
+  const { svg: svg2, controls: controls2 } = newStage('21', 'The bad night — a switch fails mid-job');
+  guide.say(`This hall runs leaner: <b>one uplink</b> per rack instead of two. When a switch dies, every rack behind it is cut off and the job stalls. <b>Your goal: wire each stranded rack to the surviving switch.</b>`);
 
   const { board: board2 } = buildBoard(svg2);
   // pre-wire a THINNER topology than the player just built: each rack gets only
@@ -99,7 +99,7 @@ export async function step3(){
   const deadId = 's0';
   board2.killNode(deadId);
   SFX.blip();
-  guide.note(`<b>SWITCH 1 just went down.</b> Watch the bar stall — repair the fabric so every rack still reaches every other in 2 hops through SWITCH 2 (or new links).`);
+  guide.note(`<b>SWITCH 1 just went down.</b> Watch the bar stall, repair the fabric so every rack still reaches every other in 2 hops through SWITCH 2 (or new links).`);
 
   const repairChip = el('div', { class: 'chip' }, 'REPAIR: <b>fabric partitioned</b>');
   controls2.appendChild(repairChip);
@@ -126,7 +126,7 @@ export async function step3(){
     return { extraLinks };
   });
 
-  guide.aha(`The job kept training. Not because nothing broke — something always breaks at this scale — but because the fabric was built assuming it would.`,
+  guide.aha(`The job kept training. Not because nothing broke, something always breaks at this scale, but because the fabric was built assuming it would.`,
     `Redundancy isn't caution. At ten thousand machines and counting, it's arithmetic: something is <em>always</em> down, so the design has to survive that as its normal state, not its exception.`);
   await guide.next();
 }

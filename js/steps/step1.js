@@ -138,7 +138,7 @@ export async function step1(){
       await guide.next();
       eFlow.setSpeed(0);
       iFlow.setSpeed(-120);
-      guide.note(`Arrows show conventional current, as agreed — the electrons underneath run the other way.`);
+      guide.note(`Arrows show conventional current, as agreed. The electrons underneath run the other way.`);
     }
     await guide.next();
 

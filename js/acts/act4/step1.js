@@ -61,7 +61,7 @@ async function fadeIn(nodes, dur = 300){
 }
 
 export async function step1(){
-  guide.title('STEP 1 / 5 · NANOVOLT GRAPHICS', 'Eight adders <em>at once</em>');
+  guide.title('STEP 1 / 6 · NANOVOLT GRAPHICS', 'Eight adders <em>at once</em>');
   guide.cards();
 
   const stage = newStage('13', 'One adder, then eight, then sixteen lanes');

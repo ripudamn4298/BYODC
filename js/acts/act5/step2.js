@@ -23,12 +23,12 @@ export async function step2(){
   guide.title('STEP 2 / 4 · NANOVOLT CLOUD', 'The <em>megawatt</em> problem');
 
   /* ===================== BEAT 1 — the aha returns at scale ===================== */
-  guide.say(`First the terms. <b>Power draw</b> is how much electrical power a chip uses, measured in watts; at this scale we count in <b>megawatts (MW)</b> — millions of watts. Remember the CMOS inverter from Act 1: it only draws real power at the instant it <em>flips</em>. That's still true. But a modern GPU flips transistors roughly a <b>quadrillion</b> times a second, and there are tens of thousands of GPUs in this room. Multiply that tiny bit of power per flip by that many flips and that many chips, and the total draw reaches the scale of a power station. This step: split a hall's power budget between computing and cooling, and keep the total under the line the grid can supply.`);
+  guide.say(`Your Act 1 inverter only drew power at the instant it flipped. Still true. But a GPU flips about a <b>quadrillion</b> times a second, and there are tens of thousands in this room. That tiny puff, multiplied out, reaches the scale of a power station. <b>Your goal: keep the hall under its grid line.</b>`);
   await guide.next();
 
   /* ===================== BEAT 2 — the ladder ===================== */
-  const { svg, controls } = newStage('19', 'Power ladder — IT load, cooling, losses');
-  guide.say(`This hall is fed by a <b>${CAP_MW} MW</b> line — that's the total power budget, the most the grid delivers here. The ladder on the right splits that budget three ways: <b>IT load</b> (the power the GPUs use to compute), <b>cooling</b> (the extra power spent carrying their heat back out — the cooling overhead), and a small slice lost to conversion. All three must fit under the ${CAP_MW} MW line. Push the IT load slider up and watch cooling climb <em>with</em> it — more computing means more heat to remove.`);
+  const { svg, controls } = newStage('20', 'Power ladder — IT load, cooling, losses');
+  guide.say(`The hall is fed by a <b>${CAP_MW} MW</b> line. The ladder splits it three ways: <b>IT load</b> for computing, <b>cooling</b> to carry the heat back out, and a slice lost to conversion. Push IT load up and watch cooling climb with it.`);
 
   const ladder = makePowerLadder(svg, { x: 470, y: 80, w: 140, h: 300, capMW: CAP_MW });
   const capLbl = svgEl('text', { x: 540, y: 400, class: 'lbl-faint' });
@@ -64,7 +64,7 @@ export async function step2(){
   slider.on(v => { itLoad = v; refresh(); });
   refresh();
 
-  guide.say(`There are two ways to cool. <b>Air cooling</b> blows chilled air across the chips; it's simple but weak, so its overhead is large. <b>Liquid cooling</b> pumps coolant right up against them; liquid carries heat away far better than air, so it needs much less overhead for the same GPUs. Push the IT load past what air can carry and the caption turns red — the total has crossed the ${CAP_MW} MW line. Switch to liquid and watch that same load fit.`);
+  guide.say(`<b>Air cooling</b> is simple but weak, so its overhead is large. <b>Liquid</b> pumps coolant right against the chips and carries heat far better. Push the load past what air can handle, then switch to liquid and watch the same load fit.`);
   await guide.next();
 
   /* ===================== BEAT 3 — THE TEST ===================== */
@@ -94,6 +94,6 @@ export async function step2(){
   await guide.next();
 
   /* ===================== BEAT 4 — the map is part of the machine ===================== */
-  guide.say(`This is why data centres cluster next to <b>rivers, dams, and cheap grid</b> — cooling water and megawatts are as much a part of the machine as any transistor. <b>Training one frontier model can draw about as much power, over its run, as a small town uses in a year.</b> The map isn't background scenery anymore. It's a component.`);
+  guide.say(`This is why data centres cluster next to <b>rivers, dams and cheap grid</b>. Cooling water and megawatts are as much a part of the machine as any transistor. The map is not scenery. It's a component.`);
   await guide.next();
 }

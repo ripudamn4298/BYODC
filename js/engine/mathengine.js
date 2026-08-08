@@ -407,6 +407,11 @@ export function makeSystolic(svg, { x, y, rows = 2, cols = 2, cell = 92 }){
 
   return {
     el: g, cells,
+    /* park one weight in one cell's register (additive: the column trickle-feed
+       below is untouched). Used when the player loads each register by hand. */
+    setWeight(r, c, v){ setWeight(r, c, v); },
+    /* geometry of a cell in the parent's user units, for steps that draw around it */
+    cellAt,
     setWireLabels(on){
       if (!on){ wireLbls.forEach(l => l.remove()); wireLbls.length = 0; return; }
       if (wireLbls.length) return;

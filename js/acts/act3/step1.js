@@ -14,10 +14,10 @@ import { makeSlider, makeChip, cornerTicks } from '../../engine/components.js';
 export async function step1(){
   guide.title('STEP 1 / 4 · NANOVOLT MATERIALS', 'Grow the <em>crystal</em>');
 
-  guide.say(`Sand is mostly silicon dioxide — common, cheap, everywhere. Refine it hard enough and you get the number from Act 1's fact cards again: <b>99.9999999% pure</b> molten silicon, nine nines, sitting in a crucible at 1,414°C. Pure isn't enough, though. For a transistor to behave, every atom in the crystal has to sit exactly where a perfect lattice says it should.`);
+  guide.say(`Sand refines down to <b>99.9999999% pure</b> molten silicon, nine nines, sitting at 1,414°C. Pure still isn't enough: every atom has to land exactly where a perfect lattice says it should.`);
   await guide.next();
 
-  guide.say(`The trick is a hundred years old and still unbeaten: dip a tiny <b>seed crystal</b> into the melt, then pull it up <em>slowly</em> while spinning it. Atoms freeze onto the seed one layer at a time, copying its perfect order as they go. Pull too fast and the crystal can't keep up — flaws freeze in. This is the <b>Czochralski process</b>, and it's how almost every wafer on Earth begins.`);
+  guide.say(`The hundred-year-old trick: dip a <b>seed crystal</b> into the melt and pull it up slowly while spinning. Atoms freeze onto the seed one layer at a time, copying its order. Pull too fast and flaws freeze in.`);
   await guide.next();
 
   /* ---------- the pull rig ---------- */
@@ -68,7 +68,7 @@ export async function step1(){
 
   const slider = makeSlider(controls, { label: 'PULL SPEED', min: 0, max: 100, step: 1, value: 50, fmt: v => `${v}` });
 
-  guide.say(`The rod is rising, and the growing crystal — a single cylinder called an <b>ingot</b> — hangs beneath it, lengthening as atoms freeze onto its tip at the melt surface. <b>Your job: pull the whole ingot without freezing in flaws.</b> The one control is <b>pull speed</b>, on the slider below. There's a narrow speed band that keeps the crystal perfect — too fast tears in defects, too slow just crawls. Hold the speed in that band until the ingot is fully grown, keeping defects to 3 or fewer. Watch closely: the band <b>drifts</b> as the melt cools, so don't set it and walk away.`);
+  guide.say(`The cylinder forming beneath the rod is the <b>ingot</b>. <b>Your goal: pull the whole thing with 3 defects or fewer.</b> One control, pull speed. Stay inside the band, and keep watching, because the band <b>drifts</b> as the melt cools.`);
 
   /* ---------- live pull interaction ---------- */
   const result = await flow.ask(async replay => {
@@ -98,7 +98,7 @@ export async function step1(){
       const center = clamp(rand(20, 80), width / 2 + 5, 95 - width / 2);
       band = [Math.round(center - width / 2), Math.round(center + width / 2)];
       SFX.blip();
-      guide.note(`The melt just shifted temperature — the sweet band moved to roughly <b>${band[0]}–${band[1]}</b>. Follow it.`);
+      guide.note(`The melt just shifted temperature, the sweet band moved to roughly <b>${band[0]}–${band[1]}</b>. Follow it.`);
     }
 
     await new Promise(resolve => {
@@ -154,7 +154,7 @@ export async function step1(){
   await guide.next();
 
   /* ---------- slice into wafers ---------- */
-  guide.say(`An ingot is a mirror-perfect log — but a log builds nothing. Time to slice it into wafers, each one thinner than a credit card.`);
+  guide.say(`An ingot is a mirror-perfect log, but a log builds nothing. Time to slice it into wafers, each one thinner than a credit card.`);
   await guide.button('Slice into wafers ▸');
 
   SFX.flow();
@@ -202,7 +202,7 @@ export async function step1(){
   waferCountLbl.textContent = `${sliceCount} OF ~400 WAFERS FROM ONE INGOT`;
   svg.appendChild(waferCountLbl);
 
-  guide.aha(`One ingot → hundreds of wafers. Each wafer will hold <b>thousands</b> of the CMOS cells you built by hand back in Act 2 — printed, not placed.`,
+  guide.aha(`One ingot → hundreds of wafers. Each wafer will hold <b>thousands</b> of the CMOS cells you built by hand back in Act 2, printed, not placed.`,
     `You spent an entire act wiring one transistor. A fab spends one pull growing the raw material for a quarter-million chips.`);
   await guide.next();
 }

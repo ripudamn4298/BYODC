@@ -35,7 +35,7 @@ export async function step3(){
   /* ===================== BEAT 1 — the problem: everything is an echo ===================== */
   {
     const { svg, controls } = newStage('07', 'Latch build');
-    guide.say(`<b>Memory</b> is a circuit that holds a value after you stop supplying it — so a machine can keep a number around and come back to it. Your aim this step: build one, a circuit that <b>remembers a single bit after you let go</b>. First, see why the gates you have can't do it. Every gate you've wired so far has the same flaw: it only ever tells you about <em>right now</em>. Feed it inputs, read the answer, let go — and the answer is gone. Try it.`);
+    guide.say(`Every gate you've built so far only tells you about <em>right now</em>. Let go of the inputs and the answer vanishes, so nothing can be kept. <b>Your goal: build a circuit that remembers one bit after you let go.</b> First, watch the problem.`);
 
     const gate = makeGate(svg, { x: 305, y: 190, kind: 'NAND', label: 'NAND' });
     const lamp = makeLamp(svg, 480, 218, { label: 'OUT' });
@@ -50,7 +50,7 @@ export async function step3(){
     }
     update(false);
 
-    guide.say(`<em>Press and hold</em> the button — then let go and watch the lamp.`);
+    guide.say(`<em>Press and hold</em> the button, then let go and watch the lamp.`);
 
     await flow.ask(async replay => {
       if (replay !== undefined){ update(false); return replay; }
@@ -63,13 +63,13 @@ export async function step3(){
       return true;
     });
 
-    guide.say(`The instant your finger left the button, the input snapped back to LOW and the answer followed it down. A single gate has <b>no memory</b> — remove the input and the answer is gone. To hold onto an answer, a circuit has to keep feeding its own output back to itself.`);
+    guide.say(`The moment you let go, the input fell and the answer followed. To hold an answer, a circuit has to keep telling itself what it just said.`);
     await guide.next();
   }
 
   /* ===================== BEAT 2 — the trick: feedback ===================== */
   const { svg, controls } = newStage('07', 'Latch build');
-  guide.say(`The trick is <b>feedback</b>: wiring a circuit's output back into its own input, so it keeps hearing what it just said. Take <b>two</b> NAND gates, and instead of wiring their outputs onward, wire each one's output back into the <em>other's</em> input. Each gate starts listening to what the other just said — a loop that talks to itself.`);
+  guide.say(`That's <b>feedback</b>. Take two NANDs and wire each one's output into the <em>other's</em> input, so the pair only ever listens to itself.`);
 
   // gate geometry (h=64 → input pins are well separated: top = y+21.3, bottom = y+42.7)
   const G = { x: 230, w: 120, h: 64 };
@@ -111,7 +111,7 @@ export async function step3(){
   freeTop.classList.add('free');
   freeBot.classList.add('free');
 
-  guide.say(`The <span class="e-red">two amber pins glowing in the middle</span> are the empty ones — that's your job. <b>Click an <em>OUT</em> pin</b> (round, on the right of a gate), then <b>click the glowing input pin on the OTHER gate</b>. Do it both ways, so each gate hears the other.`);
+  guide.say(`<b>Your goal: close the loop.</b> Click an <em>OUT</em> pin, then the glowing input pin on the <b>other</b> gate. Do it both ways.`);
 
   await flow.ask(async replay => {
     const drawFB = which => {
@@ -188,11 +188,11 @@ export async function step3(){
     return true;
   });
 
-  guide.say(`Wired. Look at what you built: gate 1's answer feeds gate 2, and gate 2's answer feeds gate 1 — <b>MEMORY</b> and <b>ITS SHADOW</b>, each one the other's proof. Two cross-coupled NANDs holding a bit like this is an <b>SR latch</b> — <b>S</b> for the SET input, <b>R</b> for RESET, the two controls you're about to use.`);
+  guide.say(`Each gate now feeds the other, so each one is the other's proof. Two NANDs wired this way is an <b>SR latch</b>: <b>S</b> sets, <b>R</b> resets.`);
   await guide.next();
 
   /* ===================== BEAT 3 — it's alive ===================== */
-  guide.say(`Now the controls come alive. Released, SET and RESET both sit HIGH and do nothing. <b>Press = tug the line low.</b> Press <b>SET</b> and the loop locks onto 1. Press <b>RESET</b> and it locks onto 0. Let go of either — watch it hold anyway.`);
+  guide.say(`Pressing a button tugs its line low. <b>SET</b> locks the loop onto 1, <b>RESET</b> onto 0. Let go and watch it hold.`);
 
   let setHeld = false, resetHeld = false;
   let g1out = true, g2out = false;   // initial rest state: MEMORY (Q) = 1, SHADOW = 0

@@ -1,175 +1,291 @@
-// ACT 4 · STEP 5 / 5 — "Assemble the NV-1" (interposer placer, cooler, power meter, training loop).
-// Placer on an interposer cross-section: COMPUTE die center, 2 HBM stacks flanking it, a decoy
-// lone-CPU tile that fits nowhere. Then cooler drops on; the Act-1 heat callback returns at
-// kilowatt scale. Final demo: a toy training loop (CurrentFlow + LaneGrid + loss meter ticking
-// down). Per HANDOFF §5 ACT4 STEP4.
-import { sleep, el, svgEl } from '../../engine/util.js';
-import { SFX } from '../../engine/sfx.js';
+// ACT 4 · STEP 5 — "Match memory to compute".
+// Rebuilt to the micro-learning contract in DESIGN_MAKEOVER.md §2 / §5. The balance beam
+// is gone (makeRoofline is no longer called by anything): the stage is the hardware. HBM
+// stacks on the left, the step-1 lane grid on the right, and between them a bundle of
+// wires whose DRAWN WIDTH is the delivery rate: one wire per number per cycle. Two
+// counters, NEEDED PER CYCLE and DELIVERED PER CYCLE, sit under the side that drives them.
+import { waitFor, svgEl } from '../../engine/util.js';
+import { Anim } from '../../engine/anim.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makePlacer, makeMeter, makeChip } from '../../engine/components.js';
 import { makeLaneGrid } from '../../engine/lanes.js';
-import { CurrentFlow } from '../../engine/pathflow.js';
+import { makeSlider } from '../../engine/components.js';
+
+/* --- the arithmetic of the whole step ---
+   one lane asks for 1 number per cycle; one HBM stack sends PER_STACK numbers per cycle. */
+const PER_STACK = 4;
+const MAX_LANES = 16, MAX_STACKS = 4;
+
+/* --- geometry, in the stage's 720x480 user units ---
+   The stack tower is the same drawing the player meets in step 6: four dies of 64x16 on a
+   19px pitch with the vertical wires ticked in between. */
+const STK = { colX: [50, 132], rowY: [130, 248], w: 64, h: 73, die: 16, pitch: 19 };
+const GRID = { x: 412, y: 100, cell: 58, gap: 7 };
+const GRID_W = 4 * GRID.cell + 3 * GRID.gap;                 // 253
+const BUNDLE = { x1: 208, x2: GRID.x, cy: 226, pitch: 7 };
+const STACKS_CX = (STK.colX[0] + STK.colX[1] + STK.w) / 2;   // 123
+const GRID_CX = GRID.x + GRID_W / 2;                         // 538.5
+const BUNDLE_CX = (BUNDLE.x1 + BUNDLE.x2) / 2;               // 310
+
+async function fadeIn(nodes, dur = 320){
+  const list = nodes.filter(Boolean);
+  if (!list.length) return;
+  list.forEach(n => { n.style.opacity = '0'; n.style.display = ''; });
+  await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(p); }));
+  list.forEach(n => { n.style.opacity = ''; });
+}
 
 export async function step5(){
-  guide.title('STEP 5 / 5 · NANOVOLT AI', 'Assemble <em>the NV-1</em>');
+  guide.title('STEP 5 / 6 · NANOVOLT GRAPHICS', 'Match memory <em>to compute</em>');
+  guide.cards();
 
-  guide.say(`The aim of this step: assemble everything you've built this act into one package, then watch it learn. Two terms. A <b>die</b> is one finished chip of silicon — here the <b>compute die</b> holds your sixteen lanes. An <b>interposer</b> is a silicon shelf underneath that carries the die and its memory side by side and wires them together over the shortest possible distance. This is an interposer cross-section, seen edge-on. <em>Place the tiles.</em>`);
+  const stage = newStage('17', 'HBM stacks feeding a grid of sixteen lanes over a bundle of wires');
+  const { svg, controls } = stage;
 
-  const { svg, controls } = newStage('17', 'Interposer assembly: compute die + HBM stacks');
+  /* live state: the sliders write into these, render() reads them */
+  let laneCount = MAX_LANES, stackCount = 2, lampsLive = false;
 
-  const SLOTS = [
-    { x: 90,  y: 190, w: 110, h: 150, correct: 'HBM' },
-    { x: 305, y: 170, w: 150, h: 190, correct: 'COMPUTE' },
-    { x: 520, y: 190, w: 110, h: 150, correct: 'HBM' },
-  ];
-  const slots = SLOTS.map(s => {
-    const rect = svgEl('rect', { x: s.x, y: s.y, width: s.w, height: s.h, rx: 8, class: 'slot' });
-    const q = svgEl('text', { x: s.x + s.w / 2, y: s.y + s.h / 2 + 9, class: 'slot-q' }); q.textContent = '?';
-    svg.append(rect, q);
-    return { ...s, rect, q, value: null, tile: null };
+  /* ---------- right: the lane grid from step 1 ---------- */
+  const gridCap = svgEl('text', { x: GRID_CX, y: 88, class: 'lbl-faint' });
+  gridCap.textContent = 'LANES';
+  svg.appendChild(gridCap);
+  const grid = makeLaneGrid(svg, {
+    x: GRID.x, y: GRID.y, cols: 4, rows: 4, cell: GRID.cell, gap: GRID.gap,
   });
 
-  // interposer base beneath the slots
-  const base = svgEl('rect', { x: 60, y: 360, width: 600, height: 22, rx: 3, class: 'tile-bg' });
-  svg.insertBefore(base, slots[0].rect);
-  const baseLbl = svgEl('text', { x: 360, y: 400, class: 'lbl-faint' }); baseLbl.textContent = 'INTERPOSER — silicon shelf, package substrate below';
-  svg.appendChild(baseLbl);
+  /* ---------- left: HBM stacks, drawn as towers of memory dies ---------- */
+  const stacksG = svgEl('g');
+  const stackCap = svgEl('text', { x: STACKS_CX, y: 118, class: 'lbl-faint' });
+  stackCap.textContent = 'MEMORY';
+  stacksG.appendChild(stackCap);
+  const towers = [];
+  for (let i = 0; i < MAX_STACKS; i++){
+    const x = STK.colX[i % 2], y = STK.rowY[Math.floor(i / 2)];
+    const slot = svgEl('rect', { x, y, width: STK.w, height: STK.h, rx: 4, class: 'slot' });
+    const g = svgEl('g');
+    for (let d = 0; d < 4; d++){
+      const dy = y + d * STK.pitch;
+      g.appendChild(svgEl('rect', {
+        x, y: dy, width: STK.w, height: STK.die, rx: 2, class: 'tile-bg',
+      }));
+      // through-silicon vias: short ticks in the gaps, so the tower reads as four chips
+      if (d < 3) [16, 32, 48].forEach(vx => g.appendChild(svgEl('line', {
+        x1: x + vx, y1: dy + STK.die, x2: x + vx, y2: dy + STK.pitch, class: 'wire',
+      })));
+    }
+    stacksG.append(slot, g);
+    towers.push({ g, slot });
+  }
+  svg.appendChild(stacksG);
+  stacksG.style.display = 'none';
 
-  function bigTile(value, label, cap, w, h, sub){
-    const g = svgEl('g', { class: 'tile', 'data-part': value.toLowerCase(), 'aria-label': label });
-    g.innerHTML = `
-      <rect width="${w}" height="${h}" rx="8" class="tile-bg"/>
-      <text x="${w / 2}" y="${h / 2 - 2}" class="gate-lbl" font-size="13">${label}</text>
-      <text x="${w / 2}" y="${h / 2 + 16}" class="lbl-faint">${cap}</text>`
-      + (sub ? `<text x="${w / 2}" y="${h / 2 + 30}" class="lbl-faint">${sub}</text>` : '');
+  /* ---------- between: the wire bundle. Drawn width IS the delivery rate. ---------- */
+  const bundleG = svgEl('g');
+  svg.appendChild(bundleG);
+  const wires = [];
+  for (let i = 0; i < MAX_STACKS * PER_STACK; i++){
+    const w = svgEl('line', { x1: BUNDLE.x1, x2: BUNDLE.x2, y1: BUNDLE.cy, y2: BUNDLE.cy, class: 'wire' });
+    bundleG.appendChild(w);
+    wires.push(w);
+  }
+  bundleG.style.display = 'none';
+
+  /* ---------- readouts ---------- */
+  function counter(cx, label){
+    const g = svgEl('g');
+    const l = svgEl('text', { x: cx, y: 392, class: 'lbl-faint' });
+    l.textContent = label;
+    const v = svgEl('text', { x: cx, y: 424, class: 'gate-lbl', 'font-size': '24' });
+    v.textContent = '0';
+    g.append(l, v);
     svg.appendChild(g);
-    return { g, value, w, h, home: null, tx: 0, ty: 0, slot: null };
+    g.style.display = 'none';
+    return { g, v };
   }
-  const tiles = [
-    bigTile('HBM', 'HBM STACK', 'memory, stacked', 110, 150),
-    bigTile('COMPUTE', 'COMPUTE DIE', '16 lanes', 150, 190, 'systolic tensor engines'),
-    bigTile('HBM', 'HBM STACK', 'memory, stacked', 110, 150),
-    bigTile('CPU', 'CPU HEARTBEAT', 'one lone worker', 100, 90),
-  ];
-  tiles[0].home = { x: 40, y: 300 };
-  tiles[1].home = { x: 200, y: 300 };
-  tiles[2].home = { x: 420, y: 300 };
-  tiles[3].home = { x: 580, y: 320 };
+  const deliveredC = counter(STACKS_CX, 'DELIVERED PER CYCLE');
+  const neededC = counter(GRID_CX, 'NEEDED PER CYCLE');
 
-  guide.say(`An <b>HBM stack</b> is a tower of memory chips stacked vertically to sit close to the die (the high-bandwidth memory from the last step). The tray holds two <b>HBM STACK</b> tiles, one <b>COMPUTE DIE</b>, and one leftover — a lone <b>CPU HEARTBEAT</b> tile that doesn't belong here. Place a stack on each side of the die so memory is close on <em>both</em> sides; the CPU already had its moment, back in Act 2.`);
+  const utilG = svgEl('g');
+  const utilL = svgEl('text', { x: BUNDLE_CX, y: 126, class: 'lbl-faint' });
+  utilL.textContent = 'UTILIZATION';
+  const utilV = svgEl('text', { x: BUNDLE_CX, y: 154, class: 'gate-lbl', 'font-size': '24' });
+  utilV.textContent = '0%';
+  utilG.append(utilL, utilV);
+  svg.appendChild(utilG);
+  utilG.style.display = 'none';
 
-  const placer = makePlacer({
-    svg, tiles, slots,
-    validate: v => v[0] === 'HBM' && v[1] === 'COMPUTE' && v[2] === 'HBM',
-    onWrong: () => guide.note(`The compute die needs memory flanking it on both sides — two HBM stacks, one each side. The lone CPU tile had its moment back in Act 2; it doesn't fit here.`),
-  });
+  /* ---------- render: one pure function of (laneCount, stackCount, lampsLive) ---------- */
+  function render(){
+    const needed = laneCount;
+    const delivered = stackCount * PER_STACK;
+    const fed = Math.min(needed, delivered);
+    const util = fed / needed;
 
-  await flow.ask(async replay => {
-    if (replay !== undefined){ placer.autoPlace(); return replay; }
-    await placer.done;
-    return true;
-  });
+    towers.forEach((t, i) => {
+      const built = i < stackCount;
+      t.g.style.display = built ? '' : 'none';
+      t.slot.style.display = built ? 'none' : '';
+    });
 
-  await sleep(400);
-  tiles.forEach(t => { if (!t.slot) t.g.style.opacity = '0'; });
-  slots.forEach(s => { s.rect.style.opacity = '0'; s.q.style.opacity = '0'; });
+    wires.forEach((w, i) => {
+      if (i >= delivered){ w.style.display = 'none'; return; }
+      const y = BUNDLE.cy + (i - (delivered - 1) / 2) * BUNDLE.pitch;
+      w.style.display = '';
+      w.setAttribute('y1', String(y));
+      w.setAttribute('y2', String(y));
+      // wires past what the lanes ask for carry nothing, so they are drawn faint
+      w.setAttribute('class', i < needed ? 'wire' : 'wire dim');
+    });
 
-  guide.say(`Sealed: compute in the middle, memory close on both flanks, every via as short as it can be. Now the package lands on a board — and it needs a lid.`);
+    grid.lanes.forEach((l, i) => {
+      const built = i < laneCount;
+      l.rect.style.opacity = built ? '' : '.28';
+      l.rect.style.strokeDasharray = built ? '' : '4 4';
+      l.lamp.style.display = built ? '' : 'none';
+      const isFed = built && i < fed;
+      l.lamp.classList.toggle('on', lampsLive && isFed);
+      const waiting = lampsLive && built && !isFed;
+      l.lamp.style.fill = waiting ? 'var(--amber)' : '';
+      l.lamp.style.stroke = waiting ? 'var(--amber)' : '';
+    });
+
+    neededC.v.textContent = String(needed);
+    deliveredC.v.textContent = String(delivered);
+    const pct = Math.round(util * 100);
+    utilV.textContent = `${pct}%`;
+    utilV.style.fill = pct >= 90 ? '' : 'var(--amber)';
+
+    return { lanes: laneCount, stacks: stackCount, needed, delivered, fed, util };
+  }
+  render();
+
+  /* ================= CARD 1 — preface, on the machine they already built ============= */
+
+  guide.say(`These are your sixteen lanes from step 1. A lane computes only when its
+    numbers arrive, so here you make delivery match what the lanes need.`);
+  stage.focus(grid.g, { label: 'sixteen lanes', at: 'bottom' });
   await guide.next();
 
-  /* ---------- cooler drop ---------- */
-  const coolerBtn = el('button', { class: 'btn primary', 'data-label': 'drop-cooler' }, 'DROP THE COOLER ▸');
-  controls.appendChild(coolerBtn);
-  const meter = makeMeter(controls, 'POWER DRAW');
+  /* ================= CARD 2 — the stacks ============================================ */
 
-  guide.say(`A <b>cooler</b> is a metal lid — a heat spreader with fins — that pulls the chip's heat up and out; every switch that flips turns a little power into heat, so a chip this busy needs one. Recall Act 1: one CMOS switch, flipping once, drew a puff of power too small for the meter to even twitch. Now imagine <b>billions</b> of those switches, flipping billions of times a second, all at once. <em>Drop the cooler</em> and watch the meter wake up.`);
-
-  await flow.ask(async replay => {
-    if (replay !== undefined){
-      renderCooler();
-      meter.fill.style.width = '86%';
-      meter.out.textContent = '≈ 700 W';
-      return replay;
-    }
-    await new Promise(res => coolerBtn.addEventListener('click', () => { SFX.click(); res(); }, { once: true }));
-    renderCooler();
-    await sleep(500);
-    meter.fill.style.transition = 'width 1.1s ease';
-    meter.fill.style.width = '86%';
-    let shown = 0;
-    const target = 700;
-    const iv = setInterval(() => {
-      shown = Math.min(target, shown + 60);
-      meter.out.textContent = `≈ ${shown} W`;
-      if (shown >= target) clearInterval(iv);
-    }, 90);
-    await sleep(1100);
-    coolerBtn.disabled = true;
-    return true;
-  });
-
-  function renderCooler(){
-    if (svg.querySelector('.nv1-cooler')) return;
-    const cooler = svgEl('g', { class: 'nv1-cooler' });
-    cooler.innerHTML = `<rect x="70" y="150" width="580" height="26" rx="4" class="tile-bg"/>
-      <text x="360" y="168" class="lbl-strong">COOLER — heat spreader + fins</text>`;
-    svg.appendChild(cooler);
-  }
-
-  guide.aha(`<b>≈700 watts.</b> One flip was too small to see. A few billion flips a second, across sixteen lanes times however many you stamp, adds up to a furnace on a five-inch square. That's not a bug in the design — it's the honest cost of doing this much math this fast.`);
+  stage.clearFocus();
+  await fadeIn([stacksG]);
+  guide.say(`Memory sits in stacks of chips, and each stack delivers numbers at a fixed
+    rate called its <b>bandwidth</b>. More stacks, more numbers per cycle.`);
+  stage.focus(stacksG, { label: 'hbm stack', at: 'right' });
   await guide.next();
 
-  /* ---------- final demo: toy training loop ---------- */
-  guide.say(`One last thing before this GPU ships: watch it actually <b>think</b>. A <b>training loop</b> is one repeated pass: data streams in from memory, the lanes chew on it, and the chip nudges its weights to do slightly better. The <b>loss</b> is a single score for how wrong the chip currently is — lower is better — so it should fall a little every pass. Run a few passes and watch it drop.`);
+  /* ================= CARD 3 — the bundle, the load-bearing picture ================== */
 
-  const { svg: svg2, controls: controls2 } = newStage('17', 'Toy training loop: data streaming into the lane grid');
+  stage.clearFocus();
+  await fadeIn([bundleG]);
+  guide.say(`Every wire carries one number per cycle. Add a stack and the bundle gets
+    wider, because four more wires run across to the lanes.`);
+  stage.focus(bundleG, { label: 'one wire, one number per cycle', at: 'top' });
+  await guide.next();
 
-  const srcX = 70, srcY = 240;
-  svg2.appendChild(svgEl('text', { x: srcX, y: srcY - 16, class: 'lbl-strong', 'text-anchor': 'middle' })).textContent = 'TRAINING DATA';
-  svg2.appendChild(svgEl('circle', { cx: srcX, cy: srcY, r: 4.5, class: 'node-dot' }));
-  const gridX = 220, gridY = 120;
-  const wire = svgEl('path', { d: `M${srcX} ${srcY} H${gridX - 20}`, class: 'wire' });
-  svg2.appendChild(wire);
-  const path = svgEl('path', { d: `M${srcX} ${srcY} H${gridX - 20}`, fill: 'none', stroke: 'none' });
-  svg2.appendChild(path);
-  const flowLayer = svgEl('g'); svg2.appendChild(flowLayer);
-  const dataFlow = new CurrentFlow(path, { n: 10, layer: flowLayer });
+  /* ================= CARDS 4 and 5 — the two counters =============================== */
 
-  const grid = makeLaneGrid(svg2, { x: gridX, y: gridY, cols: 4, rows: 4, cell: 60, gap: 7 });
-  const lossChip = makeChip(controls2, 'LOSS: <b>2.4</b>');
-  const runBtn = el('button', { class: 'btn primary', 'data-label': 'run-training-pass' }, 'RUN A TRAINING PASS ▸');
-  controls2.appendChild(runBtn);
+  stage.clearFocus();
+  await fadeIn([neededC.g]);
+  guide.say(`Each lane asks for one number every cycle. This counter totals what the
+    lanes need.`);
+  stage.focus(neededC.g, { label: 'needed per cycle', at: 'left' });
+  await guide.next();
 
-  async function runPass(loss){
-    dataFlow.setSpeed(200);
-    for (let r = 0; r < 4; r++){
-      for (let c = 0; c < 4; c++) grid.setActive(r * 4 + c, true);
-      SFX.blip();
-      await sleep(80);
-    }
-    await sleep(150);
-    dataFlow.setSpeed(0);
-    grid.flashAll(false);
-    lossChip.set(`LOSS: <b>${loss.toFixed(1)}</b>`);
-  }
+  stage.clearFocus();
+  await fadeIn([deliveredC.g]);
+  guide.say(`Each stack sends four numbers every cycle. This counter totals what memory
+    delivers.`);
+  stage.focus(deliveredC.g, { label: 'delivered per cycle', at: 'right' });
+  await guide.next();
+
+  /* ================= CARD 6 — the lamps ============================================= */
+
+  stage.clearFocus();
+  lampsLive = true;
+  render();
+  guide.say(`Blue means the lane has its numbers. Amber means the lane is waiting for
+    data.`);
+  stage.focus(grid.lanes.map(l => l.lamp), { label: 'lane lamp', at: 'left', ring: false });
+  await guide.next();
+
+  /* ================= CARD 7 — utilization =========================================== */
+
+  stage.clearFocus();
+  await fadeIn([utilG]);
+  guide.say(`Utilization is the share of lanes that have their numbers. Half of these
+    lanes are waiting, so it reads 50%.`);
+  stage.focus(utilG, { label: 'utilization', at: 'left' });
+  await guide.next();
+
+  /* ================= CARD 8 — first fix: too many lanes for the memory ============== */
+
+  stage.clearFocus();
+  const laneSlider = makeSlider(controls, {
+    label: 'lanes on the die', min: 4, max: MAX_LANES, step: 1, value: laneCount,
+    fmt: v => `${v} lanes`,
+  });
+  const stackSlider = makeSlider(controls, {
+    label: 'HBM stacks', min: 1, max: MAX_STACKS, step: 1, value: stackCount,
+    fmt: v => `${v} stack${v === 1 ? '' : 's'}`,
+  });
+  laneSlider.on(v => { laneCount = v; render(); });
+  stackSlider.on(v => { stackCount = v; render(); });
+  const setRig = (lanes, stacks) => {
+    laneSlider.set(lanes); stackSlider.set(stacks);
+    laneCount = lanes; stackCount = stacks;
+    return render();
+  };
+
+  guide.say(`This rig has too many lanes for its memory. Pull the sliders until
+    utilization reaches <b>90% or better</b>.`);
 
   await flow.ask(async replay => {
-    const losses = [1.1, 0.5, 0.2];
-    if (replay !== undefined){
-      for (const l of losses) await runPass(l);
-      runBtn.disabled = true; runBtn.classList.add('used');
-      return replay;
-    }
-    for (const l of losses){
-      await new Promise(res => runBtn.addEventListener('click', () => { SFX.click(); res(); }, { once: true }));
-      await runPass(l);
-    }
-    runBtn.disabled = true;
-    return true;
+    if (replay !== undefined){ setRig(replay.lanes, replay.stacks); return replay; }
+    setRig(MAX_LANES, 1);
+    const cancel = flow.hintAfter(14000, `Sixteen lanes ask for sixteen numbers a cycle,
+      and one stack sends four. Add stacks, or build fewer lanes, until utilization reads
+      <b>90% or better</b>.`);
+    await waitFor(() => render().util >= 0.9, { hold: 500 });
+    cancel();
+    return { lanes: laneCount, stacks: stackCount };
   });
 
-  guide.aha(`<b>2.4 → 1.1 → 0.5 → 0.2.</b> Loss falling, pass after pass — that's learning, and underneath it is nothing mystical: the same lanes that raced a list of eight numbers in step one, and <b>your systolic squares eating the matrices</b>, now grinding through millions of numbers over and over. Graphics, physics, AI — <b>one machine</b>, because it's all the same move: multiply lists, add lists, repeat.`);
+  guide.note(`Every lamp is blue and the two counters agree. Nothing on this die is
+    waiting for data.`);
   await guide.next();
+
+  /* ================= CARD 9 — second fix: memory nobody asks for ==================== */
+
+  guide.say(`The faint wires carry nothing, because this rig pays for memory its lanes
+    never ask for. Bring memory down and hold utilization at <b>90% or better</b>.`);
+
+  await flow.ask(async replay => {
+    if (replay !== undefined){ setRig(replay.lanes, replay.stacks); return replay; }
+    setRig(4, MAX_STACKS);
+    const cancel = flow.hintAfter(14000, `Drop stacks until delivery meets the lane count,
+      or raise the lane count until it uses the memory you already bought. Keep utilization
+      at <b>90% or better</b>.`);
+    await waitFor(() => {
+      const s = render();
+      return s.util >= 0.9 && s.delivered - s.needed <= 2;
+    }, { hold: 500 });
+    cancel();
+    return { lanes: laneCount, stacks: stackCount };
+  });
+
+  guide.note(`Delivery now matches demand, and every wire you paid for carries a number.`);
+  await guide.next();
+
+  /* ================= CARD 10 — payoff ============================================== */
+
+  guide.aha(`Whichever of the two numbers is smaller caps the machine. Half of GPU design
+    is delivery, not math.`,
+    `The chart of that trade-off is called the <b>roofline</b>. The same problem comes back
+     one floor up in Act 5, where a lane becomes a whole machine.`);
+  stage.focus([deliveredC.g, neededC.g], { label: 'the smaller number wins', at: 'top', ring: false });
+  await guide.next();
+  stage.clearFocus();
 }

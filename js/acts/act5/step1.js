@@ -15,12 +15,12 @@ export async function step1(){
   guide.title('STEP 1 / 4 · NANOVOLT CLOUD', 'From one <em>to a rack</em>');
 
   /* ===================== BEAT 1 — one GPU isn't enough ===================== */
-  guide.say(`A <b>GPU</b> is the processor that does the training — the chip you built in Act 4. One GPU can train a small model, but a real model needs <b>thousands</b> of GPUs working as if they were <em>one</em>: the same weights, updated together, thousands of times a second. Over the next four steps you'll build up to that, starting from a single box. In this step: you'll pack 8 GPUs into a <b>node</b>, stack nodes into a <b>rack</b>, and see why you can't simply wire every GPU to every other one.`);
+  guide.say(`One GPU trains a small model. A real one needs <b>thousands</b> behaving as if they were a single machine, sharing weights thousands of times a second. <b>Your goal this step: pack 8 GPUs into a node, stack nodes into a rack, and find out why you can't just wire everything to everything.</b>`);
   await guide.next();
 
   /* ===================== BEAT 2 — build the node ===================== */
-  const { svg, controls } = newStage('18', 'Node assembly — GPUs into a sled');
-  guide.say(`A <b>node</b> is one box of GPUs. It's built on a <b>sled</b> — a flat tray that holds the chips and slides into a rack. The sled carries <b>8 GPUs</b> plus an <b>interconnect spine</b>: a direct copper backbone that lets every GPU on the sled send data straight to any other, without routing through the CPU. Your first job: fill the sled. <em>Drag the 8 GPU tiles into the empty slots.</em>`);
+  const { svg, controls } = newStage('19', 'Node assembly — GPUs into a sled');
+  guide.say(`A <b>node</b> is one box of GPUs, built on a <b>sled</b> that slides into a rack. It carries 8 GPUs and an <b>interconnect spine</b>, a copper backbone letting any GPU reach any other without going through the CPU. <em>Fill the sled.</em>`);
 
   const sledX = 190, sledY = 220, sledW = 340, slotSize = 34;
   const sledRect = svgEl('rect', { x: sledX, y: sledY, width: sledW, height: 92, rx: 6, class: 'rack-frame' });
@@ -57,7 +57,7 @@ export async function step1(){
   const placer = makePlacer({
     svg, tiles, slots,
     validate: v => v.every(x => x === 'GPU'),
-    onWrong: () => guide.note(`Every slot on the sled wants a GPU — keep going.`),
+    onWrong: () => guide.note(`Every slot on the sled wants a GPU, keep going.`),
     onPlace: () => {
       const n = slots.filter(s => s.value).length;
       setMeter(n / 8 * .12, `≈ ${(n * 0.9).toFixed(1)} kW (holding)`);
@@ -70,12 +70,12 @@ export async function step1(){
     return true;
   });
 
-  guide.say(`Eight GPUs, one spine: that's one node. It draws <b>≈7 kW</b> — about what a small house uses — from a box you could carry.`);
+  guide.say(`Eight GPUs, one spine: that's one node. It draws <b>≈7 kW</b>, about what a small house uses, from a box you could carry.`);
   await guide.next();
 
   /* ===================== BEAT 3 — stamp the rack ===================== */
-  const { svg: svg2, controls: controls2 } = newStage('18', 'Rack elevation — stamping sleds');
-  guide.say(`A <b>rack</b> is the standing frame that holds a stack of nodes — here, 8 of them. Fill it by copying that one node up the frame. <em>Press "Stamp a sled" eight times</em> and watch the power readout: each node adds its own ≈7 kW.`);
+  const { svg: svg2, controls: controls2 } = newStage('19', 'Rack elevation — stamping sleds');
+  guide.say(`A <b>rack</b> is the standing frame that holds a stack of nodes, here, 8 of them. Fill it by copying that one node up the frame. <em>Press "Stamp a sled" eight times</em> and watch the power readout: each node adds its own ≈7 kW.`);
 
   const rack = makeRackElevation(svg2, { x: 260, y: 46, w: 170, slots: 8, slotH: 42 });
   const rackLbl = svgEl('text', { x: 345, y: 40, class: 'lbl-strong' });
@@ -116,8 +116,8 @@ export async function step1(){
   await guide.next();
 
   /* ===================== BEAT 4 — THE TEST: node wiring, n(n-1)/2 ===================== */
-  const { svg: svg3, controls: controls3 } = newStage('18', 'All-to-all GPU wiring');
-  guide.say(`Back to one sled. Inside a node the GPUs are wired <b>all-to-all</b>: every GPU has a direct link to every other one, so no message needs a middleman. Here that's shown with 4 GPUs instead of 8. Your job: wire every pair, and count the links it takes. <em>Click one GPU, then another, to draw a link between them.</em>`);
+  const { svg: svg3, controls: controls3 } = newStage('19', 'All-to-all GPU wiring');
+  guide.say(`Inside a node the GPUs are wired <b>all-to-all</b>, so no message needs a middleman. Shown here with 4 instead of 8. <b>Your goal: wire every pair, and count the links it takes.</b>`);
 
   const board = makeTopoBoard(svg3);
   const positions = [[280, 150], [440, 150], [280, 310], [440, 310]];

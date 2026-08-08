@@ -14,7 +14,7 @@ export async function step4(){
   guide.title('STEP 4 / 4 · NANOVOLT ASSEMBLY & TEST', 'Cut, bond <em>& bin</em>');
 
   /* ===================== BEAT 1 — dice the wafer ===================== */
-  guide.say(`You have a wafer full of good dies — but a bare die can't do anything yet. It has to be cut out of the wafer, wired to the outside world, and sealed in a protective shell. That's <b>packaging</b>, the last stretch between sand and a chip you can hold. Three jobs, in order: <b>cut</b>, <b>bond</b>, <b>bin</b>. First, cutting the dies apart — the fab calls it <b>dicing</b>.`);
+  guide.say(`A bare die still can't do anything. It has to be cut free, wired to the outside, and sealed. That's <b>packaging</b>, and it's three jobs: <b>cut</b>, <b>bond</b>, <b>bin</b>. Cutting them apart is called <b>dicing</b>.`);
 
   {
     const { svg } = newStage('12', 'Wafer dicing');
@@ -23,7 +23,7 @@ export async function step4(){
     wafer.scatter(2026071, 10);
     wafer.tile(46, 46);
 
-    guide.say(`A diamond saw sweeps the wafer in a grid, both directions — a fast, precise, deliberately violent cut.`);
+    guide.say(`A diamond saw sweeps the wafer in a grid, both directions, a fast, precise, deliberately violent cut.`);
     await guide.button('Dice the wafer ▸');
 
     const sawH = svgEl('line', { x1: 40, y1: wafer.cy - wafer.r, x2: 400, y2: wafer.cy - wafer.r, stroke: 'var(--red)', 'stroke-width': 2 });
@@ -64,7 +64,7 @@ export async function step4(){
   const { svg: svg2, controls: controls2 } = newStage('12', 'Flip-chip bonding');
   cornerTicks(svg2, 40, 40, 640, 400, 8);
 
-  guide.say(`Now <b>bond</b> one die so it can talk to the outside world. It lands on a <b>substrate</b> — the little circuit board that carries the die and routes its signals out to pins. The substrate is studded with tiny <b>solder bumps</b>: metal balls that melt to join each pad on the die to a matching contact below. The method is called <b>flip-chip</b>: the die is flipped face-down so every one of its pads meets a bump in a single press — no wires strung by hand.`);
+  guide.say(`Now <b>bond</b> it. The die lands on a <b>substrate</b>, the little board that routes its signals out to pins, studded with <b>solder bumps</b> that melt to join each pad. The die goes face-down so every pad meets a bump in one press. That's <b>flip-chip</b>.`);
 
   const dieW = 90, dieH = 90;
   const dieTile = { g: svgEl('g', { class: 'tile', 'aria-label': 'die' }), value: 'DIE', w: dieW, h: dieH, home: { x: 90, y: 300 }, tx: 0, ty: 0, slot: null };
@@ -111,7 +111,7 @@ export async function step4(){
     return true;
   });
 
-  guide.say(`Bonded. Last piece of the package: a metal lid called the <b>heat spreader</b> — it seals the die in and carries its heat up and out to a cooler. Drop it on.`);
+  guide.say(`Bonded. Last piece of the package: a metal lid called the <b>heat spreader</b>, it seals the die in and carries its heat up and out to a cooler. Drop it on.`);
   await guide.button('Drop the lid ▸');
 
   const lid = svgEl('rect', { x: slotX - 10, y: 30, width: slotW + 20, height: slotH + 20, rx: 6, fill: 'var(--paper-high)', stroke: 'var(--ink)', 'stroke-width': 1.6 });
@@ -123,14 +123,14 @@ export async function step4(){
   await sleep(600);
   SFX.success();
 
-  guide.aha(`Sealed. What was sand a moment ago is now a <b>packaged chip</b> — legs bonded, lid on, ready for the one test that decides its price.`);
+  guide.aha(`Sealed. What was sand a moment ago is now a <b>packaged chip</b>, legs bonded, lid on, ready for the one test that decides its price.`);
   await guide.next();
 
   /* ===================== BEAT 3 — the bin ===================== */
   const { svg: svg3, controls: controls3 } = newStage('12', 'Speed binning');
   cornerTicks(svg3, 40, 40, 640, 400, 8);
 
-  guide.say(`Last job: <b>bin</b>. Every chip off the line — same design, same wafer even — comes out a little different, because tiny manufacturing variations make some switch faster than others. So each chip runs a speed test and gets sorted into a <b>bin</b> (a quality grade that sets its price): <b>FAST</b>, <b>TYPICAL</b>, or <b>SLOW-but-alive</b>. Your job: grade them. <em>Click a chip, then click its bin.</em>`);
+  guide.say(`Last job: <b>bin</b>. Same design, same wafer, but tiny variations make some chips switch faster than others. Each one runs a speed test and gets a grade that sets its price. <b>Your goal: grade them.</b> <em>Click a chip, then its bin.</em>`);
 
   const READOUTS = [4.9, 4.2, 4.6, 3.1, 2.6, 3.8];
   function binFor(v){ return v >= 4.5 ? 'FAST' : v >= 3.0 ? 'TYPICAL' : 'SLOW'; }
@@ -245,7 +245,7 @@ export async function step4(){
     return chips.map(t => 1);
   });
 
-  guide.aha(`Same wafer, same design — <b>three price tags</b>. The fast ones go to gamers and traders paying a premium for every clock cycle; the slow-but-alive ones still run a cash register just fine. Binning is why "the same" chip can cost $200 or $600.`,
+  guide.aha(`Same wafer, same design, <b>three price tags</b>. The fast ones go to buyers paying a premium for every clock cycle. The slow ones still run a cash register fine. That's why "the same" chip costs $200 or $600.`,
     `Nothing on that wafer gets wasted — the accountants love this step more than any other in the fab.`);
   await guide.next();
 }

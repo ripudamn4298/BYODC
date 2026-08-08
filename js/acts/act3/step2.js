@@ -17,14 +17,14 @@ const TRAY_ORDER = ['DEVELOP', 'COAT', 'DOPE', 'EXPOSE', 'ETCH'];
 export async function step2(){
   guide.title('STEP 2 / 4 · NANOVOLT FAB 3', 'Print <em>with light</em>');
 
-  guide.say(`You can't place a billion transistors by hand — even a lifetime of tweezers wouldn't finish one wafer. So a fab doesn't place them. It <b>photographs</b> them into place, all at once, layer after layer.`);
+  guide.say(`You can't place a billion transistors by hand, even a lifetime of tweezers wouldn't finish one wafer. So a fab doesn't place them. It <b>photographs</b> them into place, all at once, layer after layer.`);
   await guide.next();
 
   /* ---------- interaction 1: order the process ---------- */
   const { svg, controls } = newStage('10', 'Photolithography process order');
   cornerTicks(svg, 40, 40, 640, 200, 8);
 
-  guide.say(`That printing process is called <b>photolithography</b> — literally "drawing with light." Every layer of the chip is built by the same five steps, and they only work in one order. <b>Your job: figure out that order.</b> Here are the five, scrambled in the tray below — each with what it does: <b>Coat</b> (spread a light-sensitive film over the wafer), <b>Expose</b> (shine light through a patterned mask onto the film), <b>Develop</b> (wash away the film the light changed), <b>Etch</b> (cut into the bare silicon that's now uncovered), <b>Dope</b> (implant atoms through the openings — the doping you did in Act 1). <em>Drag them left-to-right into the order they actually run</em> — think about what has to happen before what.`);
+  guide.say(`That process is <b>photolithography</b>, drawing with light. Five steps build every layer, and they only work in one order. <b>Your goal: find that order.</b> <b>Coat</b> spreads a light-sensitive film, <b>Expose</b> shines light through a mask, <b>Develop</b> washes away what the light changed, <b>Etch</b> cuts the bare silicon, <b>Dope</b> implants atoms through the openings.`);
 
   const KINDS = [
     { kind: 'COAT', cap: 'photoresist' },
@@ -61,7 +61,7 @@ export async function step2(){
   const placer = makePlacer({
     svg, tiles, slots,
     validate: v => v.every((val, i) => val === order[i]),
-    onWrong: () => guide.note(`Sunscreen goes on before the sun — <b>coat</b> comes first, then <b>expose</b>. Work through the loop in order: coat → expose → develop → etch → dope.`),
+    onWrong: () => guide.note(`Sunscreen goes on before the sun, <b>coat</b> comes first, then <b>expose</b>. Work through the loop in order: coat → expose → develop → etch → dope.`),
     onPlace: () => {
       slots.forEach(s => { if (s.value) s.capLbl.textContent = KINDS.find(k => k.kind === s.value)?.cap.toUpperCase() || ''; });
     },
@@ -80,14 +80,14 @@ export async function step2(){
     return true;
   });
 
-  guide.say(`<b>Coat</b> the wafer in light-sensitive resist. <b>Expose</b> it through a mask patterned with the layer's design — UV hardens or softens the resist wherever light lands. <b>Develop</b> washes away the part the light changed. <b>Etch</b> cuts the newly bare silicon. <b>Dope</b> implants ions through the openings. Then the resist strips off and the whole loop repeats for the <em>next</em> layer, dozens of times, each one thinner than the last.`);
+  guide.say(`Coat, expose, develop, etch, dope. Then the resist strips off and the loop repeats for the next layer, dozens of times over.`);
   await guide.next();
 
   /* ---------- interaction 2: align the mask ---------- */
   const { svg: svg2, controls: controls2 } = newStage('10', 'Mask alignment');
   cornerTicks(svg2, 40, 40, 640, 400, 8);
 
-  guide.say(`Layer two has to land <em>exactly</em> on layer one — off by even a few nanometres and the transistor never connects. Nudge the new mask (dashed cobalt) until its five vias sit on the fixed targets (solid ink).`);
+  guide.say(`Layer two has to land exactly on layer one. A few nanometres out and the transistor never connects. <b>Your goal: nudge the dashed mask until its five vias sit on the targets.</b>`);
 
   const align = makeMaskAlign(svg2, { cx: 262, cy: 232, tol: 4 });
 
@@ -111,7 +111,7 @@ export async function step2(){
   nudgeBtn('◀ left', -3, 0);
   nudgeBtn('▶ right', 3, 0);
 
-  guide.say(`The light doing this is <b>13.5 nanometres</b> — EUV, struck from droplets of exploded tin <b>50,000 times a second</b>. One exposure prints <em>every die on the wafer</em>, all at once.`);
+  guide.say(`The light doing this is <b>13.5 nanometres</b>, EUV, struck from droplets of exploded tin <b>50,000 times a second</b>. One exposure prints <em>every die on the wafer</em>, all at once.`);
 
   await flow.ask(async replay => {
     if (replay !== undefined){ align.set(0, 0); align.lock(); return replay; }
@@ -124,7 +124,7 @@ export async function step2(){
     return true;
   });
 
-  guide.aha(`Locked. The vias light up because contact is exact, layer to layer — and you just placed <b>ten billion features</b> in a single flash of light.`,
+  guide.aha(`Locked. The vias light up because contact is exact, layer to layer, and you just placed <b>ten billion features</b> in a single flash of light.`,
     `That's the whole trick of a fab: never place one transistor. Photograph all of them, everywhere, at once.`);
   await guide.next();
 }
