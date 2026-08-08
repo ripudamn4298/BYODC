@@ -1,7 +1,22 @@
 # DESIGN MAKEOVER — micro-learning
 
-From Ripu's Act 4 playtest, 2026-08-08. Pilot on Act 4, then apply to every act.
-Once approved and built, the contract in §2 goes into DESIGN.md as §6d and binds all copy.
+From Ripu's Act 4 playtest, 2026-08-08. Act 4 was the pilot and is built. Once approved,
+the contract in §2 goes into DESIGN.md as §6d and binds all copy.
+
+**§2 is the course-wide contract and §4 is the engine every act runs on. Both are shared.**
+The rest of this file is Act 4's own plan, kept as the worked example. Each remaining act
+has its own plan in the same shape:
+
+| act | diagnosis | plan |
+|---|---|---|
+| 1 · The Physics of a Switch | `ACT1_WALKTHROUGH.md` | `ACT1_MAKEOVER.md` |
+| 2 · Logic, Math & Memory | `ACT2_WALKTHROUGH.md` | `ACT2_MAKEOVER.md` |
+| 3 · From Cell to Chip | `ACT3_WALKTHROUGH.md` | `ACT3_MAKEOVER.md` |
+| 4 · The GPU | `ACT4_WALKTHROUGH.md` | this file (built) |
+| 5 · The Data Centre | `ACT5_WALKTHROUGH.md` | `ACT5_MAKEOVER.md` |
+
+Acts 1, 3 and 5 each gain a step, so stage numerals move course-wide. No act renumbers
+itself; one pass runs last, per `RENUMBERING.md`.
 
 ## 1. What the playtest found
 
