@@ -16,24 +16,37 @@ rsync -a /Users/ripu/Documents/BYODC/css/ <SCRATCH>/byodc/css/
 ```
 
 Add an entry to `youtube_assets_design/.claude/launch.json` pointing at `<SCRATCH>/byodc`
-on a free port, then `preview_start` it by name.
+on a free port, then `preview_start` it by name. There is a cap of five preview servers; if
+`preview_start` refuses because siblings hold them all, run the launch entry's command
+yourself with Bash and attach the browser pane to the URL instead.
 
 ## 2. Open the game and install the shim
+
+Drive the shim from a **Web Worker**, not `setTimeout`. After a tab has been hidden for a
+few minutes Chrome's intensive wake-up throttling clamps main-thread timers to roughly one
+per minute, so a `setTimeout` shim dies partway through a session: cards stick at opacity 0
+and every probe times out, which looks exactly like a broken step. Worker timers are not
+throttled that way.
 
 ```js
 (async () => {
   if (!window.__rafShim){
     window.__rafShim = true;
-    let id = 1; const map = new Map();
-    window.requestAnimationFrame = cb => { const i = id++; map.set(i, setTimeout(()=>cb(performance.now()), 16)); return i; };
-    window.cancelAnimationFrame = i => { clearTimeout(map.get(i)); map.delete(i); };
-    // gsap grabs the real rAF at import time, before this shim exists, so anything it
-    // drives (makeMuxRig.select, makeSystolic, the Act 3 and Act 5 loops) stays frozen
-    // and the step never advances past it. Drive gsap's ticker by hand as well.
-    if (window.gsap){
-      window.gsap.ticker.lagSmoothing(0);
-      setInterval(() => window.gsap.ticker.tick(), 16);
-    }
+    const q = new Map(); let id = 1;
+    const w = new Worker(URL.createObjectURL(
+      new Blob(['setInterval(()=>postMessage(0),12)'], { type: 'text/javascript' })));
+    w.onmessage = () => {
+      const now = performance.now();
+      const due = [...q.values()]; q.clear();
+      due.forEach(cb => { try { cb(now); } catch (e) { console.error(e); } });
+      // gsap grabbed the real rAF at import time, before this shim existed, so anything
+      // it drives (makeMuxRig.select, makeSystolic, the Act 3 and Act 5 loops) stays
+      // frozen and the step never advances past it. Tick it from the same pulse.
+      if (window.gsap) window.gsap.ticker.tick();
+    };
+    window.requestAnimationFrame = cb => { const i = id++; q.set(i, cb); return i; };
+    window.cancelAnimationFrame = i => q.delete(i);
+    if (window.gsap) window.gsap.ticker.lagSmoothing(0);
   }
   const s = document.createElement('style');
   s.textContent = '.focus-scrim{animation:none !important}';   // paused first keyframe in a hidden tab

@@ -356,7 +356,9 @@ One pass, one commit, after every step has landed.
 
 **Cleanup and open questions**
 
-- [ ] `makeRoofline` in `js/engine/lanes.js` is now uncalled. Delete or keep.
+- [ ] `makeRoofline` in `js/engine/lanes.js` is now uncalled (grep-confirmed), and with it
+      the `.beam-pivot` / `.beam-bar` / `.beam-cord` / `.beam-pan` / `.beam` / `.starving`
+      rules in `css/game.css`. Delete or keep, but decide together.
 - [ ] **Decision for Ripu:** the "MAXIMISE COMPUTE PER UNIT OF COMMUNICATION" motto stamp
       (`makeMotto`) was the first of three planned appearances of that leitmotif and has
       dropped out of the rewritten act, because card 7 of the weights step now makes the
