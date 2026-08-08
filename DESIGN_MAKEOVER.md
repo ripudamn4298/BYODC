@@ -367,6 +367,15 @@ One pass, one commit, after every step has landed.
       siblings by opacity instead of raising, which needs no re-parenting at all.
 - [ ] Never measure geometry while a CSS transition is running (see `VERIFY_HARNESS.md`
       §4a). Wait it out and clear it first.
+- [ ] `.pop-in` and any other scaling keyframe needs `transform-box: fill-box`. Without it
+      the scale is about the SVG origin, so a box measured mid-keyframe lands off-stage.
+      Every step currently strips the class by hand to work around this.
+- [ ] **Engine determinism holes, pre-existing.** `field.spawn` uses `rand()`, `Field.tick`
+      uses `Math.random`, and `lattice.js` `ensureHopper` uses `Math.random` plus a bare
+      `setTimeout`. Carrier *positions* therefore differ between a live run and a replay.
+      Counts, types and every recorded end state still match, so Back and Restart are
+      sound, but this violates the determinism rule the steps are held to and should be
+      seeded or driven off `Anim.tween`.
 - [ ] Re-verify steps 1 to 6 after those three land.
 
 **Still open after the registry pass (2026-08-08)**

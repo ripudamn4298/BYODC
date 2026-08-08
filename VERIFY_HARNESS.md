@@ -97,6 +97,12 @@ mid-animation state and think something is broken.
 5. **A clean live run,** start to finish, with no console errors.
 6. **The other acts.** `__byodcStartAct(1|2|3|5)` must still render.
 
+## 3b. `flow.start` consumes the array you hand it
+
+`flow.start(i, queue)` shifts entries off `queue` as it replays them, so the array you
+passed comes back empty. Pass a copy (`Q.slice(0, n)`) or your second call replays nothing
+and you will think the step is broken.
+
 ## 4a. Measuring geometry mid-transition
 
 In the backgrounded tab a CSS transition does not advance until something forces a paint,
@@ -107,6 +113,20 @@ in a different place live than on replay.
 This one is worth fixing in the source rather than working around: wait out the transition
 and clear it before you measure anything. The bug it hides is real even in a live tab,
 where the ring would simply be measured a few frames too early.
+
+## 4a-2. Never focus a node that is moving or mid-keyframe
+
+`stage.focus` measures its target once and draws the ring and label where it was at that
+instant. Two ways that bites, both found building Act 1 step 1:
+
+- **A CSS keyframe that scales**, such as `.pop-in`, has no `transform-box`, so it scales
+  about the SVG origin rather than the element. A box measured while it runs lands hundreds
+  of user units away, which put a label in the corner of the stage. Strip the class, or
+  fade the node in with `Anim.tween` instead, before focusing it.
+- **A node driven by the shared ticker** (a drifting carrier, a hopping vacancy) walks out
+  from under its own label within a second. Hold it still for the card and restore it
+  afterwards: remove its ticker with `Anim.remove(...)`, or take it out of the loop's list
+  and put it back when the card is done.
 
 ## 4b. Two engine constraints you will hit
 
