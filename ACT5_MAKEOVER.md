@@ -15,10 +15,11 @@ different lesson than the one that precedes it.
 2. **The rack elevation is drawn flat.** A rack is a deep box with cabling front and back,
    and an elevation is a drafting convention the player has no reason to know. The landing
    frames already hold a hand-drawn 1U server that can be reused rather than generated.
-3. **The globe finale depends on a landing that no longer exists.** The closing line says
+3. **The globe finale points at a landing that no longer exists.** The closing line says
    "this is the same globe you saw on the very first screen", but the landing is the
-   hand-drawn frame scrub now, and the dot globe only survives in git history. The callback
-   currently lands on nothing.
+   hand-drawn frame scrub now, and the dot globe only survives in git history.
+   **Decided: cut the line.** The globe stays as the finale's stage, but nothing in the
+   copy claims the player has seen it before. The landing is not changing.
 4. **The cost jump wants a beat of its own.** $2.43M to $1.10B in four steps, with $1B of
    it in the final step. Right now the number just appears.
 5. Long paragraphs beside unlabelled diagrams, as everywhere pre-makeover.
@@ -117,10 +118,10 @@ Preface: "Everything you have built comes together on one plot of land."
    site, so the number reads as an accumulation rather than an announcement.
 3. The site choice, unchanged: power, climate for cooling, distance to the fibre backbone.
 4. Zoom out to the globe.
-5. **Fix the callback.** The line "the same globe you saw on the very first screen" is no
-   longer true. Either restore a globe beat to the landing, or rewrite the line to stand on
-   its own: every amber dot is a data centre, every blue thread a cable, and one of them is
-   now yours. Decide this before the step is written, because the copy depends on it.
+5. **The globe is introduced fresh, with no callback.** The old line, "this is the same
+   globe you saw on the very first screen", is cut: the landing no longer shows one. Say
+   what is on screen instead. Every amber dot is a data centre, every blue thread a cable
+   carrying the internet between them, and one of those dots is now yours.
 6. Closing aha, unchanged in substance: somewhere in that hall is a chip, in that chip a
    transistor, and in that transistor an atom you placed by hand in Act 1.
 
@@ -148,9 +149,8 @@ Ripu reviews the rendered cards, not the code.
 
 ## 6. Build order
 
-1. Settle the globe question first, because step 5's copy depends on it.
-2. One agent per step, five agents, each owning one file, none touching the registry.
-3. Registry pass afterwards: the 5-entry ACT5 array, the cost split, premises and CTAs, and
+1. One agent per step, five agents, each owning one file, none touching the registry.
+2. Registry pass afterwards: the 5-entry ACT5 array, the cost split, premises and CTAs, and
    the course summary, which is the last screen of the whole course.
-4. **Do not renumber stage numerals in this pass.** One global renumbering pass runs last,
+3. **Do not renumber stage numerals in this pass.** One global renumbering pass runs last,
    once every act's final step count is known. See `RENUMBERING.md`.

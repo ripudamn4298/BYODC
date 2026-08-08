@@ -30,11 +30,28 @@ than restructuring. Resist the urge to split anything just because the other act
 NAND, full adder, ripple carry, SR latch, register and datapath still get taught, each as a
 labelled reveal at the end of its beat.
 
-**Vocabulary:** "tick" and "tick the clock" become "cycle", defined once on first use with
-the clock highlighted, in the same words Act 4 uses: one cycle is one beat, every part moves
-once, then waits.
-
 **Costs are unchanged.** No step splits, so the ladder is untouched.
+
+## 2b. Terminology shared with Act 4 (binding)
+
+Act 4 is already ported and calls back to this act **by name** four separate times. Those
+callbacks are broken unless the words match, so this is not a style preference.
+
+| here | must read | because Act 4 says |
+|---|---|---|
+| tick, tick the clock | **cycle** | "one cycle is one beat: every part moves once, then waits" (act 4 step 1, where it is defined on a clock) |
+| the register + the adder + the clock loop | **your Act 2 machine** | act 4 step 1 opens on this exact drawing: "a register holds a number, an adder adds to it, and the answer goes back to the register" |
+| the one-column circuit | **full adder** | act 4 step 2: "the full adder from Act 2. Three 1s go in and two come out, so chip designers call it a 3-into-2 compressor" |
+| the four-bit adder | **ripple adder** | act 4 step 2 hands its last two rows to "the ripple adder you built in Act 2" |
+| a place to park a number | **register** | act 4 step 3 builds a register file out of eight of them |
+
+Two consequences for the writing:
+
+- **Define "cycle" here, not in Act 4.** Act 2 step 4 is the first clock in the course, so
+  it owns the definition. Act 4 currently defines it too, because it shipped first; once
+  this act lands, Act 4 step 1's clock card can point back instead of re-defining.
+- **Name the full adder plainly when it is built**, and say the three-in-two-out shape out
+  loud, because Act 4's compression game depends on the player recognising it.
 
 ## 3. Step scripts
 
@@ -73,15 +90,17 @@ sum beat is the strongest thing in the act. Port it, do not redesign it.**
 3. The paper sum, 5 + 3, stepped through one column at a time. One card per column.
 4. Payoff card: every column did the same job. Add the two digits, add anything carried in,
    write one digit, pass any spill left.
-5. Define the full adder on its own card: three inputs, A and B and the carry in; two
-   outputs, the sum digit and the carry out.
+5. Define the full adder on its own card, **by that name** (§2b): three inputs, A and B and
+   the carry in; two outputs, the sum digit and the carry out. Say the shape out loud,
+   three in and two out, because Act 4's compression game depends on the player recognising
+   it later.
 6. **The two questions get one card each**, because they are the whole design: the sum
    digit is 1 when the digits differ, which is XOR; the carry is about whether both were 1,
    which is AND.
 7. Place the five tiles, with the caption under each box saying which question it answers.
 8. Find a combination where the sum overflows one column.
 9. "Box it, stamp it, repeat." The four-tile stamp, watched, with each carry-out wired into
-   the next carry-in.
+   the next carry-in. Name the result a **ripple adder** (§2b).
 10. Compute 5 + 3 on the four-bit adder and watch the carry travel right to left.
 11. Break it: find a sum that needs the sixteens lamp. Name it the carry flag.
 12. Aha: every addition a computer does is this same ripple, wider and faster.
@@ -115,9 +134,9 @@ them into a loop and you have a machine."
 2. Drag REGISTER and ADDER into the loop. The lone NAND stays in the tray as the decoy.
 3. "The register's output feeds the adder; the adder's output feeds straight back in. One
    loop, closed."
-4. **Define the cycle here, once, with the clock highlighted:** one cycle is one beat, the
-   register accepts a new value, and nothing moves in between. This is the definition Act 4
-   then reuses.
+4. **This act owns the definition of a cycle (see §2b).** Define it here, once, with the
+   clock highlighted: one cycle is one beat, every part moves once, then waits. The word
+   "tick" does not appear anywhere in this act.
 5. "Without that rule the adder's output would pour back into its own input." Say why the
    clock exists, not just that it does.
 6. The three phases, one card: fetch the number out, compute the sum, store it back.
