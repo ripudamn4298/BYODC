@@ -395,6 +395,12 @@ One pass, one commit, after every step has landed.
 
 **Cleanup and open questions**
 
+- [ ] **Amber means two things.** DESIGN.md §4 reserves amber for cost, heat and power, but
+      `css/game.css` already uses it for "unwired / pending" in `.pin.free` and
+      `.wire.sig.preview`, and the ported steps reuse that vocabulary rather than invent a
+      colour. Pre-existing, course-wide. Either carve out the pending meaning in §4 or move
+      pending to a different treatment.
+
 - [ ] `makeRoofline` in `js/engine/lanes.js` is now uncalled (grep-confirmed), and with it
       the `.beam-pivot` / `.beam-bar` / `.beam-cord` / `.beam-pan` / `.beam` / `.starving`
       rules in `css/game.css`. Delete or keep, but decide together.
