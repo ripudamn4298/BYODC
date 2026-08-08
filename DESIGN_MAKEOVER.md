@@ -395,11 +395,14 @@ One pass, one commit, after every step has landed.
 
 **Cleanup and open questions**
 
-- [ ] **Amber means two things.** DESIGN.md §4 reserves amber for cost, heat and power, but
-      `css/game.css` already uses it for "unwired / pending" in `.pin.free` and
-      `.wire.sig.preview`, and the ported steps reuse that vocabulary rather than invent a
-      colour. Pre-existing, course-wide. Either carve out the pending meaning in §4 or move
-      pending to a different treatment.
+- [ ] **The semantic palette has grown second meanings, and §4 does not record them.**
+      Amber is cost, heat and power in §4, but `css/game.css` has long used it for
+      "unwired / pending" (`.pin.free`, `.wire.sig.preview`), and the old Act 2 step 4 used
+      it for a dropped overflow bit. Red is holes and P-type in §4, but Act 3 has always
+      used it for a dead die, so red already reads as "fault" too. The ported steps pick
+      whichever existing convention fits rather than inventing a colour, which is right,
+      but §4 should be amended to name all three meanings, or the extra ones given a
+      different treatment. This is a one-sitting decision that touches every act.
 
 - [ ] `makeRoofline` in `js/engine/lanes.js` is now uncalled (grep-confirmed), and with it
       the `.beam-pivot` / `.beam-bar` / `.beam-cord` / `.beam-pan` / `.beam` / `.starving`

@@ -155,6 +155,15 @@ three things:
   restores back to front, so an out-of-order list asks it to insert before a node that is
   itself still raised. Collect focus targets in document order.
 
+Two more label traps, neither in `focus` itself:
+
+- **`at:'right'` clips a long label off the stage** when the target's bbox already reaches
+  the right edge. `focus` clamps the label's anchor point into the 720-unit box but cannot
+  know how wide the text will be. Put long labels on `top` or `bottom`, and look at the
+  render rather than trusting the call.
+- **A `fill` presentation attribute loses to a class's CSS `fill`.** Recolouring a
+  classed node needs `style.fill`, not `setAttribute('fill', …)`.
+
 **`flow.hintAfter` replaces the current card.** It calls `guide.note`, which in card mode
 writes into the one card slot, so a pending hint can wipe interaction feedback mid-task.
 Cancel the hint on the player's first interaction (`hintAfter` returns a cancel function).
