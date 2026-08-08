@@ -364,7 +364,12 @@ One pass, one commit, after every step has landed.
       current card. Give hints their own non-destructive slot.
 - [ ] `stage.focus` re-parents raised nodes onto the SVG root, so a click listener on an
       ancestor group stops receiving events from a focused child. Dim the non-ancestor
-      siblings by opacity instead of raising, which needs no re-parenting at all.
+      siblings by opacity instead of raising, which needs no re-parenting at all. Two more
+      symptoms of the same root cause, both hit building Act 1: raising a node out of a
+      transformed parent **drops that parent's transform**, flinging it across the stage;
+      and `clearFocus` throws `NotFoundError` when the focus list was not in document
+      order, because it restores back to front and ends up inserting before a node that is
+      itself still raised. Switching to opacity dimming removes all three at once.
 - [ ] Never measure geometry while a CSS transition is running (see `VERIFY_HARNESS.md`
       §4a). Wait it out and clear it first.
 - [ ] `.pop-in` and any other scaling keyframe needs `transform-box: fill-box`. Without it

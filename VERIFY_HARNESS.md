@@ -133,10 +133,19 @@ instant. Two ways that bites, both found building Act 1 step 1:
 Both were found building step 3. Neither is fixed yet; work around them for now and the
 engine pass will address them once every step has landed.
 
-**`stage.focus` re-parents the nodes it raises.** They move onto the SVG root, so a click
-listener sitting on an ancestor group no longer receives events from a focused child. If a
-card needs the player to click something, either put the listener on the element itself or
-run that card with no focus at all.
+**`stage.focus` re-parents the nodes it raises.** They move onto the SVG root, which breaks
+three things:
+
+- A click listener on an ancestor group stops receiving events from a focused child. If a
+  card needs the player to click something, put the listener on the element itself or run
+  that card with no focus at all.
+- A node raised out of a **transformed** parent loses that transform and lands wherever its
+  own coordinates put it, usually a stage corner. Bake the parent's translate into the
+  children before focusing them, and kill any CSS transition on the parent first or
+  clearing its transform animates it back to the origin.
+- `clearFocus` throws `NotFoundError` if the focus list was not in document order. It
+  restores back to front, so an out-of-order list asks it to insert before a node that is
+  itself still raised. Collect focus targets in document order.
 
 **`flow.hintAfter` replaces the current card.** It calls `guide.note`, which in card mode
 writes into the one card slot, so a pending hint can wipe interaction feedback mid-task.
