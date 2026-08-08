@@ -1,217 +1,520 @@
-// ACT 2 · STEP 1 — Build your own logic gate (NAND).
-// CS-correctness per DESIGN.md §5b: NAND is taught as THE universal gate;
-// NOT = NAND with tied inputs; AND = NAND + NOT. Logic levels are cobalt-when-HIGH,
-// never conventional-current chevrons (that's Act 1's language).
-import { svgEl, sleep, waitFor } from '../../engine/util.js';
+// ACT 2 · STEP 1 — "Weigh two inputs at once" (the NAND gate).
+// Ported to the micro-learning contract in DESIGN_MAKEOVER.md §2 / §4: one card at a time
+// (guide.cards), every card focuses and names the one thing it is about, and the step opens
+// on the CMOS inverter the player finished Act 1 with (rule 4) before anything new appears.
+//
+// CS-correctness per DESIGN.md §5b is unchanged: NAND is taught as THE universal gate,
+// NOT = NAND with its inputs tied, AND = NAND + NOT. Signals speak in logic levels
+// (cobalt when HIGH, hairline when LOW), never Act 1's conventional-current chevrons.
+// Colour stays semantic per DESIGN.md §4: blue for a 1 and for the N-type switch, red for
+// the P-type switch whose carriers are holes, amber only for the gate oxide.
+//
+// Layout note: A enters from the left and B from the right, so the four gate wires reach
+// their switches with no crossings at all. That matters here because two cards highlight
+// one input's path while the rest of the stage is dimmed.
+//
+// Determinism: every interaction records the value it left behind (the inverter's input,
+// the A/B pair), so a replay lands on the same state as a live run. No Math.random, no
+// Date.now, no bare setTimeout driving a visual.
+import { svgEl, el, waitFor, sleep } from '../../engine/util.js';
+import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeLamp, makeSeg, makeChip, makePlacer } from '../../engine/components.js';
+import { makeLamp, makeChip, makeSeg, makePlacer } from '../../engine/components.js';
 import { makeGate, sigWire } from '../../engine/gates.js';
 
+/* ---------- geometry, in the stage's 720×480 user units ---------- */
+const RAIL = { top: 42, bot: 372, x1: 196, x2: 548 };
+const SPINE = 370;                 // the column the output hangs off
+const OUT_Y = 182;                 // the output node's rail
+const LAMP = { x: 578, y: OUT_Y };
+
+const PL = { x: 236, y: 84, w: 104, h: 62 };    // left PMOS  (gate on its left edge)
+const PR = { x: 400, y: 84, w: 104, h: 62 };    // right PMOS (gate on its right edge)
+const NT = { x: 318, y: 212, w: 104, h: 58 };   // top NMOS   (gate on its left edge)
+const NB = { x: 318, y: 292, w: 104, h: 58 };   // bottom NMOS(gate on its right edge)
+const INV_P = { x: 318, y: 84, w: 104, h: 62 }; // the Act 1 inverter's PMOS, on the spine
+
+const mid = s => s.y + s.h / 2;
+const ctr = s => s.x + s.w / 2;
+const gateEnd = (s, side) => side === 'left' ? s.x - 14 : s.x + s.w + 14;
+
+const TRAY = [40, 200, 360, 520].map(x => ({ x, y: 396 }));
+const TILE = { w: 140, h: 56 };
+
+/* focus() restores raised nodes back to front, so its list has to be in document order */
+const inOrder = nodes => nodes.filter(Boolean).sort((a, b) =>
+  (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1);
+
+async function fadeIn(nodes, dur = 320){
+  const list = nodes.filter(Boolean);
+  if (!list.length) return;
+  list.forEach(n => { n.style.display = ''; n.style.opacity = '0'; });
+  await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(p); }));
+  list.forEach(n => { n.style.opacity = '1'; });
+}
+async function fadeOut(nodes, dur = 260){
+  const list = nodes.filter(Boolean);
+  if (!list.length) return;
+  await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(1 - p); }));
+  list.forEach(n => { n.style.display = 'none'; });
+}
+
 export async function step1(){
-  const { svg, controls } = newStage('05', 'NAND gate build');
-  guide.title('STEP 1 / 4 · NANOVOLT LOGIC', 'Build your own <em>logic gate</em>');
+  guide.title('STEP 1 / 4 · NANOVOLT LOGIC', 'Weigh <em>two inputs at once</em>');
+  guide.cards();
 
-  guide.say(`Your CMOS inverter from Act 1 has one behaviour: feed it a <b>1</b>, it outputs <b>0</b>; feed it a <b>0</b>, it outputs <b>1</b>. One input, one output. Try it:`);
+  const stage = newStage('05', 'The Act 1 inverter, then four switches wired into a two-input gate');
+  const { svg, controls } = stage;
+  const focusOn = (nodes, opts) => stage.focus(inOrder(Array.isArray(nodes) ? nodes : [nodes]), opts);
 
-  /* ---------- bridge: the inverter, one input, flip it both ways ---------- */
-  const invGate = makeGate(svg, { x: 316, y: 90, kind: 'NOT', label: 'NOT', cap: 'your inverter' });
+  /* ---------- pieces both scenes share: the supply rails and the output ---------- */
+
+  const railsG = svgEl('g');
+  railsG.innerHTML = `
+    <path d="M${RAIL.x1} ${RAIL.top} H${RAIL.x2}" class="wire"/>
+    <text x="${RAIL.x1}" y="${RAIL.top - 11}" class="rail-t">POWER ▲</text>
+    <path d="M${RAIL.x1} ${RAIL.bot} H${RAIL.x2}" class="wire"/>
+    <text x="${RAIL.x1}" y="${RAIL.bot - 8}" class="rail-t">GROUND ▼</text>`;
+  svg.appendChild(railsG);
+
+  const outG = svgEl('g');
+  svg.appendChild(outG);
+  const outWire = sigWire(svg, `M${SPINE} ${OUT_Y} H${LAMP.x - 22}`, { layer: outG });
+  outG.appendChild(svgEl('circle', { cx: SPINE, cy: OUT_Y, r: 5, class: 'node-dot' }));
+  const lamp = makeLamp(outG, LAMP.x, LAMP.y, { label: 'OUT' });
+
+  /* ================= SCENE A — the inverter the player already owns ================= */
+
+  const invG = svgEl('g');
+  svg.appendChild(invG);
+  invG.innerHTML = `
+    <path d="M${SPINE} ${RAIL.top} V${INV_P.y}" class="wire"/>
+    <path d="M${SPINE} ${NB.y + NB.h} V${RAIL.bot}" class="wire"/>
+    <rect x="56" y="240" width="48" height="34" rx="9" class="batt-body"/>
+    <text x="80" y="262" class="batt-t" font-size="12">IN</text>
+    ${gatePlate(INV_P, 'left')}
+    ${gatePlate(NB, 'left')}`;
+  const invSpine = sigWire(svg, `M${SPINE} ${INV_P.y + INV_P.h} V${NB.y}`, { layer: invG });
+  const invIn = sigWire(svg,
+    `M104 257 H170 M170 ${mid(INV_P)} V${mid(NB)} M170 ${mid(INV_P)} H${gateEnd(INV_P, 'left')} M170 ${mid(NB)} H${gateEnd(NB, 'left')}`,
+    { layer: invG });
+  invG.appendChild(svgEl('circle', { cx: 170, cy: 257, r: 4, class: 'node-dot' }));
+
+  const invP = device('PMOS', INV_P);
+  const invN = device('NMOS', NB);
+
+  const invChip = makeChip(controls, 'OUT: <b>1</b>');
   const seen = new Set();
-  function setInv(v){
+  let IN = null, cancelInvHint = null;
+  function setInv(v, silent){
+    if (IN === v) return;
+    IN = v;
+    if (cancelInvHint){ cancelInvHint(); cancelInvHint = null; }
+    const out = v === 0 ? 1 : 0;
     invSeg.set(v);
-    invGate.set([v]);
+    invP.bridge.style.opacity = v === 0 ? '1' : '0';
+    invN.bridge.style.opacity = v === 1 ? '1' : '0';
+    invIn.set(!!v);
+    invSpine.set(!!out); outWire.set(!!out);
+    lamp.set(out);
+    invChip.set(`OUT: <b>${out}</b>`);
     seen.add(v);
-    SFX.blip();
+    if (!silent) SFX.blip();
   }
   const invSeg = makeSeg(controls, [
     { id: 'inv-0', label: 'IN = 0', value: 0 },
     { id: 'inv-1', label: 'IN = 1', value: 1 },
   ], v => setInv(v));
+  setInv(0, true);
+  seen.clear();
 
-  guide.say(`<em>Flip the input both ways</em> and watch the output invert.`);
-  await flow.ask(async replay => {
-    if (replay !== undefined){ setInv(0); setInv(1); return replay; }
-    setInv(0);
-    await waitFor(() => seen.has(0) && seen.has(1));
-    return true;
-  });
+  /* ---- CARD 1 — where we are and what this step builds ---- */
 
-  guide.say(`One input only goes so far. To <b>decide</b> anything, you need a gate that weighs <b>two</b> inputs at once. Is the tank full <em>and</em> the pressure right?`);
+  guide.say(`Here is the inverter from the end of Act 1. One input, one output. This step
+    builds a gate that reads two inputs at once.`);
+  focusOn([outG, invG, invP.g, invN.g], { label: 'your act 1 inverter', at: 'bottom', ring: false });
   await guide.next();
 
-  /* ---------- build the NAND from CMOS twins ---------- */
-  const { svg: svg2, controls: controls2 } = newStage('05', 'NAND gate build');
-  guide.say(`<b>Your goal: build a gate that outputs 0 only when A and B are both 1</b>, and 1 the rest of the time. Same twins, two of each. <em>Place the four tiles.</em>`);
+  /* ---- CARD 2 — flip it both ways ---- */
 
-  // every wire terminates on a rail, a slot edge, or a labelled terminal — no dangling ends
-  const sk = svgEl('g');
-  sk.innerHTML = `
-    <line x1="240" y1="56" x2="520" y2="56" class="wire"/>
-    <text x="240" y="42" class="rail-t">POWER ▲</text>
-    <line x1="240" y1="404" x2="520" y2="404" class="wire"/>
-    <text x="240" y="396" class="rail-t">GROUND ▼</text>
-    <path d="M300 56 V84 M430 56 V84" class="wire"/>
-    <path d="M300 156 V196 M430 156 V196" class="wire"/>
-    <path d="M300 196 H430" class="wire"/>
-    <path d="M365 196 V240" class="wire"/>
-    <path d="M365 304 V312" class="wire"/>
-    <path d="M365 376 V404" class="wire"/>
-    <circle cx="365" cy="196" r="4.5" class="node-dot"/>
-    <text x="74" y="124" class="lbl-strong" text-anchor="end">A</text>
-    <text x="74" y="190" class="lbl-strong" text-anchor="end">B</text>
-    <circle cx="170" cy="120" r="3.5" class="node-dot"/>
-    <circle cx="140" cy="186" r="3.5" class="node-dot"/>`;
-  svg2.appendChild(sk);
+  stage.clearFocus();
+  const t1 = guide.task('Flip the input both ways and watch the output.');
+  await flow.ask(async replay => {
+    if (replay !== undefined){ setInv(replay, true); return replay; }
+    cancelInvHint = flow.hintAfter(14000, `The two buttons under the bench set the input.
+      Press <b>IN = 1</b>, then <b>IN = 0</b>.`);
+    await waitFor(() => seen.has(0) && seen.has(1), { hold: 400 });
+    if (cancelInvHint){ cancelInvHint(); cancelInvHint = null; }
+    return IN;
+  });
+  t1.done();
 
-  const outWire = sigWire(svg2, 'M365 196 H586');
-  const lamp = makeLamp(svg2, 600, 196, { label: 'OUT' });
-  // A feeds the left PMOS gate + the top NMOS gate; B the right PMOS + bottom NMOS
-  const aWire = sigWire(svg2, 'M80 120 H250 M170 120 V272 H315');
-  const bWire = sigWire(svg2, 'M80 186 H140 M140 186 V344 H315 M140 186 H360 V120 H380');
+  /* ---- CARD 3 — the aim ---- */
 
-  const SLOTS = [
-    { x: 250, y: 84, w: 100, h: 72, correct: 'PMOS' },
-    { x: 380, y: 84, w: 100, h: 72, correct: 'PMOS' },
-    { x: 315, y: 240, w: 100, h: 64, correct: 'NMOS' },
-    { x: 315, y: 312, w: 100, h: 64, correct: 'NMOS' },
-  ];
-  const slots = SLOTS.map(s => {
-    const rect = svgEl('rect', { x: s.x, y: s.y, width: s.w, height: s.h, rx: 12, class: 'slot' });
-    const q = svgEl('text', { x: s.x + s.w / 2, y: s.y + s.h / 2 + 9, class: 'slot-q' }); q.textContent = '?';
-    svg2.append(rect, q);
-    return { ...s, rect, q, value: null, tile: null };
+  guide.say(`One input can only invert. To decide anything, a gate has to weigh two inputs
+    at once.`);
+  focusOn(invG.querySelector('rect'), { label: 'one input', at: 'bottom' });
+  await guide.next();
+
+  /* ================= the twins multiply: one inverter becomes four switches ========= */
+
+  stage.clearFocus();
+  await fadeOut([invG]);
+  controls.innerHTML = '';
+
+  const tiles = [mosTile('PMOS'), mosTile('PMOS'), mosTile('NMOS'), mosTile('NMOS')];
+  tiles.forEach((t, i) => {
+    t.home = TRAY[i];
+    t.g.style.display = 'none';
+    t.g.style.transform = `translate(${t.home.x}px,${t.home.y}px)`;
+    t.tx = t.home.x; t.ty = t.home.y;
   });
 
-  function mosTile(kind, idx){
-    const w = 140, h = 56, p = kind === 'PMOS';
-    const col = p ? 'var(--red)' : 'var(--blue)';
-    const g = svgEl('g', { class: 'tile', 'data-part': kind.toLowerCase(), 'aria-label': kind + ' switch ' + idx });
-    g.innerHTML = `
-      <rect width="${w}" height="${h}" rx="11" class="tile-bg" fill="var(--paper-high)"/>
-      <rect x="10" y="12" width="7" height="32" rx="2" class="gate-metal"/>
-      <path d="M26 28 H44 M50 28 H68" stroke="${col}" stroke-width="3" stroke-linecap="round" fill="none"/>
-      <text x="82" y="24" class="tile-cap" text-anchor="start" font-size="11" fill="${col}" font-family="var(--font-display)">${kind}</text>
-      <text x="82" y="39" class="tile-cap" text-anchor="start" font-size="8">opens @ IN=${p ? '0' : '1'}</text>`;
-    svg2.appendChild(g);
-    return { g, value: kind, w, h, home: null, tx: 0, ty: 0, slot: null };
-  }
-  const tiles = [mosTile('PMOS', 1), mosTile('PMOS', 2), mosTile('NMOS', 1), mosTile('NMOS', 2)];
-  tiles[0].home = { x: 60, y: 415 }; tiles[1].home = { x: 215, y: 415 };
-  tiles[2].home = { x: 380, y: 415 }; tiles[3].home = { x: 535, y: 415 };
+  // the player's own two switches travel out to the bench, then a copy of each joins them
+  await Promise.all([
+    stage.packInto([invP.g], { ...TRAY[0], ...TILE }, { dur: 560, scale: 0.62 }),
+    stage.packInto([invN.g], { ...TRAY[2], ...TILE }, { dur: 560, scale: 0.62 }),
+  ]);
+  invP.g.remove(); invN.g.remove();
+  await fadeIn([tiles[0].g, tiles[2].g], 260);
+  await fadeIn([tiles[1].g, tiles[3].g], 300);
+
+  /* ---- the two-input skeleton, drawn behind the tray ---- */
+
+  const skelG = svgEl('g');
+  svg.appendChild(skelG);
+  skelG.innerHTML = `
+    <path d="M${ctr(PL)} ${RAIL.top} V${PL.y}" class="wire"/>
+    <path d="M${ctr(PR)} ${RAIL.top} V${PR.y}" class="wire"/>
+    <path d="M${SPINE} ${NB.y + NB.h} V${RAIL.bot}" class="wire"/>
+    ${gatePlate(PL, 'left')}${gatePlate(PR, 'right')}
+    ${gatePlate(NT, 'left')}${gatePlate(NB, 'right')}
+    <rect x="56" y="98" width="48" height="34" rx="9" class="batt-body"/>
+    <text x="80" y="120" class="batt-t" font-size="12">A</text>
+    <rect x="616" y="240" width="48" height="34" rx="9" class="batt-body"/>
+    <text x="640" y="262" class="batt-t" font-size="12">B</text>`;
+  const outWireB = sigWire(svg,
+    `M${ctr(PL)} ${PL.y + PL.h} V${OUT_Y} M${ctr(PR)} ${PR.y + PR.h} V${OUT_Y}
+     M${ctr(PL)} ${OUT_Y} H${SPINE} M${SPINE} ${OUT_Y} V${NT.y}`, { layer: skelG });
+  const linkWire = sigWire(svg, `M${SPINE} ${NT.y + NT.h} V${NB.y}`, { layer: skelG });
+  const aWire = sigWire(svg,
+    `M104 ${mid(PL)} H${gateEnd(PL, 'left')} M170 ${mid(PL)} V${mid(NT)} H${gateEnd(NT, 'left')}`,
+    { layer: skelG });
+  const bWire = sigWire(svg,
+    `M640 240 V${mid(PR)} H${gateEnd(PR, 'right')} M640 274 V${mid(NB)} H${gateEnd(NB, 'right')}`,
+    { layer: skelG });
+  skelG.append(
+    svgEl('circle', { cx: 170, cy: mid(PL), r: 4, class: 'node-dot' }),
+    svgEl('circle', { cx: SPINE, cy: OUT_Y, r: 5, class: 'node-dot' }),
+  );
+
+  const slotsG = svgEl('g');
+  svg.appendChild(slotsG);
+  const slots = [
+    { ...PL, correct: 'PMOS' }, { ...PR, correct: 'PMOS' },
+    { ...NT, correct: 'NMOS' }, { ...NB, correct: 'NMOS' },
+  ].map(s => {
+    const g = svgEl('g');
+    const rect = svgEl('rect', { x: s.x, y: s.y, width: s.w, height: s.h, rx: 12, class: 'slot' });
+    const q = svgEl('text', { x: ctr(s), y: mid(s) + 9, class: 'slot-q' });
+    q.textContent = '?';
+    g.append(rect, q);
+    slotsG.appendChild(g);
+    return { ...s, g, rect, q, value: null, tile: null };
+  });
+
+  skelG.style.display = 'none';
+  slotsG.style.display = 'none';
+  await fadeIn([skelG, slotsG], 340);
+
+  /* ---- CARD 4 — two of each switch ---- */
+
+  guide.say(`Your two switches from Act 1, copied. Two PMOS and two NMOS.`);
+  focusOn(tiles.map(t => t.g), { label: 'two of each', at: 'bottom' });
+  await guide.next();
+
+  /* ---- CARD 5 — name the two inputs ----
+     The two terminals sit on opposite sides of the stage, so their union box is almost the
+     whole bench: no ring, and the label goes in the clear strip under the power rail. */
+
+  guide.say(`Two inputs now. A comes in on the left, B on the right.`);
+  focusOn([...skelG.querySelectorAll('rect.batt-body')],
+    { label: 'inputs a and b', at: 'top', ring: false });
+  await guide.next();
+
+  /* ---- CARD 6 — the goal ---- */
+
+  guide.say(`<b>Your goal: a gate whose output is 0 only when A and B are both 1.</b> Every
+    other pair leaves it at 1.`);
+  focusOn(lamp.g, { label: 'output', at: 'top' });
+  await guide.next();
+
+  /* ---- CARD 7 — why the NMOS go in a chain ---- */
+
+  guide.say(`The output only drops to 0 when both inputs are 1. Two switches in a chain do
+    that: current gets through only if both are on.`);
+  focusOn([slots[2].g, slots[3].g], { label: 'nmos chain to ground', at: 'left' });
+  await guide.next();
+
+  /* ---- CARD 8 — why the PMOS go side by side ---- */
+
+  guide.say(`Either input at 0 has to leave the output at 1. Two switches side by side do
+    that: one open path to power is enough.`);
+  focusOn([slots[0].g, slots[1].g], { label: 'pmos pair to power', at: 'top' });
+  await guide.next();
+
+  /* ---- CARD 9 — place the four switches ----
+     No focus on this card: stage.focus re-parents what it raises, which breaks the
+     placer's pointer handling on anything it lifts. */
+
+  stage.clearFocus();
+  const t2 = guide.task('<b>Your goal: fill all four slots.</b> Drag each tile into the pair where it belongs.');
 
   const placer = makePlacer({
-    svg: svg2, tiles, slots,
+    svg, tiles, slots,
     validate: v => v[0] === 'PMOS' && v[1] === 'PMOS' && v[2] === 'NMOS' && v[3] === 'NMOS',
-    onWrong: () => guide.note(`Work back from the goal. Both inputs must be 1 to pull the output down, so the two NMOS go in a <b>chain</b> to ground. Either input being 0 must hold the output up, so the two PMOS sit <b>side by side</b> on the power rail.`),
+    onWrong: () => guide.note(`Not that arrangement. The chain below the output takes the two
+      NMOS, the pair above it takes the two PMOS. All four tiles are back on the bench.`),
   });
-
   await flow.ask(async replay => {
     if (replay !== undefined){ placer.autoPlace(); return replay; }
     await placer.done;
     return true;
   });
+  t2.done();
 
-  await sleep(450);
-  tiles.forEach(t => t.g.style.opacity = '0');
-  slots.forEach(s => { s.rect.style.opacity = '0'; s.q.style.opacity = '0'; });
-
-  function placedMOS(x0, y0, w, kind, col){
-    const g = svgEl('g', { class: 'pop-in' });
-    g.innerHTML = `
-      <rect x="${x0}" y="${y0}" width="${w}" height="56" rx="10" class="tile-bg" fill="var(--paper-high)"/>
-      <rect x="${x0 - 12}" y="${y0 + 16}" width="8" height="24" rx="2" class="gate-metal"/>
-      <rect x="${x0 + w / 2 - 6}" y="${y0 + 12}" width="12" height="32" rx="4" class="bridge ${col === 'var(--red)' ? 'p' : ''}"/>
-      <text x="${x0 + w / 2}" y="${y0 + 68}" class="tile-cap" font-size="8">${kind}</text>`;
-    svg2.appendChild(g);
-    return { g, bridge: g.querySelector('.bridge') };
-  }
-  const pmosA = placedMOS(250, 84, 100, 'PMOS·A', 'var(--red)');
-  const pmosB = placedMOS(380, 84, 100, 'PMOS·B', 'var(--red)');
-  const nmosA = placedMOS(315, 240, 100, 'NMOS·A', 'var(--blue)');
-  const nmosB = placedMOS(315, 312, 100, 'NMOS·B', 'var(--blue)');
+  await sleep(380);
+  await fadeOut([...tiles.map(t => t.g), slotsG], 240);
+  const pmosA = device('PMOS', PL);
+  const pmosB = device('PMOS', PR);
+  const nmosA = device('NMOS', NT);
+  const nmosB = device('NMOS', NB);
+  const devs = [pmosA, pmosB, nmosA, nmosB];
+  devs.forEach(d => { d.g.style.display = 'none'; });
+  await fadeIn(devs.map(d => d.g), 340);
   if (!flow.instant) SFX.success();
 
-  guide.say(`Wired. <b>A</b> feeds the left PMOS and the top NMOS. <b>B</b> feeds the right PMOS and the bottom NMOS. Controls are live below.`);
-  await guide.next();
+  /* ---- the live bench ---- */
 
-  /* ---------- controls: A, B toggles + OUT chip ---------- */
-  const chipOut = makeChip(controls2, 'OUT: <b>—</b>');
+  const chipOut = makeChip(controls, 'OUT: <b>1</b>');
   let A = null, B = null;
   const visited = new Set();
-  const segA = makeSeg(controls2, [
-    { id: 'a-0', label: 'A = 0', value: 0 },
-    { id: 'a-1', label: 'A = 1', value: 1 },
-  ], v => setAB(v, B ?? 0));
-  const segB = makeSeg(controls2, [
-    { id: 'b-0', label: 'B = 0', value: 0 },
-    { id: 'b-1', label: 'B = 1', value: 1 },
-  ], v => setAB(A ?? 0, v));
+  let cancelHint = null;
 
   function setAB(a, b, silent){
-    const changed = a !== A || b !== B;
+    if (a === A && b === B) return;
     A = a; B = b;
+    const out = (a && b) ? 0 : 1;
     segA.set(a); segB.set(b);
-    const out = !(a && b);
     pmosA.bridge.style.opacity = a === 0 ? '1' : '0';
     nmosA.bridge.style.opacity = a === 1 ? '1' : '0';
     pmosB.bridge.style.opacity = b === 0 ? '1' : '0';
     nmosB.bridge.style.opacity = b === 1 ? '1' : '0';
-    aWire.set(!!a); bWire.set(!!b); outWire.set(out);
-    lamp.set(out ? 1 : 0);
-    chipOut.set(`OUT: <b>${out ? 1 : 0}</b>`);
+    aWire.set(!!a); bWire.set(!!b);
+    linkWire.set(!!(a && !b));            // the node between the NMOS follows the top one
+    outWire.set(!!out); outWireB.set(!!out);
+    lamp.set(out);
+    chipOut.set(`OUT: <b>${out}</b>`);
     visited.add(a * 2 + b);
-    if (changed && !silent) SFX.blip();
-    return out;
+    if (cancelHint){ cancelHint(); cancelHint = null; }
+    if (!silent) SFX.blip();
   }
+  const segA = makeSeg(controls, [
+    { id: 'a-0', label: 'A = 0', value: 0 },
+    { id: 'a-1', label: 'A = 1', value: 1 },
+  ], v => setAB(v, B ?? 0));
+  const segB = makeSeg(controls, [
+    { id: 'b-0', label: 'B = 0', value: 0 },
+    { id: 'b-1', label: 'B = 1', value: 1 },
+  ], v => setAB(A ?? 0, v));
   setAB(0, 0, true);
+  visited.clear();
 
-  guide.say(`<em>Try all four combinations</em> of A and B, watch which single one turns the lamp off.`);
+  /* ---- CARD 10 — where A goes ---- */
+
+  guide.say(`A runs to the left PMOS and to the top NMOS. One input, two switches.`);
+  focusOn([aWire.el, pmosA.g, nmosA.g], { label: 'input a', at: 'left', ring: false });
+  await guide.next();
+
+  /* ---- CARD 11 — where B goes ---- */
+
+  guide.say(`B does the same on the other side: the right PMOS and the bottom NMOS.`);
+  focusOn([bWire.el, pmosB.g, nmosB.g], { label: 'input b', at: 'bottom', ring: false });
+  await guide.next();
+
+  /* ---- CARD 12 — try all four combinations ---- */
+
+  stage.clearFocus();
+  const t3 = guide.task('Try all four combinations of A and B. Watch which one turns the lamp off.');
   await flow.ask(async replay => {
-    if (replay !== undefined){ setAB(1, 1, true); [0, 1, 2, 3].forEach(v => visited.add(v)); return replay; }
-    const cancel = flow.hintAfter(12000, `Four combinations in all: 0-0, 0-1, 1-0, 1-1. Toggle A and B to visit each.`);
-    await waitFor(() => visited.size >= 4);
-    cancel();
-    return true;
+    if (replay !== undefined){
+      [0, 1, 2, 3].forEach(v => visited.add(v));
+      setAB(replay >> 1, replay & 1, true);
+      return replay;
+    }
+    cancelHint = flow.hintAfter(15000, `Four combinations in all: 0 and 0, 0 and 1, 1 and 0,
+      1 and 1. Use the A and B buttons under the bench.`);
+    await waitFor(() => visited.size >= 4, { hold: 400 });
+    if (cancelHint){ cancelHint(); cancelHint = null; }
+    return A * 2 + B;
   });
+  t3.done();
 
-  /* ---------- the test ---------- */
-  guide.say(`<b>Your goal: fill in the OUT column.</b> Set A and B on the bench, read the lamp, then click the cell to match. Each click toggles it.`);
-  await guide.truthTable({
+  /* ---- CARD 13 — the truth table ----
+     guide.truthTable and its hints both render through beat(), which in card mode swaps
+     the one card slot: a hint would delete the table the player is filling in. So the
+     instruction is prepended inside the table's own card and note() is pointed at a hint
+     line inside it for as long as the table is live. */
+
+  const ttPromise = guide.truthTable({
     heads: ['A', 'B', 'OUT (LAMP)'],
     rows: [[0, 0], [0, 1], [1, 0], [1, 1]],
     expected: [1, 1, 1, 0],
-    hint: `Set A and B on the stage and watch the lamp, then click each OUT cell to match (click toggles 0 ⇄ 1). Only one row turns the lamp off.`,
+    hint: `Set A and B on the bench and read the lamp, then click that row's cell until it
+      matches. Only one row turns the lamp off.`,
   });
+  const ttEl = document.querySelector('#guide-scroll .card-slot .tt:not(.out)');
+  const origNote = guide.note;
+  if (ttEl){
+    ttEl.insertBefore(el('p', { class: 'guide-p', style: 'margin:0 0 14px' },
+      `<b>Your goal: fill in the OUT column.</b> Set A and B on the bench, read the lamp,
+       then click a cell to match. Each click toggles it.`), ttEl.firstChild);
+    guide.note = html => {
+      let n = ttEl.querySelector('.tt-hint');
+      if (!n){ n = el('p', { class: 'guide-note tt-hint', style: 'margin:14px 0 0' }); ttEl.appendChild(n); }
+      n.innerHTML = html;
+      return n;
+    };
+  }
+  try { await ttPromise; } finally { guide.note = origNote; }
 
-  /* ---------- the universality aha ---------- */
-  guide.aha(
-    `This shape is <b>NAND</b>, short for "not both". Tie its inputs together and it becomes <b>NOT</b>. Send that through another NOT and you have <b>AND</b>. Every other gate in this act folds out of this one tile.`,
-    `One gate. Every decision a computer has ever made.`
-  );
+  /* ================= the four switches become one tile ============================= */
+
+  stage.clearFocus();
+  controls.innerHTML = '';
+  await fadeOut([skelG, outG, railsG], 300);
+  const TILE_BOX = { x: 312, y: 96, w: 96, h: 60 };
+  await stage.packInto(devs.map(d => d.g), TILE_BOX, { dur: 620 });
+  devs.forEach(d => d.g.remove());
+
+  const nandTile = makeGate(svg, { ...TILE_BOX, kind: 'NAND', label: 'NAND', cap: 'not both' });
+  nandTile.g.style.display = 'none';
+  await fadeIn([nandTile.g], 340);
+
+  /* ---- CARD 14 — the name ---- */
+
+  guide.say(`Four switches, one answer: 0 only when both inputs are 1. The name for that
+    shape is <b>NAND</b>, short for not both.`);
+  focusOn(nandTile.g, { label: 'nand', at: 'bottom' });
   await guide.next();
 
-  /* ---------- static diagram: NOT and AND folded from NAND ---------- */
-  const { svg: svg3 } = newStage('05', 'NAND gate build');
-  guide.say(`Two folds, so you can see it happen:`);
+  /* ---- CARD 15 — fold one: NOT ---- */
 
-  const notG = makeGate(svg3, { x: 90, y: 210, kind: 'NAND', ins: 2, label: 'NAND', cap: 'NOT = NAND folded' });
-  const tieWire = svgEl('path', { d: `M60 224 V${210 + 56 * (2 / 3)} H90`, class: 'wire sig' });
-  svg3.insertBefore(tieWire, notG.g);
-  const tieIn = svgEl('path', { d: `M60 224 V${210 + 56 / 3} H90`, class: 'wire sig' });
-  svg3.insertBefore(tieIn, notG.g);
-  notG.set([1, 1]);
-  tieWire.classList.add('sig-hi'); tieIn.classList.add('sig-hi');
+  stage.clearFocus();
+  const notG = svgEl('g');
+  svg.appendChild(notG);
+  const notIn = sigWire(svg, `M226 126 H262 M262 116 V136 M262 116 H312 M262 136 H312`, { layer: notG });
+  const notOut = sigWire(svg, `M408 126 H448`, { layer: notG });
+  notG.appendChild(svgEl('circle', { cx: 262, cy: 126, r: 4, class: 'node-dot' }));
+  addText(notG, 214, 130, 'IN', 'lbl-strong', 'end');
+  addText(notG, 456, 130, '0', 'lbl-strong', 'start');
+  addText(notG, 244, 112, '1', 'lbl');
+  notIn.set(true); notOut.set(false);
+  nandTile.set([1, 1]);
+  notG.style.display = 'none';
+  await fadeIn([notG], 300);
 
-  const andNand = makeGate(svg3, { x: 350, y: 170, kind: 'NAND', label: 'NAND', cap: 'A · B' });
-  const andNot = makeGate(svg3, { x: 500, y: 170, kind: 'NAND', ins: 2, label: 'NAND', cap: 'AND = NAND + NOT' });
-  const link1 = svgEl('path', { d: 'M438 198 H470 V184 H500', class: 'wire sig' });
-  const link2 = svgEl('path', { d: 'M438 198 H470 V212 H500', class: 'wire sig' });
-  svg3.insertBefore(link1, andNot.g); svg3.insertBefore(link2, andNot.g);
-  andNand.set([1, 0]);
-  andNot.set([1, 1]);
-  link1.classList.add('sig-hi'); link2.classList.add('sig-hi');
-
+  guide.say(`Tie both inputs to one wire and they are always equal. Feed it 1 and the
+    output is 0. The NAND is now an inverter.`);
+  focusOn([nandTile.g, notG], { label: 'not', at: 'top' });
   await guide.next();
+
+  /* ---- CARD 16 — fold two: AND ---- */
+
+  stage.clearFocus();
+  const andRow = svgEl('g');
+  svg.appendChild(andRow);
+  const andNand = makeGate(svg, { x: 230, y: 300, w: 96, h: 60, kind: 'NAND', label: 'NAND', cap: 'not both' });
+  const andNot = makeGate(svg, { x: 430, y: 300, w: 96, h: 60, kind: 'NAND', label: 'NAND', cap: 'inputs tied' });
+  const andIn = sigWire(svg, `M180 320 H230 M180 340 H230`, { layer: andRow });
+  const andLink = sigWire(svg, `M326 330 H378 M378 320 V340 M378 320 H430 M378 340 H430`, { layer: andRow });
+  const andOut = sigWire(svg, `M526 330 H580`, { layer: andRow });
+  andRow.appendChild(svgEl('circle', { cx: 378, cy: 330, r: 4, class: 'node-dot' }));
+  addText(andRow, 168, 324, 'A', 'lbl-strong', 'end');
+  addText(andRow, 168, 344, 'B', 'lbl-strong', 'end');
+  addText(andRow, 352, 316, '0', 'lbl');
+  addText(andRow, 588, 334, '1', 'lbl-strong', 'start');
+  andIn.set(true); andLink.set(false); andOut.set(true);
+  andNand.set([1, 1]);
+  andNot.set([0, 0]);
+  [andRow, andNand.g, andNot.g].forEach(n => { n.style.display = 'none'; });
+  await fadeIn([andRow, andNand.g, andNot.g], 320);
+
+  guide.say(`Put a NAND in front of that inverter and the 0 flips back to 1. The pair
+    reads 1 only when both inputs are 1, which is <b>AND</b>.`);
+  focusOn([andRow, andNand.g, andNot.g], { label: 'and', at: 'bottom' });
+  await guide.next();
+
+  /* ---- CARD 17 — universality ---- */
+
+  stage.clearFocus();
+  guide.aha(`NOT and AND both came out of the same tile, wired two different ways.`,
+    `Universal means exactly that. Any logic you can describe, built from copies of this one gate.`);
+  await guide.next();
+
+  /* ---------- drawing helpers ---------- */
+
+  function addText(parent, x, y, s, cls, anchor){
+    const t = svgEl('text', { x, y, class: cls });
+    if (anchor) t.setAttribute('text-anchor', anchor);
+    t.textContent = s;
+    parent.appendChild(t);
+    return t;
+  }
+
+  /* the gate stack from Act 1 step 5: metal plate, a sliver of oxide, then the body.
+     It belongs to the wiring rather than the switch, so the input wires terminate on a
+     drawn plate even while the slot is still empty. */
+  function gatePlate(s, side){
+    const y = mid(s) - 14;
+    const mx = side === 'left' ? s.x - 14 : s.x + s.w + 5;
+    const ox = side === 'left' ? s.x - 5 : s.x + s.w + 1;
+    return `<rect x="${mx}" y="${y}" width="9" height="28" rx="2" class="gate-metal"/>
+            <rect x="${ox}" y="${y}" width="4" height="28" class="oxide"/>`;
+  }
+
+  /* a switch sitting in the circuit: body, the two channel stubs, and the bridge that
+     closes across the gap when it conducts. The stubs stay ink, because in this act a blue
+     wire means a logic 1; the switch's own colour lives in the bridge and the caption,
+     blue for the N-type and red for the P-type whose carriers are holes (DESIGN.md §4). */
+  function device(kind, s){
+    const p = kind === 'PMOS', col = p ? 'var(--red)' : 'var(--blue)';
+    const cx = ctr(s), my = mid(s);
+    const g = svgEl('g');
+    g.innerHTML = `
+      <rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="11" class="tile-bg" fill="var(--paper-high)"/>
+      <path d="M${cx} ${s.y} V${my - 14} M${cx} ${my + 14} V${s.y + s.h}" class="wire"/>
+      <rect x="${cx - 6}" y="${my - 14}" width="12" height="28" rx="4" class="bridge ${p ? 'p' : ''}"/>
+      <text x="${s.x + 26}" y="${s.y + s.h + 14}" class="tile-cap" fill="${col}">${kind}</text>`;
+    svg.appendChild(g);
+    return { g, bridge: g.querySelector('.bridge') };
+  }
+
+  /* a switch on the bench, waiting to be placed */
+  function mosTile(kind){
+    const p = kind === 'PMOS', col = p ? 'var(--red)' : 'var(--blue)';
+    const g = svgEl('g', { class: 'tile', 'data-part': kind.toLowerCase(), 'aria-label': kind + ' switch' });
+    g.innerHTML = `
+      <rect width="${TILE.w}" height="${TILE.h}" rx="11" class="tile-bg" fill="var(--paper-high)"/>
+      <rect x="10" y="14" width="8" height="28" rx="2" class="gate-metal"/>
+      <rect x="19" y="14" width="4" height="28" class="oxide"/>
+      <path d="M28 28 H46 M54 28 H72" stroke="${col}" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <text x="76" y="25" class="tile-cap" text-anchor="start" font-size="11" fill="${col}" font-family="var(--font-display)">${kind}</text>
+      <text x="76" y="41" class="tile-cap" text-anchor="start" font-size="7.5" style="letter-spacing:.03em">ON AT IN=${p ? '0' : '1'}</text>`;
+    svg.appendChild(g);
+    return { g, value: kind, w: TILE.w, h: TILE.h, home: null, tx: 0, ty: 0, slot: null };
+  }
 }
