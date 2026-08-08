@@ -102,8 +102,8 @@ test or a payoff number, say what it will be. No mystery.
 |---|---|
 | The marching band | Eight adders at once |
 | The multiply engine | How a chip multiplies |
-| The stationary trick (part 1) | Registers: where the numbers wait |
-| The stationary trick (part 2) | Keep the weights in place |
+| The stationary trick (part 1) | Registers: where numbers are stored |
+| The stationary trick (part 2) | Move the data, not the weights |
 | Feed the beast | Match memory to compute |
 | Assemble the NV-1 | Assemble the GPU |
 
@@ -245,7 +245,7 @@ Same mechanics as today (they tested well), re-carded:
 7. Precision square unchanged. Payoff card: "Halve the bits and both sides of the grid
    halve. The engine gets 4x smaller. That's why AI chips use 8-bit and 4-bit math."
 
-### Step 3 — Registers: where the numbers wait (new step, from old 3a)
+### Step 3 — Registers: where numbers are stored (new step, from old 3a)
 
 Preface card: "Your engine needs numbers delivered every cycle. This step: where they
 wait, and what delivery costs."
@@ -261,7 +261,7 @@ wait, and what delivery costs."
    "Five gates of delivery for every gate of math, paid every cycle. Next step: stop
    paying it."
 
-### Step 4 — Keep the weights in place (from old 3b)
+### Step 4 — Move the data, not the weights (from old 3b)
 
 Preface card: "In AI, one of the two numbers barely changes. We'll stop fetching it."
 
