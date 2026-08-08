@@ -239,13 +239,20 @@ export async function step4(){
   slotG.append(oxSlot[0].rect, oxSlot[0].q);
   oxSlot[0].value = null; oxSlot[0].tile = null;
 
-  const glassTile = makeTile('G', 150, 22, 'glass', '▭', { x: 285, y: 408 });
-  const oxPlacer = makePlacer({ svg, tiles: [glassTile], slots: oxSlot, validate: v => v[0] === 'G' });
+  /* Two tiles, one hole. The decoy is the point: putting metal straight onto the silicon
+     is the mistake this step exists to correct, and it was the one real decision in the
+     old four-tile placer. Keeping one tile per card would have thrown it away. */
+  const glassTile = makeTile('G', 150, 22, 'glass', '▭', { x: 176, y: 410 });
+  const decoyMetal = makeTile('M', 150, 30, 'metal', '▬', { x: 396, y: 404 });
+  const oxPlacer = makePlacer({
+    svg, tiles: [glassTile, decoyMetal], slots: oxSlot, validate: v => v[0] === 'G',
+    onWrong: () => guide.note(`The metal must not touch the silicon. Glass goes down
+      first, and the metal sits on top of it.`),
+  });
 
-  guide.say(`Over the gap goes a thin layer of glass. Nothing crosses it in either
-    direction. Drag it into place.`);
-  stage.focus([glassTile.g, oxSlot[0].rect], { label: 'thin glass', at: 'top', ring: false });
-
+  guide.say(`Two tiles left: a thin sheet of glass and a metal pad. One of them goes
+    straight onto the silicon, over the gap. Drag it in.`);
+  // no focus: this card is a decision, and both tiles have to stay bright and draggable
   await flow.ask(async replay => {
     if (replay !== undefined){ oxPlacer.autoPlace(); return replay; }
     await oxPlacer.done;
@@ -256,7 +263,7 @@ export async function step4(){
   const oxide = dev.appendChild(svgEl('rect', { x: OXIDE.x, y: OXIDE.y, width: OXIDE.w, height: OXIDE.h, class: 'oxide' }));
   stage.clearFocus();
   oxide.style.opacity = '0';
-  await fadeOut([glassTile.g], 200);
+  await fadeOut([glassTile.g, decoyMetal.g], 200);
   oxSlot[0].rect.style.display = 'none'; oxSlot[0].q.style.display = 'none';
   await fadeIn([oxide], 300);
 
@@ -271,8 +278,8 @@ export async function step4(){
   const gateTile = makeTile('M', 150, 30, 'metal', '▬', { x: 285, y: 404 });
   const gtPlacer = makePlacer({ svg, tiles: [gateTile], slots: gtSlot, validate: v => v[0] === 'M' });
 
-  guide.say(`Last, a metal pad on top of the glass. It sits directly over the gap and it
-    never touches the silicon. This pad is the gate.`);
+  guide.say(`Now the metal pad, on top of the glass this time. It sits directly over the
+    gap and never touches the silicon. This pad is the gate.`);
   stage.focus([gateTile.g, gtSlot[0].rect], { label: 'metal gate', at: 'top', ring: false });
 
   await flow.ask(async replay => {
