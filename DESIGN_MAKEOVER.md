@@ -317,6 +317,51 @@ As today, re-carded:
 5. Final card ties back: "These are the lanes from step 1, grinding. Graphics, physics,
    AI: same machine, same move."
 
+## 5b. The registry pass — checklist
+
+Everything the per-step agents were forbidden to touch, collected as they reported it.
+One pass, one commit, after every step has landed.
+
+**The registry (`js/acts/act4/index.js`)**
+
+- [ ] Six-entry `ACT4` array in the new order, with the new titles from §3.
+- [ ] Split the old `systolic` $260,000 into $60,000 (registers) + $200,000 (weights).
+      Every other delta unchanged, so the act still ends at $2.43M.
+- [ ] Rewrite each entry's `premise` and `cta` to point at the step that actually follows.
+      The old `feed` and `systolic` entries describe steps that no longer exist.
+- [ ] Business-card bodies to two plain sentences each, per §3.
+- [ ] `ACT4_SUMMARY` carries the banned voice: "You built the engine of the AI boom",
+      "The NV-1 Tensor taped out clean", "NV-1 Tensor GPU". Rewrite with the humanizer,
+      and rename the line items to match the new step titles.
+
+**Numbering**
+
+- [ ] Stage numerals 13-18 for Act 4; Act 5 shifts to 19-22; course becomes 22 steps.
+- [ ] `js/steps/step1.js` and every ported Act 4 step hardcode their eyebrow. Act 4
+      step 1 still reads `STEP 1 / 5` and must become `1 / 6`. Grep for `STEP \d / \d`
+      across all acts and fix every one.
+- [ ] `progress.js` stores `{act, step}`, so a run saved mid-Act-4 resumes one step off
+      after the split. Acceptable, and the reason renumbering happens in one pass.
+
+**Engine fixes deferred so the agents could verify against stable behaviour**
+
+- [ ] `flow.hintAfter` routes through `guide.note`, which in card mode overwrites the
+      current card. Give hints their own non-destructive slot.
+- [ ] `stage.focus` re-parents raised nodes onto the SVG root, so a click listener on an
+      ancestor group stops receiving events from a focused child. Dim the non-ancestor
+      siblings by opacity instead of raising, which needs no re-parenting at all.
+- [ ] Never measure geometry while a CSS transition is running (see `VERIFY_HARNESS.md`
+      §4a). Wait it out and clear it first.
+- [ ] Re-verify steps 1 to 6 after those three land.
+
+**Cleanup and open questions**
+
+- [ ] `makeRoofline` in `js/engine/lanes.js` is now uncalled. Delete or keep.
+- [ ] **Decision for Ripu:** the "MAXIMISE COMPUTE PER UNIT OF COMMUNICATION" motto stamp
+      (`makeMotto`) was the first of three planned appearances of that leitmotif and has
+      dropped out of the rewritten act, because card 7 of the weights step now makes the
+      same point with counted numbers. Restore it somewhere, or let it go.
+
 ## 6. What does not change
 
 - The flow.ask record-and-replay contract, determinism, Back/Restart.

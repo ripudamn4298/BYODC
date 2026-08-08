@@ -30,7 +30,10 @@ on a free port, then `preview_start` it by name.
     // gsap grabs the real rAF at import time, before this shim exists, so anything it
     // drives (makeMuxRig.select, makeSystolic, the Act 3 and Act 5 loops) stays frozen
     // and the step never advances past it. Drive gsap's ticker by hand as well.
-    if (window.gsap) setInterval(() => window.gsap.ticker.tick(), 16);
+    if (window.gsap){
+      window.gsap.ticker.lagSmoothing(0);
+      setInterval(() => window.gsap.ticker.tick(), 16);
+    }
   }
   const s = document.createElement('style');
   s.textContent = '.focus-scrim{animation:none !important}';   // paused first keyframe in a hidden tab
