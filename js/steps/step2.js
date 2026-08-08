@@ -1,461 +1,388 @@
-// STEP 2 — Build your own transistor (NPN), now with a PN-junction prologue.
-// JOB A: before the NPN, the player presses an N block and a P block together and
-// watches the depletion layer build ITSELF — then tests it as a diode (forward
-// bias breaks the wall, reverse bias widens it). The transistor that follows is
-// two of these walls back-to-back.
+// ACT 1 · STEP 2 — "Where N meets P".
+// The diode half of the old step 2, rebuilt to the micro-learning contract in
+// DESIGN_MAKEOVER.md §2 and the script in ACT1_MAKEOVER.md §3: one card at a time
+// (guide.cards), every card focuses and names the one thing it is about, the two
+// blocks are pressed together by the player, and the barrier hill is a watched
+// morph out of the depletion strip rather than a second diagram.
 //
-// Physics per DESIGN.md §4/§6: collector is physically larger than the emitter;
-// conventional current flows battery+ → COLLECTOR → device → EMITTER → battery−;
-// base current flows INTO the base (down, from a small control source at top);
-// every wire uses CurrentFlow chevrons (conventional current), never PathFlow dots.
-import { svgEl, sleep, waitFor, RM } from '../engine/util.js';
+// Physics per DESIGN.md §4: holes are vacancy rings (makeCarrierGrid type 'P'),
+// the fixed ions are circled dashed charges, colour is semantic (blue electrons
+// and N, red holes and P), and every wire carries conventional-current chevrons,
+// never carrier dots. Forward bias puts + on the P side, so conventional current
+// runs P → N through the junction.
+import { svgEl, sleep, waitFor, clamp } from '../engine/util.js';
+import { Anim } from '../engine/anim.js';
 import { SFX } from '../engine/sfx.js';
 import { guide } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
 import { CurrentFlow } from '../engine/pathflow.js';
-import { makeLamp, makeBattery, makeSlider, makeChip, makePlacer, cornerTicks } from '../engine/components.js';
-import { makeCarrierGrid, makeDepletionBands, hopElectrons, makeBracket, makeBarrierHill, makeOvershootDemo } from '../engine/junction.js';
+import { makeLamp, makeBattery, makeSlider, makeChip, makePlacer } from '../engine/components.js';
+import { makeCarrierGrid, makeDepletionBands, hopElectrons, makeBarrierHill } from '../engine/junction.js';
+
+/* ---- geometry (720 x 480 stage user units) --------------------------------
+   Two 180x160 blocks meeting at x = 310. Carrier columns sit 20, 48, 76 …
+   either side of the seam, so the two nearest columns on each side (the ones
+   that pair up in the hop) both fall inside the 64px depletion band and the
+   third column on each side falls outside it. */
+const SEAM = 310;
+const BY = 170, BH = 160, BW = 180;          // block top / height / width
+const PX = 130;                              // P block left edge
+const DEPL = 64;                             // depletion half-width
+const HILL_BASE = 150, HILL_H = 54, HILL_W = 128;
+const HILL_TOP = HILL_BASE - HILL_H;
+const HX0 = SEAM - HILL_W / 2, HX1 = SEAM + HILL_W / 2;
+const V_ON = 0.7;                            // the barrier, in volts
+
+async function fadeIn(nodes, dur = 320){
+  const list = nodes.filter(Boolean);
+  if (!list.length) return;
+  list.forEach(n => { n.style.opacity = '0'; n.style.display = ''; });
+  await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(p); }));
+  list.forEach(n => { n.style.opacity = '1'; });
+}
+async function fadeOut(nodes, dur = 280){
+  const list = nodes.filter(Boolean);
+  if (!list.length) return;
+  await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(1 - p); }));
+  list.forEach(n => { n.style.display = 'none'; });
+}
+
+/* the hill's curve, drawn from the same formula makeBarrierHill uses, so the
+   ghost outline at the payoff sits exactly where the raised hill stood */
+const hillPath = top =>
+  `M${HX0} ${HILL_BASE} C${HX0 + HILL_W * 0.30} ${HILL_BASE} ${SEAM - HILL_W * 0.18} ${top} ${SEAM} ${top}` +
+  ` C${SEAM + HILL_W * 0.18} ${top} ${HX1 - HILL_W * 0.30} ${HILL_BASE} ${HX1} ${HILL_BASE}`;
 
 export async function step2(){
-  const { svg, controls } = newStage('02', 'PN junction: the depletion layer builds itself');
-  guide.title('STEP 2 / 4 · NANOVOLT SEMICONDUCTORS', 'Build your own <em>transistor</em>');
+  guide.title('STEP 2 / 5 · NANOVOLT SEMICONDUCTORS', 'Where <em>N meets P</em>');
+  guide.cards();
 
-  guide.say(`Your doped wafer conducts, but a wire that always conducts is not a switch. Everything useful starts where N-type silicon meets P-type. That boundary is a <b>PN junction</b>.`);
-  await guide.next();
-  guide.say(`<b>Your goal: press the two blocks together and see what forms at the seam.</b> <span class="e-blue">N</span> has spare electrons, <span class="e-red">P</span> has spare holes.`);
-  await guide.next();
+  const stage = newStage('02', 'A PN junction: the depletion layer builds itself, then a voltage flattens it');
+  const { svg, controls } = stage;
 
-  /* ==================================================================
-     PART ONE — THE PN JUNCTION (the depletion layer + the diode)
-     ================================================================== */
-  const jg = svgEl('g');   // the whole junction apparatus lives in one group we fade+remove later
-  svg.appendChild(jg);
+  /* ============ SCENE A — two blocks, one carrier each ====================== */
 
-  /* ---------- P block (static, pre-placed on the left) ---------- */
-  jg.appendChild(svgEl('rect', { x: 150, y: 170, width: 210, height: 160, class: 'p-region' }));
-  const pLetter = svgEl('text', { x: 168, y: 196, class: 'tile-letter', 'text-anchor': 'start' }); pLetter.textContent = 'P';
-  jg.appendChild(pLetter);
+  const pBlock = svgEl('g');
+  pBlock.appendChild(svgEl('rect', { x: PX, y: BY, width: BW, height: BH, class: 'p-region' }));
+  const pLetter = svgEl('text', { x: PX + 24, y: BY + 88, class: 'tile-letter', fill: 'var(--red)' });
+  pLetter.textContent = 'P';
+  pBlock.appendChild(pLetter);
+  svg.appendChild(pBlock);
 
-  /* ---------- dock slot (where the N block belongs) ---------- */
-  const dockRect = svgEl('rect', { x: 360, y: 170, width: 210, height: 160, class: 'slot' });
-  const dockQ = svgEl('text', { x: 465, y: 259, class: 'slot-q' }); dockQ.textContent = '?';
-  jg.append(dockRect, dockQ);
+  const slotRect = svgEl('rect', { x: SEAM, y: BY, width: BW, height: BH, class: 'slot' });
+  const slotQ = svgEl('text', { x: SEAM + BW / 2, y: BY + 88, class: 'slot-q' });
+  svg.append(slotRect, slotQ);
 
-  /* ---------- N block (draggable tile) ---------- */
   const nTile = svgEl('g', { class: 'tile', 'aria-label': 'N block' });
-  nTile.appendChild(svgEl('rect', { width: 210, height: 160, rx: 8, class: 'tile-bg' }));
-  const nLetter = svgEl('text', { x: 105, y: 88, class: 'tile-letter' }); nLetter.textContent = 'N';
-  nTile.appendChild(nLetter);
-  const nCap = svgEl('text', { x: 105, y: 148, class: 'tile-cap' }); nCap.textContent = 'your phosphorus recipe';
-  nTile.appendChild(nCap);
-  svg.appendChild(nTile);   // tile lives outside jg while dragging; folded in after dock
+  nTile.style.transform = `translate(520px,${BY}px)`;      // its bench position
+  const nRect = svgEl('rect', { width: BW, height: BH, rx: 4, class: 'tile-bg on' });
+  const nLetter = svgEl('text', { x: BW - 24, y: 88, class: 'tile-letter', fill: 'var(--blue)' });
+  nLetter.textContent = 'N';
+  nTile.append(nRect, nLetter);
+  svg.appendChild(nTile);
 
-  /* P carriers (holes) — 7×5 grid inside the P block, dots x=164…332, y=184…304 */
-  const pGrid = makeCarrierGrid(jg, { x: 150, y: 170, w: 210, h: 160, type: 'P', cols: 7, rows: 5, pitchX: 28, pitchY: 30, inset: 14 });
-  /* N carriers (electrons) — same grid inside the docked position, dots x=374…542 */
-  const nGrid = makeCarrierGrid(jg, { x: 360, y: 170, w: 210, h: 160, type: 'N', cols: 7, rows: 5, pitchX: 28, pitchY: 30, inset: 14 });
-  nGrid.el.setAttribute('opacity', 0);   // hidden until the N block docks
+  /* Carrier lattices. Columns land 20, 48 and 76 units from the seam on each
+     side, so the two inner columns fall inside the 64-unit depletion band and
+     the third stays outside it. The N grid lives INSIDE the tile, in tile-local
+     units, so it travels with the block when the player presses it home. */
+  const pGrid = makeCarrierGrid(pBlock, { x: 164, y: BY + 6, w: BW, h: BH, type: 'P', cols: 5, rows: 5 });
+  const nGrid = makeCarrierGrid(nTile, { x: 6, y: 6, w: BW, h: BH, type: 'N', cols: 5, rows: 5 });
+  pGrid.el.style.opacity = '0';
+  nGrid.el.style.opacity = '0';
 
-  /* ---------- ASK #1: dock the N block ---------- */
-  const nTileHandle = { g: nTile, value: 'N', w: 210, h: 160, home: { x: 430, y: 330 }, tx: 0, ty: 0, slot: null };
-  const dockSlot = { key: 'DOCK', x: 360, y: 170, w: 210, h: 160, correct: 'N', rect: dockRect, q: dockQ, value: null, tile: null };
+  guide.say(`In step 1 you doped silicon two ways. Here is a block of each.
+    <b>Your goal: press them together and find the voltage that pushes current across.</b>`);
+  stage.focus([pBlock, nTile], { label: 'both from step 1', at: 'bottom' });
+  await guide.next();
+
+  await fadeIn([nGrid.el], 340);
+  guide.say(`This block got phosphorus. Each phosphorus atom left one
+    <span class="e-blue">spare electron</span> that no bond holds, so it drifts freely.`);
+  stage.focus(nTile, { label: 'n-type', at: 'top' });
+  await guide.next();
+
+  await fadeIn([pGrid.el], 340);
+  guide.say(`This one got boron. Each boron atom left a bond one electron short. That empty
+    seat is a <span class="e-red">hole</span>, drawn as a ring, and it drifts too.`);
+  stage.focus(pBlock, { label: 'p-type', at: 'top' });
+  await guide.next();
+
+  /* ============ SCENE B — the player presses them flush ==================== */
+
+  /* no focus on this card: stage.focus re-parents raised nodes, and the placer
+     needs the tile and the slot answering pointer events where they sit */
+  stage.clearFocus();
+  const nHandle = { g: nTile, value: 'N', w: BW, h: BH, home: { x: 520, y: BY }, tx: 0, ty: 0, slot: null };
+  const nSlot = { key: 'DOCK', x: SEAM, y: BY, w: BW, h: BH, correct: 'N', rect: slotRect, q: slotQ, value: null, tile: null };
   const placer = makePlacer({
-    svg, tiles: [nTileHandle], slots: [dockSlot],
+    svg, tiles: [nHandle], slots: [nSlot],
     validate: v => v[0] === 'N',
-    onWrong: () => guide.note(`That's the N block — press it flush against the P block on the left.`),
+    onWrong: () => {},
   });
 
+  guide.say(`Press them flush. Drag the N block onto the dashed outline, or tap the block
+    and then the outline.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ placer.autoPlace(); return replay; }
     await placer.done;
     return true;
   });
+  await sleep(460);                       // the placer's own snap transition
 
-  /* on dock: snap flush, draw the seam hairline, reveal the N lattice */
-  dockRect.style.opacity = '0'; dockQ.style.opacity = '0';
-  nTile.style.opacity = '0';
-  nGrid.el.setAttribute('opacity', 1);
-  const seam = svgEl('line', { x1: 360, y1: 170, x2: 360, y2: 330, class: 'junction' });
-  jg.appendChild(seam);
-  const nLabel = svgEl('text', { x: 465, y: 259, class: 'tile-letter' }); nLabel.textContent = 'N';
-  jg.appendChild(nLabel);
+  /* Bake the tile's translate into its children's own coordinates. Two things
+     depend on it: hopElectrons arcs its clones in stage coordinates, and
+     stage.focus re-parents whatever it raises onto the SVG root, which would
+     otherwise drop the ancestor transform and fling the N-side ions into the
+     corner. Kill the placer's transition first, or clearing the transform
+     animates the block back to the origin. */
+  nTile.style.transition = 'none';
+  nTile.style.transform = 'none';
+  nRect.setAttribute('x', SEAM);
+  nRect.setAttribute('y', BY);
+  nLetter.setAttribute('x', +nLetter.getAttribute('x') + SEAM);
+  nLetter.setAttribute('y', +nLetter.getAttribute('y') + BY);
+  nGrid.dots.forEach(d => {
+    d.cx += SEAM; d.cy += BY;
+    d.node.setAttribute('cx', d.cx);
+    d.node.setAttribute('cy', d.cy);
+  });
+
+  slotRect.style.display = 'none';
+  slotQ.style.display = 'none';
+  nRect.setAttribute('class', 'n-region');
+  nRect.setAttribute('rx', '0');
+  const seam = svgEl('line', { x1: SEAM, y1: BY, x2: SEAM, y2: BY + BH, class: 'junction' });
+  svg.appendChild(seam);
   if (!flow.instant) SFX.success();
-  await sleep(400);
 
-  /* ---------- the hop ceremony (auto, no interaction — let it breathe) ---------- */
-  guide.say(`No battery yet. Watch the seam: the nearest electrons cross and drop into the nearest holes, leaving <b>fixed charges</b> behind that cannot move.`);
-  await sleep(600);
+  guide.say(`No battery yet. Watch what the carriers next to the seam do on their own.`);
+  stage.focus(seam, { label: 'the seam', at: 'top' });
+  await guide.next();
 
-  // two N columns nearest the seam (c=0 at x=374, c=1 at x=402) map to the two
-  // nearest P columns (c=6 at x=332, c=5 at x=304), same row, nearest-column-first:
-  // all of x=374→x=332 top-to-bottom, then x=402→x=304 top-to-bottom.
+  /* ============ SCENE C — the layer builds itself ========================== */
+
+  stage.clearFocus();
+  await sleep(320);
+
+  // the two N columns nearest the seam pair with the two nearest P columns,
+  // same row, nearest column first — a pure function of grid index, no randomness
   const pairs = [];
-  for (let r = 0; r < 5; r++) pairs.push({ from: nGrid.at(0, r), to: pGrid.at(6, r) });
-  for (let r = 0; r < 5; r++) pairs.push({ from: nGrid.at(1, r), to: pGrid.at(5, r) });
+  for (let r = 0; r < 5; r++) pairs.push({ from: nGrid.at(0, r), to: pGrid.at(4, r) });
+  for (let r = 0; r < 5; r++) pairs.push({ from: nGrid.at(1, r), to: pGrid.at(3, r) });
   await hopElectrons(svg, { pairs });
+  /* Collected in DOCUMENT order, not hop order. stage.clearFocus restores raised
+     nodes back to front and each one is put back before the sibling it recorded,
+     so a list that jumps around the tree asks it to insert before a node that is
+     itself still raised, and the restore throws. */
+  const ionNodes = [...pGrid.dots, ...nGrid.dots].filter(d => d.state === 'ion').map(d => d.node);
 
-  /* depletion bands fade in around the ions */
-  const bands = makeDepletionBands(jg, { cx: 360, y: 170, h: 160, wNeg: 64, wPos: 64 });
-  bands.el.setAttribute('opacity', 0);
-  if (flow.instant){
-    bands.el.setAttribute('opacity', 1);
-  } else {
-    gsap.to(bands.el, { opacity: 1, duration: 0.5, ease: 'power2.out' });
-    await sleep(500);
-  }
-
-  guide.say(`It stops on its own. The P side is now <span class="e-blue">slightly negative</span>, the N side <span class="e-red">slightly positive</span>, and that difference pushes the next electron back. The emptied strip is the <b>depletion layer</b>.`);
-  await sleep(500);
-
-  /* the measurement bracket — the ~0.7 V barrier, earned not stated */
-  const bracket = makeBracket(jg, { x1: 296, x2: 424, y: 372, label: 'barrier ≈ 0.7 V' });
-  if (!flow.instant){
-    bracket.style.opacity = '0';
-    gsap.to(bracket, { opacity: 1, duration: 0.4, ease: 'power2.out' });
-  }
+  guide.say(`The nearest electrons crossed and filled the nearest holes. Each one left a
+    charged atom behind, locked in the crystal, unable to move.`);
+  stage.focus(ionNodes, { label: 'fixed ions', at: 'top' });
   await guide.next();
 
-  /* the same barrier drawn as a hill, directly above the seam. The bands say
-     WHERE the barrier is; the hill says how HIGH, which is the part that makes
-     0.7 V mean something. Its electron keeps sliding back until the hill drops. */
-  const hill = makeBarrierHill(jg, { cx: 360, base: 148, w: 250, hMax: 66 });
+  stage.clearFocus();
+  const bands = makeDepletionBands(svg, { cx: SEAM, y: BY, h: BH, wNeg: DEPL, wPos: DEPL });
+  await fadeIn([bands.el], 420);
+
+  guide.say(`The strip they left has no free electrons and no free holes in it. That strip
+    is the <b>depletion layer</b>.`);
+  stage.focus(bands.el, { label: 'depletion layer', at: 'top' });
+  await guide.next();
+
+  guide.say(`It stopped on its own. The P side is now slightly negative and the N side
+    slightly positive, and that pushes the next electron back.`);
+  stage.focus(bands.el, { label: 'built-in push', at: 'top' });
+  await guide.next();
+
+  /* ============ SCENE D — the strip stands up into a hill ================== */
+
+  stage.clearFocus();
+  const hill = makeBarrierHill(svg, { cx: SEAM, base: HILL_BASE, w: HILL_W, hMax: HILL_H, label: false });
+  hill.setBias(V_ON);                     // flat: the hill has not been raised yet
+  const ties = svgEl('g');
+  ties.append(
+    svgEl('line', { x1: HX0, y1: BY, x2: HX0, y2: HILL_BASE, class: 'wire dim', 'stroke-dasharray': '3 3' }),
+    svgEl('line', { x1: HX1, y1: BY, x2: HX1, y2: HILL_BASE, class: 'wire dim', 'stroke-dasharray': '3 3' }),
+  );
+  svg.appendChild(ties);
+  await fadeIn([hill.el, ties], 340);
+  await Anim.tween(760, p => hill.setBias(V_ON * (1 - p)));
+  hill.setBias(0);
   hill.start();
-  guide.say(`Same barrier, drawn as a hill. An electron has to get over it to cross. Watch it try.`);
+
+  guide.say(`Same push, drawn as height. An electron has to climb this hill to get across
+    the seam. Watch it slide back.`);
+  stage.focus(hill.el, { label: 'barrier', at: 'top' });
   await guide.next();
 
-  /* ---------- wiring: battery + lamp for the bias tests ----------
-     conventional current: battery+ → right riser → N side → seam → P side →
-     left riser → battery−. */
-  const jWireR = svgEl('path', { d: 'M402 430 H620 V259 H570', class: 'wire' });
-  const jWireL = svgEl('path', { d: 'M150 259 H100 V430 H318', class: 'wire' });
-  jg.append(jWireL, jWireR);
-  const battG = makeBattery(svg, 360, 430);   // returns its group; we manage polarity below
-  const jLampH = makeLamp(svg, 620, 300, { label: 'lamp' });
-  // fold the battery + lamp into jg so they clear with the whole apparatus later
-  jg.append(battG, jLampH.g);
-  const jLamp = jLampH;
+  /* ============ SCENE E — wire it up and find 0.7 V ======================= */
 
-  const jFlowLayer = svgEl('g'); jg.appendChild(jFlowLayer);
-  const jRoute = svgEl('path', { d: 'M402 430 H620 V259 H150 V430 H318', fill: 'none', stroke: 'none' });
-  jg.appendChild(jRoute);
-  const jFlow = new CurrentFlow(jRoute, { n: 14, layer: jFlowLayer });
+  stage.clearFocus();
+  const wireIn = svgEl('path', { d: `M270 430 H80 V250 H${PX}`, class: 'wire' });
+  const wireOut = svgEl('path', { d: `M${SEAM + BW} 250 H640 V430 H350`, class: 'wire' });
+  svg.insertBefore(wireIn, pBlock);
+  svg.insertBefore(wireOut, pBlock);
+  const battG = makeBattery(svg, SEAM, 430);
+  const battNub = battG.querySelectorAll('rect')[1];
+  const battTexts = battG.querySelectorAll('.batt-t');
+  const lamp = makeLamp(svg, 640, 330, { label: 'lamp' });
+  lamp.set(0);
 
-  /* ---------- forward-bias controls ---------- */
-  const chipWall = makeChip(controls, 'wall: <b>standing</b>');
-  const chipFlow = makeChip(controls, 'flow: <b>0</b>');
-  const slider = makeSlider(controls, { label: 'push voltage', min: 0, max: 1.5, step: 0.05, value: 0, fmt: v => v.toFixed(2) + ' V' });
+  /* forward bias puts + on the P side, so conventional current runs
+     battery + → P → seam → N → battery −. Flipping moves the sign marks AND
+     the terminal nub, so the polarity is legible, not just asserted. */
+  function setPolarity(plusLeft){
+    battTexts[0].textContent = plusLeft ? '+' : '−';
+    battTexts[1].textContent = plusLeft ? '−' : '+';
+    battNub.setAttribute('x', plusLeft ? SEAM - 46 : SEAM + 40);
+  }
+  setPolarity(true);
 
-  let reversed = false;      // set true once the battery is flipped (§2.5)
-  let didFlow = false;       // one-shot SFX.flow() guard for forward break
-  /* PURE, idempotent function of v — replay calls it once with the recorded value. */
+  const flowLayer = svgEl('g');
+  svg.appendChild(flowLayer);
+  const routeIn = svgEl('path', { d: wireIn.getAttribute('d'), fill: 'none', stroke: 'none' });
+  const routeOut = svgEl('path', { d: wireOut.getAttribute('d'), fill: 'none', stroke: 'none' });
+  svg.append(routeIn, routeOut);
+  const chevIn = new CurrentFlow(routeIn, { n: 7, layer: flowLayer });
+  const chevOut = new CurrentFlow(routeOut, { n: 8, layer: flowLayer });
+
+  await fadeIn([wireIn, wireOut, battG, lamp.g], 360);
+
+  guide.say(`A battery now sits across the junction, wired to push carriers toward the seam.
+    The lamp shows whether anything gets through.`);
+  stage.focus([wireIn, wireOut, battG, lamp.g], { label: 'battery and lamp', at: 'bottom' });
+  await guide.next();
+
+  stage.clearFocus();
+  const chipBarrier = makeChip(controls, 'barrier: <b>standing</b>');
+  const chipCurrent = makeChip(controls, 'current: <b>0 mA</b>');
+  const slider = makeSlider(controls, { label: 'voltage', min: 0, max: 1.5, step: 0.05, value: 0, fmt: v => v.toFixed(2) + ' V' });
+
+  let reversed = false;
+  let didFlow = false;
+
+  /* PURE, idempotent function of (v, reversed) — replay calls it once with the
+     recorded slider value and lands on exactly the live end state */
   function apply(v){
     if (reversed){
-      // reverse bias: any voltage only widens the empty zone further; never any flow.
       bands.quiver(false);
-      bands.setWidth(1.6 + v * 0.4);
-      hill.setBias(v, { reverse: true });   // the hill grows instead of shrinking
-      jFlow.setSpeed(0);
-      jLamp.set(0);
-      chipWall.set('wall: <b>wider</b>');
-      chipFlow.set('flow: <b>0</b>'); chipFlow.cls('state-on', false);
+      bands.setWidth(1 + v * 0.6);        // pulled apart: the empty strip grows
+      hill.setBias(v, { reverse: true });
+      chevIn.setSpeed(0); chevOut.setSpeed(0);
+      lamp.set(0);
+      // at zero the flipped battery has not pulled on anything yet, so the
+      // chip must not claim a taller hill than the stage is drawing
+      chipBarrier.set(v < 0.025 ? 'barrier: <b>standing</b>' : 'barrier: <b>taller</b>');
+      chipBarrier.cls('state-on', false);
+      chipCurrent.set('current: <b>0 mA</b>');
       return;
     }
     hill.setBias(v);
-    if (v < 0.7){
-      bands.setWidth(1 - v * 0.35);       // wall thins as carriers lean on it (~0.75 at 0.65 V)
-      bands.quiver(v > 0.45);
-      jFlow.setSpeed(0);
-      jLamp.set(0);
-      chipWall.set('wall: <b>standing</b>'); chipWall.cls('state-on', false);
-      chipFlow.set('flow: <b>0</b>');
+    if (v < V_ON - 0.001){
+      bands.setWidth(1 - v * 0.35);
+      bands.quiver(!flow.instant && v > 0.45);
+      chevIn.setSpeed(0); chevOut.setSpeed(0);
+      lamp.set(0);
+      chipBarrier.set('barrier: <b>standing</b>'); chipBarrier.cls('state-on', false);
+      chipCurrent.set('current: <b>0 mA</b>');
     } else {
       bands.quiver(false);
-      bands.collapse();                   // setWidth(0.12) + labels fade to 0.25
-      const spd = (v - 0.65) * 220;
-      jFlow.setSpeed(spd);
-      jLamp.set(Math.max(0, Math.min(1, (v - 0.65) / 0.6)));
-      chipWall.set('wall: <b>down</b>'); chipWall.cls('state-on', true);
-      chipFlow.set(`flow: <b>${Math.round(spd)}</b>`);
+      bands.collapse();
+      const mA = 1 + Math.round((v - V_ON) * 45);
+      const spd = 60 + (v - V_ON) * 220;
+      chevIn.setSpeed(spd); chevOut.setSpeed(spd);
+      lamp.set(clamp(0.3 + (v - V_ON) / 0.8, 0, 1));
+      chipBarrier.set('barrier: <b>flat</b>'); chipBarrier.cls('state-on', true);
+      chipCurrent.set(`current: <b>${mA} mA</b>`);
       if (!didFlow){ didFlow = true; if (!flow.instant) SFX.flow(); }
     }
   }
   slider.on(apply);
   apply(0);
 
-  guide.say(`More voltage, shorter hill. <b>Your goal: find the voltage where it gets low enough to cross.</b>`);
-
-  /* ---------- ASK #2: forward-bias test ---------- */
-  const tFwd = guide.task('Find the voltage where current starts to flow');
+  guide.say(`<b>Your goal: raise the voltage until current flows.</b> Every step up takes
+    height off the hill.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
-    const cancel = flow.hintAfter(14000, 'Keep raising the voltage. Current starts at about 0.7 V.');
-    await waitFor(() => slider.value >= 0.7, { hold: 600 });
-    cancel();
+    const cancel = flow.hintAfter(16000, `Keep raising the voltage. The hill gets shorter with every step up.`);
+    // hintAfter writes through guide.note, which in card mode overwrites the
+    // card, so it is cancelled the moment the player touches the dial
+    const off = () => { cancel(); slider.input.removeEventListener('input', off); };
+    slider.input.addEventListener('input', off);
+    await waitFor(() => slider.value >= V_ON - 0.001, { hold: 600 });
+    off();
     return slider.value;
   });
-  tFwd.done();
 
-  guide.note(`0.7 V is the height of that hill, in volts. Below it the electron always slides back. At it, the climb is gone and the lamp lights.`);
+  const ghost = svgEl('path', {
+    class: 'hill-curve', fill: 'none', d: hillPath(HILL_TOP),
+    'stroke-dasharray': '4 4', style: 'opacity:.5',
+  });
+  /* dimension line clear of the curve, with a dashed extension off the peak */
+  const MX = HX1 + 22;
+  const measure = svgEl('g');
+  measure.appendChild(svgEl('path', {
+    d: `M${SEAM} ${HILL_TOP} H${MX + 8}`,
+    fill: 'none', stroke: 'var(--hairline-strong)', 'stroke-width': 1, 'stroke-dasharray': '3 3',
+  }));
+  measure.appendChild(svgEl('path', {
+    d: `M${MX - 8} ${HILL_BASE} H${MX + 8} M${MX - 8} ${HILL_TOP} H${MX + 8} M${MX} ${HILL_BASE} V${HILL_TOP}`,
+    fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1,
+  }));
+  const measureT = svgEl('text', {
+    x: MX + 14, y: (HILL_BASE + HILL_TOP) / 2 + 4, class: 'lbl',
+    style: 'text-anchor:start;font-style:italic',
+  });
+  measureT.textContent = '0.7 V';
+  measure.appendChild(measureT);
+  svg.append(ghost, measure);
+  await fadeIn([ghost, measure], 340);
+
+  guide.say(`0.7 V is the height of that hill, measured in volts. Below it the electron slid
+    back every time.`);
+  stage.focus([ghost, measure], { label: 'hill height', at: 'right' });
   await guide.next();
 
-  /* ---------- ASK #3: flip the battery (reverse bias) ---------- */
-  guide.say(`Now flip the battery and try the same thing.`);
+  guide.say(`The arrows on the wire run from + to −. That is conventional current. The
+    electrons inside the silicon go the other way, as in step 1.`);
+  stage.focus([wireIn, wireOut, flowLayer], { label: 'conventional current', at: 'bottom' });
+  await guide.next();
+
+  /* ============ SCENE F — flip it, and nothing helps ====================== */
+
+  stage.clearFocus();
+  guide.say(`Turn the battery around and it pulls carriers away from the seam instead of
+    pushing them toward it.`);
+  stage.focus(battG, { label: 'battery', at: 'top' });
   await guide.button('Flip the battery ↺');
 
-  // swap the battery's polarity marks (the −/+ texts inside the battery glyph)
+  stage.clearFocus();
   reversed = true;
-  const battTexts = battG.querySelectorAll('.batt-t');
-  if (battTexts.length >= 2){ battTexts[0].textContent = '+'; battTexts[1].textContent = '−'; }
-  // route chevrons reverse direction but speed stays 0 (nothing flows); the wall widens
-  apply(slider.value);   // recompute in reverse mode from the current slider value
+  setPolarity(false);
+  slider.set(0);
+  apply(0);
 
-  guide.say(`Now the battery pulls carriers <b>away</b> from the seam, so the strip widens and the hill grows. Turn it up: the climb only gets worse.`);
-
-  /* ---------- ASK #4: reverse-bias test ---------- */
-  const tRev = guide.task('Confirm: no current at any voltage');
+  guide.say(`<b>Your goal: turn the voltage all the way up and confirm nothing flows.</b>
+    Watch the strip and the hill as you go.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
-    const cancel = flow.hintAfter(12000, 'Turn the voltage all the way up. The barrier only gets wider, so there is still no current.');
-    await waitFor(() => slider.value >= 1.2, { hold: 500 });
-    cancel();
+    const cancel = flow.hintAfter(16000, `Drag the dial to the top of its range and look at the lamp.`);
+    const off = () => { cancel(); slider.input.removeEventListener('input', off); };
+    slider.input.addEventListener('input', off);
+    await waitFor(() => slider.value >= 1.45, { hold: 600 });
+    off();
     return slider.value;
   });
-  tRev.done();
 
-  /* ---------- the aha ---------- */
-  guide.aha(`You built a <b>diode</b>. It passes current one way and blocks the other. The useful part is that a voltage raises or lowers that hill, which is how every switch in a chip gets controlled.`,
-    `The transistor you'll build next is two of these junctions back to back.`);
+  guide.say(`The strip got wider and the hill got taller. No voltage in this direction gets
+    an electron across.`);
+  stage.focus(hill.el, { label: 'taller barrier', at: 'top' });
   await guide.next();
 
-  /* ---------- clear the junction apparatus (reuse the same svg — no newStage) ---------- */
-  if (flow.instant){
-    jg.remove();
-  } else {
-    await new Promise(res => gsap.to(jg, { opacity: 0, duration: 0.5, ease: 'power2.out', onComplete: res }));
-    jg.remove();
-  }
-  hill.stop();          // the hill's frame loop outlives its node otherwise
-  jFlow.destroy();
-  controls.innerHTML = '';
-
-  /* ==================================================================
-     PART TWO — THE NPN TRANSISTOR (two walls back-to-back)
-     ================================================================== */
-  guide.say(`Now the transistor: two of those junctions back to back, N then a thin P then N. <b>Your goal: arrange the blocks so a tiny current can switch a large one.</b>`);
-  await guide.next();
-
-  /* ---------- slots (collector is physically larger) ---------- */
-  const SLOTS = [
-    { key: 'E', x: 118, y: 158, w: 104, h: 118, correct: 'E' },
-    { key: 'B', x: 232, y: 158, w: 64, h: 118, correct: 'B' },
-    { key: 'C', x: 306, y: 158, w: 182, h: 118, correct: 'C' },
-  ];
-  const slotG = svgEl('g');
-  const slots = SLOTS.map(s => {
-    const rect = svgEl('rect', { x: s.x, y: s.y, width: s.w, height: s.h, class: 'slot' });
-    const q = svgEl('text', { x: s.x + s.w / 2, y: s.y + s.h / 2 + 9, class: 'slot-q' }); q.textContent = '?';
-    slotG.append(rect, q);
-    return { ...s, rect, q, value: null, tile: null };
-  });
-  svg.appendChild(slotG);
-
-  /* ---------- tray tiles: distinct sizes so the size difference is felt ---------- */
-  function makeTile(value, w, h, cap){
-    const g = svgEl('g', { class: 'tile', 'aria-label': `${value} block` });
-    const bg = svgEl('rect', { width: w, height: h, rx: 8, class: 'tile-bg' });
-    g.appendChild(bg);
-    const letter = svgEl('text', { x: w / 2, y: h / 2 + 8, class: 'tile-letter' });
-    letter.textContent = value === 'B' ? 'P' : 'N';
-    g.appendChild(letter);
-    const capEl = svgEl('text', { x: w / 2, y: h - 8, class: 'tile-cap' });
-    capEl.textContent = cap;
-    g.appendChild(capEl);
-    svg.appendChild(g);
-    return { g, value, w, h, home: null, tx: 0, ty: 0, slot: null };
-  }
-  const tray = [
-    ['E', 96, 66, 'emitter — small', 148],
-    ['B', 60, 92, 'base — thin', 300],
-    ['C', 150, 78, 'collector — wide', 470],
-  ];
-  const tiles = tray.map(([v, w, h, cap, x]) => { const t = makeTile(v, w, h, cap); t.home = { x, y: 340 }; return t; });
-
-  guide.say(`Three sizes, on purpose: small <b>emitter</b>, thin <b>base</b>, wide <b>collector</b>. Left to right. <em>Drag a block in, or tap a block then a slot.</em>`);
-
-  const placer2 = makePlacer({
-    svg, tiles, slots,
-    validate: v => v[0] === 'E' && v[1] === 'B' && v[2] === 'C',
-    onWrong: () => guide.note(`Not quite. The thin <b>P base</b> goes in the middle, and the wide <b>collector</b> goes on the right.`),
-  });
-
-  await flow.ask(async replay => {
-    if (replay !== undefined){ placer2.autoPlace(); return replay; }
-    await placer2.done;
-    return true;
-  });
-
-  /* ---------- merge into a device ---------- */
-  await sleep(500);
-  tiles.forEach(t => t.g.style.opacity = '0');
-  slots.forEach(s => { s.rect.style.opacity = '0'; s.q.style.opacity = '0'; });
-  const dev = svgEl('g');
-  dev.innerHTML = `
-    <rect x="118" y="158" width="104" height="118" class="n-region"/>
-    <rect x="222" y="158" width="84" height="118" class="p-region"/>
-    <rect x="306" y="158" width="182" height="118" class="n-region"/>
-    <line x1="222" y1="158" x2="222" y2="276" class="junction"/>
-    <line x1="306" y1="158" x2="306" y2="276" class="junction"/>
-    <text x="170" y="222" class="tile-letter">N</text>
-    <text x="264" y="222" class="tile-letter">P</text>
-    <text x="397" y="222" class="tile-letter">N</text>
-    <text x="170" y="292" class="lbl">EMITTER (N)</text>
-    <text x="264" y="292" class="lbl">BASE (P)</text>
-    <text x="397" y="292" class="lbl">COLLECTOR (N)</text>`;
-  dev.classList.add('pop-in');
-  svg.appendChild(dev);
-  if (!flow.instant) SFX.success();
-
-  /* ---------- the two self-built depletion walls (narrow, at each seam) ---------- */
-  // labels off: two walls this close would stack four captions on one another
-  const wallL = makeDepletionBands(svg, { cx: 222, y: 158, h: 118, wNeg: 14, wPos: 14, labels: false });   // emitter–base
-  const wallR = makeDepletionBands(svg, { cx: 306, y: 158, h: 118, wNeg: 14, wPos: 14, labels: false });   // base–collector
-  // too tight for microlabels here — suppress them (and the dashed outer edges, which would
-  // double up with the device's own junction lines); tooltip titles instead
-  [wallL, wallR].forEach(w => {
-    w.lblNeg.setAttribute('opacity', 0); w.lblPos.setAttribute('opacity', 0);
-    w.el.querySelectorAll('line').forEach(l => l.setAttribute('opacity', 0));
-    const tt = svgEl('title'); tt.textContent = 'depletion wall'; w.el.appendChild(tt);
-  });
-  if (flow.instant){
-    wallL.el.setAttribute('opacity', 1); wallR.el.setAttribute('opacity', 1);
-  } else {
-    wallL.el.setAttribute('opacity', 0); wallR.el.setAttribute('opacity', 0);
-    gsap.to([wallL.el, wallR.el], { opacity: 1, duration: 0.5, ease: 'power2.out' });
-  }
-
-  guide.say(`<b>N–P–N</b>, and now <b>two</b> barriers, one per junction. Whichever way you push, one of them faces the wrong way, so the device sits <b>OFF</b>.`);
-  await guide.next();
-
-  /* ---------- why the base current exists (predict, then count it) ----------
-     The old text jumped straight to "inject a small current into the base" and
-     never said why a trickle controls a flood. The answer is the base's width,
-     so the player guesses first and then watches 100 electrons get tallied. */
-  /* Draw the battery and the base wire BEFORE talking about them. The question
-     below asks the player to reason about a route out through the base, so that
-     route has to be visible on the stage while they answer it. */
-  const ctlRig = svgEl('g');
-  ctlRig.innerHTML = `
-    <path d="M264 158 V86" class="wire"/>
-    <path d="M228 69 H150 V158" class="wire"/>
-    <rect x="228" y="52" width="72" height="34" rx="8" class="batt-body"/>
-    <text x="264" y="74" class="batt-t" font-size="11">0.7 V</text>
-    <text x="286" y="126" class="lbl" text-anchor="start">base wire</text>
-    <circle cx="264" cy="158" r="3.4" class="node-dot"/>
-    <circle cx="150" cy="158" r="3.4" class="node-dot"/>`;
-  svg.insertBefore(ctlRig, dev);   // wires behind the silicon, like every other lead
-  if (!flow.instant && !RM){
-    ctlRig.style.opacity = '0';
-    gsap.to(ctlRig, { opacity: 1, duration: 0.45, ease: 'power2.out' });
-  }
-
-  guide.say(`You already know how to flatten one of these barriers: push about <b>0.7 V</b> across it and the hill drops. That's the battery now sitting on the stage, wired from the <b>base</b> down to the <b>emitter</b>, so it leans on the <b>left</b> barrier only. Electrons pour out of the emitter into the base.`);
-  await guide.next();
-  guide.say(`Now the question. Those electrons are in the base, and the <b>base wire</b> running up out of it is a way out. <b>Where do they actually go?</b>`);
-  const guess = await guide.choose([
-    { label: 'Out through the base wire', value: 'base', hint: 'that wire is right there' },
-    { label: 'Onward into the collector', value: 'coll', hint: 'they are already moving that way' },
-  ]);
-
-  const tally = svgEl('text', { x: 470, y: 112, class: 'depl-lbl', 'text-anchor': 'middle' });
-  svg.appendChild(tally);
-  // yBaseTop stops just under the battery, so a departing electron visibly rides
-  // the base wire that is actually drawn rather than vanishing into the glyph
-  const demo = makeOvershootDemo(svg, { xStart: 130, xBase: 264, xEnd: 470, y: 217, yBaseTop: 92, total: 100, perBase: 100 });
-  demo.onTally((b, c) => { tally.textContent = `OUT VIA BASE ${b}   ·   REACHED COLLECTOR ${c}`; });
-  if (flow.instant || RM) demo.settle(); else demo.start();
-  guide.note(`Releasing 100 electrons from the emitter. Watch where they go.`);
-  await guide.next();
-  demo.stop();
-
-  guide.aha(`${guess === 'coll' ? '<b>Right.</b>' : '<b>Not what you picked.</b>'} Look how thin the base is next to the other two blocks. An electron only has to get a little way in before it is close enough for the collector to pull it across, so it keeps going. Barely <b>1 in 100</b> finds the base wire on the way past.`,
-    `That is the whole trick. Spend 1 electron at the base, move 100 through the device.`);
-  await guide.next();
-
-  /* ---------- wiring: conventional current battery+ → collector → device → emitter → battery− ---------- */
-  // The base-to-emitter rig from the prediction stays put: it is the control loop,
-  // and leaving it visible keeps that loop closed on screen instead of ending a
-  // wire in mid-air. Only its caption changes, since the dial below now sets a
-  // current rather than the fixed 0.7 V that opened the barrier.
-  ctlRig.querySelector('.batt-t').textContent = 'control';
-  const mainWireR = svgEl('path', { d: 'M402 420 H644 V217 H488', class: 'wire' });
-  const mainWireL = svgEl('path', { d: 'M118 217 H76 V420 H318', class: 'wire' });
-  svg.insertBefore(mainWireL, dev);
-  svg.insertBefore(mainWireR, dev);
-  makeBattery(svg, 360, 420);
-  const led = makeLamp(svg, 644, 310, { label: 'LED' });
-
-  const flowLayer = svgEl('g'); svg.appendChild(flowLayer);
-  // one continuous route running in the CONVENTIONAL CURRENT direction:
-  // battery+ (right) → up → left through the device → down the left side → back to battery−
-  const route = svgEl('path', { d: 'M402 420 H644 V217 H118 V420 H318', fill: 'none', stroke: 'none' });
-  svg.appendChild(route);
-  const mainFlow = new CurrentFlow(route, { n: 16, layer: flowLayer });
-  // matches the drawn base lead (battery bottom at y=86 down to the base at y=158)
-  const baseRoute = svgEl('path', { d: 'M264 86 V158', fill: 'none', stroke: 'none' });
-  svg.appendChild(baseRoute);
-  const baseFlow = new CurrentFlow(baseRoute, { n: 4, size: 3.6, layer: flowLayer });
-
-  const chipBase = makeChip(controls, 'control: <b>0.0 µA</b>');
-  const chipMain = makeChip(controls, 'main flow: <b>0 µA</b>');
-  const slider2 = makeSlider(controls, { label: 'control signal', min: 0, max: 10, step: .1, value: 0, fmt: v => v.toFixed(1) + ' µA' });
-  let firstOpen = false;
-  function apply2(v){
-    chipBase.set(`control: <b>${v.toFixed(1)} µA</b>`);
-    chipMain.set(`main flow: <b>${Math.round(v * 100)} µA</b>`);
-    mainFlow.setSpeed(v * 24);       // positive speed = correct conventional direction along the route
-    baseFlow.setSpeed(v * 9);        // positive speed = down into the base
-    led.set(v / 10);
-    // the base trickle floods the emitter-side wall with carriers and holds it collapsed
-    wallL.setWidth(1 - v / 10 * 0.88);   // left (base–emitter) wall collapses as control rises
-    // right (base–collector) wall stays put
-    mainWireL.classList.toggle('live', v > 0);
-    mainWireR.classList.toggle('live', v > 0);
-    if (v > 1 && !firstOpen){ firstOpen = true; if (!flow.instant) SFX.flow(); }
-  }
-  slider2.on(apply2);
-  slider2.set(4);
-  apply2(4);
-
-  guide.say(`The base dial sets how many electrons you inject. <b>Your goal: switch the big current using only the small one.</b>`);
-  await guide.next();
-
-  /* ---------- the test ---------- */
-
-  const t1 = guide.task('Take the LED to fully OFF');
-  await flow.ask(async replay => {
-    if (replay !== undefined){ slider2.set(replay); apply2(replay); return replay; }
-    const cancel = flow.hintAfter(12000, 'Turn the control signal to zero. With no base current, the barrier blocks the main current.');
-    await waitFor(() => slider2.value <= 0.05, { hold: 650 });
-    cancel();
-    return slider2.value;
-  });
-  t1.done();
-
-  const t2 = guide.task('Now full brightness: max control signal');
-  await flow.ask(async replay => {
-    if (replay !== undefined){ slider2.set(replay); apply2(replay); return replay; }
-    const cancel = flow.hintAfter(12000, 'Turn the control signal to maximum. The small base current holds the device fully on.');
-    await waitFor(() => slider2.value >= 9.8, { hold: 650 });
-    cancel();
-    return slider2.value;
-  });
-  t2.done();
-
-  guide.aha(`<b>10 µA in, 1,000 µA out.</b> Flick it and you have a switch. Vary it smoothly and you have an amplifier.`,
-    `The base current lowers the emitter-side barrier and holds it down — that's the mechanism.`);
-  await guide.next();
-
-  guide.note(`Inside the crystal the electrons move opposite to the arrows, from emitter to collector. Conventional current points the other way, as you saw in Step 1.`);
+  stage.clearFocus();
+  guide.aha(`You built a <b>diode</b>. It passes current one way and blocks the other.`,
+    `A voltage raises or lowers the barrier. That control is the basis of every switch in a chip.`);
   await guide.next();
 }
