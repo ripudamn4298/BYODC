@@ -79,6 +79,18 @@
 .beat.instant{transition:none}
 .beat:first-child{margin-top:0}
 
+/* ---------- card mode (DESIGN_MAKEOVER §2 rule 1) ----------
+   One card at a time in a fixed slot, with its buttons pinned underneath.
+   The outgoing card is absolutely positioned while it fades, so the incoming
+   one lands in the same place instead of being pushed down the panel. */
+.card-slot{position:relative;min-height:132px;margin-top:20px}
+.card-slot .beat{margin-top:0}
+.card-slot .beat.out{opacity:0;transform:translateY(-6px);pointer-events:none}
+.card-slot .guide-p{font-size:18px;line-height:1.5}
+.card-actions{margin-top:18px;min-height:38px}
+.card-actions .beat{margin-top:0}
+@media (max-width:920px){ .card-slot{min-height:0} }
+
 .nav-row{display:flex;gap:8px;justify-content:flex-end;margin-bottom:14px;min-height:26px}
 
 .step-head .eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint)}
@@ -168,6 +180,7 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
 .tile{cursor:grab}
 .tile.armed .tile-bg{stroke:var(--ink);stroke-width:1.8;filter:drop-shadow(2.5px 2.5px 0 rgba(29,33,23,.25))}
 .tile-bg{fill:var(--paper-high);stroke:var(--hairline-strong);stroke-width:1.3;transition:all .2s}
+.tile-bg.on{fill:var(--blue-soft);stroke:var(--blue)}
 .tile-letter{font-family:var(--font-display);font-size:24px;text-anchor:middle;pointer-events:none}
 .tile-cap{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;fill:var(--ink-soft);text-anchor:middle;pointer-events:none}
 .bridge{fill:var(--blue);opacity:0;transition:opacity .3s}
@@ -227,6 +240,26 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
 .mask-move.locked .mask-frame.move{stroke:var(--green);stroke-dasharray:none}
 
 /* ---------- Act 4: GPU / lanes ---------- */
+/* ---------- focus spotlight (DESIGN_MAKEOVER §2 rule 2) ----------
+   The scrim sits over the whole stage and the focused nodes are raised above
+   it, so a card always has exactly one thing on screen at full strength, named
+   where it stands. */
+/* the base rule carries the FINAL opacity and the keyframe only supplies the
+   fade-in, so a throttled or disabled animation still leaves the scrim visible */
+.focus-scrim{fill:var(--paper-high);opacity:.8;animation:focus-in .34s var(--ease);pointer-events:none}
+@keyframes focus-in{from{opacity:0}}
+.focus-marks{pointer-events:none}
+.focus-ring{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:4 4;opacity:.75}
+.focus-leader{stroke:var(--ink);stroke-width:1;opacity:.7}
+.focus-label{
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.16em;
+  fill:var(--ink);font-weight:500;text-transform:uppercase;paint-order:stroke;
+  stroke:var(--paper-high);stroke-width:4;stroke-linejoin:round;
+}
+@media (prefers-reduced-motion:reduce){
+  .focus-scrim{animation:none}
+}
+
 .lane{fill:var(--paper-high);stroke:var(--hairline-strong);stroke-width:1.2;transition:stroke .18s}
 .lane.odd{stroke:var(--red);stroke-width:2}
 .lane-lamp{fill:var(--paper-high);stroke:var(--hairline-strong);stroke-width:1.2;transition:fill .12s}
@@ -352,3 +385,13 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
 .motto-border{fill:none;stroke:var(--amber);stroke-width:1.2}
 .motto-border.inner{stroke-width:1}
 .motto-t{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;fill:var(--amber);text-anchor:middle;pointer-events:none}
+
+/* worked column addition (act 2, the full adder) */
+.colsum-d{font-family:var(--font-mono);font-size:19px;fill:var(--ink);pointer-events:none}
+.colsum-carry{font-family:var(--font-mono);font-size:15px;fill:var(--amber);pointer-events:none}
+.colsum-lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;fill:var(--ink-soft);pointer-events:none}
+.colsum-rule{stroke:var(--ink);stroke-width:1.2}
+.colsum-box{fill:none;stroke:none;transition:fill .2s,stroke .2s}
+.colsum-box.on{fill:var(--amber-soft);stroke:var(--amber);stroke-dasharray:3 3}
+.colsum-arrow{stroke:var(--amber);stroke-width:1.4}
+.colsum-arrowhead{fill:var(--amber)}

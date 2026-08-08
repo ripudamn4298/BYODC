@@ -1,183 +1,364 @@
-// ACT 4 · STEP 1 — "The marching band" (race: one worker vs eight).
-// Bridge from Act 2: the datapath adds one pair at a time — brilliant, but hand it a
-// LIST and it plods. Test predicts cycle counts BEFORE the race runs (guide.choose).
-// Per DESIGN.md §5b spirit + HANDOFF §5 ACT4 STEP1.
+// ACT 4 · STEP 1 — "Eight adders at once".
+// Rebuilt to the micro-learning contract in DESIGN_MAKEOVER.md §2 / §5: one card at a
+// time (guide.cards), every card focuses and names the one thing it is about, "lane" is
+// derived from the player's own Act 2 datapath before the word is ever used, and both
+// structural jumps (one adder → eight, eight → one lane → sixteen) are watched, not cut to.
 import { sleep, waitFor, el, svgEl } from '../../engine/util.js';
+import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeRaceTrack, makeLaneGrid } from '../../engine/lanes.js';
+import { makeLaneGrid } from '../../engine/lanes.js';
 
-/* the actual job, drawn: two lists of 8, and a SUM row that fills in as it's computed */
-function drawSumLists(svg){
-  const A = [3, 7, 2, 8, 4, 6, 1, 5], B = [4, 1, 6, 3, 5, 2, 8, 2];
-  const SUM = A.map((a, i) => a + B[i]);
-  const x0 = 118, cw = 52, gap = 8, step = cw + gap;
-  const rowY = { a: 84, b: 128, sum: 186 };
-  const cells = { sum: [] };
-  const mk = (x, y, txt, cls) => {
-    const r = svgEl('rect', { x, y, width: cw, height: 32, rx: 3, class: cls });
-    const t = svgEl('text', { x: x + cw / 2, y: y + 21, class: 'bit-t' }); t.textContent = txt;
-    svg.append(r, t); return { r, t };
-  };
-  const lbl = (y, s) => { const t = svgEl('text', { x: x0 - 14, y: y + 21, class: 'lbl-strong', 'text-anchor': 'end' }); t.textContent = s; svg.appendChild(t); };
-  lbl(rowY.a, 'LIST A'); lbl(rowY.b, 'LIST B'); lbl(rowY.sum, 'A + B');
-  for (let i = 0; i < 8; i++){
-    const x = x0 + i * step;
-    mk(x, rowY.a, A[i], 'bit-cell'); mk(x, rowY.b, B[i], 'bit-cell');
-    cells.sum.push(mk(x, rowY.sum, '', 'slot'));
+const A = [3, 7, 2, 8, 4, 6, 1, 5];
+const B = [4, 1, 6, 3, 5, 2, 8, 2];
+const SUM = A.map((a, i) => a + B[i]);
+
+const COL_X = 96, COL_W = 58, COL_STEP = 66;      // eight columns, 96 → 616
+const ROW = { a: 64, b: 102, add: 158, sum: 236 };
+const colBox = i => ({ x: COL_X + i * COL_STEP, y: ROW.add, w: COL_W, h: 44 });
+
+/* short arrow: a line plus a drawn head, so the stage needs no <defs> */
+function arrow(parent, x1, y1, x2, y2){
+  const g = svgEl('g');
+  g.appendChild(svgEl('line', { x1, y1, x2, y2, class: 'wire' }));
+  const a = Math.atan2(y2 - y1, x2 - x1), h = 7;
+  g.appendChild(svgEl('path', {
+    d: `M${x2} ${y2} L${x2 - h * Math.cos(a - .42)} ${y2 - h * Math.sin(a - .42)} L${x2 - h * Math.cos(a + .42)} ${y2 - h * Math.sin(a + .42)} Z`,
+    fill: 'var(--ink)',
+  }));
+  parent.appendChild(g);
+  return g;
+}
+
+function box(parent, x, y, w, h, label, caption){
+  const g = svgEl('g');
+  g.appendChild(svgEl('rect', { x, y, width: w, height: h, rx: 5, class: 'tile-bg' }));
+  const t = svgEl('text', { x: x + w / 2, y: y + h / 2 + (caption ? -2 : 5), class: 'gate-lbl' });
+  t.textContent = label;
+  g.appendChild(t);
+  if (caption){
+    const c = svgEl('text', { x: x + w / 2, y: y + h / 2 + 15, class: 'lbl-faint' });
+    c.textContent = caption;
+    g.appendChild(c);
   }
-  svg.appendChild(svgEl('line', { x1: x0 - 4, y1: rowY.sum - 9, x2: x0 + 8 * step - gap + 4, y2: rowY.sum - 9, class: 'wire' }));
-  return {
-    fillSum(i){ const c = cells.sum[i]; if (!c || c.t.textContent) return; c.t.textContent = SUM[i]; c.r.setAttribute('class', 'bit-cell hi'); c.t.classList.add('hi'); },
-    fillAll(){ for (let i = 0; i < 8; i++) this.fillSum(i); },
-    reset(){ cells.sum.forEach(c => { c.t.textContent = ''; c.t.classList.remove('hi'); c.r.setAttribute('class', 'slot'); }); },
-  };
+  parent.appendChild(g);
+  return g;
+}
+
+async function fadeOut(nodes, dur = 300){
+  const list = nodes.filter(Boolean);
+  if (!list.length) return;
+  await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(1 - p); }));
+  list.forEach(n => { n.style.display = 'none'; });
+}
+async function fadeIn(nodes, dur = 300){
+  const list = nodes.filter(Boolean);
+  if (!list.length) return;
+  list.forEach(n => { n.style.opacity = '0'; });
+  await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(p); }));
 }
 
 export async function step1(){
-  guide.title('STEP 1 / 5 · NANOVOLT GRAPHICS', 'The <em>marching band</em>');
+  guide.title('STEP 1 / 5 · NANOVOLT GRAPHICS', 'Eight adders <em>at once</em>');
+  guide.cards();
 
-  guide.say(`Two terms first. A <b>datapath</b> is one worker that does one operation — the register-plus-adder-plus-clock you built in Act 2 is a datapath that adds one pair of numbers per clock tick. A <b>list</b> is just many numbers to run that operation on. The aim of this step: see why one fast datapath is the wrong shape for a list, and what to build instead. Start with the problem. Hand your Act-2 machine two lists of eight numbers to add, pair by pair, and it does the only thing it can: <em>one pair per tick, eight ticks in a row.</em>`);
+  const stage = newStage('13', 'One adder, then eight, then sixteen lanes');
+  const { svg, controls } = stage;
+
+  /* ============ SCENE A — start from the machine the player already built ========== */
+
+  const actTwo = svgEl('g');
+  svg.appendChild(actTwo);
+  box(actTwo, 60, 160, 104, 54, 'REGISTER', 'holds a number');
+  box(actTwo, 214, 160, 104, 54, 'ADDER', 'adds');
+  const loop = svgEl('g');
+  loop.innerHTML = `
+    <path d="M164 187 H214" class="wire"/>
+    <path d="M318 187 H360 V330 H26 V187 H60" class="wire"/>
+    <path d="M112 250 V214" class="wire dim" stroke-dasharray="4 4"/>`;
+  actTwo.appendChild(loop);
+  const clockBox = box(actTwo, 62, 250, 100, 34, 'CLOCK');
+
+  guide.say(`This is the machine you built in Act 2. A <b>register</b> holds a number, an
+    <b>adder</b> adds to it, and the answer goes back to the register.`);
+  stage.focus(actTwo, { label: 'your act 2 machine', at: 'right' });
   await guide.next();
 
-  const { svg, controls } = newStage('13', 'Serial vs parallel race: adding two lists of 8');
-  const lists = drawSumLists(svg);
+  guide.say(`The clock keeps time. <b>One cycle is one beat:</b> every part moves once,
+    then waits for the next beat.`);
+  stage.focus(clockBox, { label: 'clock', at: 'bottom' });
+  await guide.next();
 
-  guide.say(`Here's the job on the bench: <b>List A</b> plus <b>List B</b>, eight pairs, eight sums to drop into the bottom row. A <b>clock tick</b> is one beat of the machine, and one datapath finishes one pair per tick. Before we run it, predict: if a single adder does one pair per tick, and a crowd of eight adders each takes one pair, how many ticks does each need?`);
+  stage.clearFocus();
+  const arrowG = arrow(svg, 392, 245, 452, 245);
+  const oneAdder = box(svg, 480, 215, 130, 60, 'ADDER', 'one sum per cycle');
+  await fadeIn([arrowG, oneAdder], 340);
 
-  const guess = await guide.choose([
-    { label: '8 ticks, then 1 tick (recommended)', value: 'right', hint: 'one worker plods through the list; eight workers each grab one item and go' },
-    { label: '8 ticks, then 8 ticks', value: 'both8', hint: 'would the crowd really need to repeat itself?' },
-    { label: '1 tick, then 1 tick', value: 'both1', hint: 'can one adder really finish eight sums in a single tick?' },
+  guide.say(`Keep only the part that does the arithmetic. One adder, one sum per cycle.
+    This is the piece we are going to copy.`);
+  stage.focus(oneAdder, { label: 'one adder', at: 'top' });
+  await guide.next();
+
+  /* ============ SCENE B — the job, then one adder against eight ==================== */
+
+  /* The Act 2 machine goes, and the surviving adder travels down into the first
+     column — it has to leave 480,215 before the lists are drawn, because the
+     answer row runs straight through that spot. */
+  stage.clearFocus();
+  await fadeOut([actTwo, arrowG]);
+
+  const adders = [];
+  const adderG = svgEl('g');
+  svg.appendChild(adderG);
+  const mkAdder = i => {
+    const b = colBox(i);
+    const g = svgEl('g');
+    const r = svgEl('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 4, class: 'tile-bg' });
+    const t = svgEl('text', { x: b.x + b.w / 2, y: b.y + 29, class: 'gate-lbl' });
+    t.textContent = '+';
+    g.append(r, t);
+    adderG.appendChild(g);
+    const a = { g, r, i };
+    adders[i] = a;
+    return a;
+  };
+
+  const a0 = mkAdder(0);
+  a0.g.style.opacity = '0';
+  await Promise.all([
+    stage.packInto([oneAdder], colBox(0), { scale: 0.45, dur: 520 }),
+    Anim.tween(520, p => { a0.g.style.opacity = String(Math.max(0, (p - .55) / .45)); }),
   ]);
+  a0.g.style.opacity = '1';
 
-  if (guess !== 'right'){
-    guide.note(`Not quite — but a fair guess. One worker really does need <b>one tick per item</b>: 8 items, 8 ticks. A crowd of <b>eight</b> workers can each grab one item <em>at the same time</em> — so the whole list finishes in <b>one</b> tick. Watch it happen.`);
-  } else {
-    guide.note(`Exactly right. Watch it happen.`);
+  const job = svgEl('g');
+  svg.appendChild(job);
+  const rowLabel = (y, s) => {
+    const t = svgEl('text', { x: COL_X - 12, y: y + 21, class: 'lbl-strong', 'text-anchor': 'end' });
+    t.textContent = s;
+    job.appendChild(t);
+  };
+  rowLabel(ROW.a, 'LIST A'); rowLabel(ROW.b, 'LIST B'); rowLabel(ROW.sum, 'A + B');
+  const sumCells = [];
+  for (let i = 0; i < 8; i++){
+    const x = COL_X + i * COL_STEP;
+    const cell = (y, txt, cls) => {
+      const r = svgEl('rect', { x, y, width: COL_W, height: 30, rx: 3, class: cls });
+      const t = svgEl('text', { x: x + COL_W / 2, y: y + 21, class: 'bit-t' });
+      t.textContent = txt;
+      job.append(r, t);
+      return { r, t };
+    };
+    cell(ROW.a, A[i], 'bit-cell');
+    cell(ROW.b, B[i], 'bit-cell');
+    sumCells.push(cell(ROW.sum, '', 'slot'));
   }
+  const fillSum = i => {
+    const c = sumCells[i];
+    if (!c) return;
+    c.t.textContent = SUM[i];
+    c.r.setAttribute('class', 'bit-cell hi');
+    c.t.classList.add('hi');
+  };
+  const clearSums = () => sumCells.forEach(c => {
+    c.t.textContent = ''; c.t.classList.remove('hi'); c.r.setAttribute('class', 'slot');
+  });
+
+  await fadeIn([job], 340);
+
+  guide.say(`Here is the job. Two lists of eight numbers, added pair by pair.`);
+  // no ring here: the adder already sits between the input rows and the answer
+  // row, and a box drawn round the job would enclose it while it is dimmed
+  stage.focus(job, { label: '8 pairs to add', at: 'bottom', ring: false });
   await guide.next();
 
-  /* ---------- the race ---------- */
-  guide.say(`Now race two ways of filling that <b>A + B</b> row. <em>Tick the clock</em> means advance the single worker one tick: it computes one sum per press — watch a cell fill each time, left to right. After a few, hit <b>auto-finish</b> to run the rest. Then <b>fire all eight</b>: eight workers, one per column, and the whole row lands in a single beat.`);
+  guide.say(`Predict before you run it. How many cycles does <b>one</b> adder need for all
+    eight pairs, and how many do <b>eight</b> adders need?`);
+  stage.clearFocus();
+  const guess = await guide.choose([
+    { label: '8 cycles, then 1 cycle', value: 'right', hint: 'one adder does one pair per cycle' },
+    { label: '8 cycles, then 8 cycles', value: 'both8' },
+    { label: '1 cycle, then 1 cycle', value: 'both1' },
+  ]);
+  guide.note(guess === 'right'
+    ? `Right. Run it and watch.`
+    : `One adder does one pair per cycle, so eight pairs take eight cycles. Eight adders
+       each take one pair at the same moment, so the row lands in one cycle.`);
+  await guide.next();
 
-  const track = makeRaceTrack(svg, { x: 118, y: 288, w: 484, gap: 70 });
+  const counter = svgEl('text', { x: 360, y: 300, class: 'lbl-strong' });
+  counter.textContent = 'CYCLES USED: 0';
+  svg.appendChild(counter);
+  const tally = svgEl('g');
+  svg.appendChild(tally);
+  const tallyLine = (y, s) => {
+    const t = svgEl('text', { x: 360, y, class: 'lbl' });
+    t.textContent = s; t.style.opacity = '0';
+    tally.appendChild(t);
+    return t;
+  };
+  const tallySerial = tallyLine(348, 'ONE ADDER · 8 CYCLES');
+  const tallyPar = tallyLine(372, 'EIGHT ADDERS · 1 CYCLE');
 
-  const tickBtn = el('button', { class: 'btn primary', 'data-label': 'tick-serial' }, 'TICK THE CLOCK ▸');
-  const autoBtn = el('button', { class: 'btn ghost', 'data-label': 'auto-finish' }, 'AUTO-FINISH ▸');
-  const paraBtn = el('button', { class: 'btn primary', 'data-label': 'fire-all-eight' }, 'FIRE ALL EIGHT ▸');
-  paraBtn.disabled = true;
-  controls.append(tickBtn, autoBtn, paraBtn);
+  guide.say(`You have one adder. Each press runs one cycle: it adds the pair above it,
+    then moves to the next column.`);
+
+  const oneBtn = el('button', { class: 'btn primary', 'data-label': 'add-next-pair' }, 'ADD NEXT PAIR');
+  const allBtn = el('button', { class: 'btn primary', 'data-label': 'all-eight-at-once' }, 'ALL EIGHT AT ONCE');
+  allBtn.disabled = true;
+  controls.append(oneBtn, allBtn);
+
+  const stampRest = () => {
+    for (let i = 1; i < 8; i++) if (!adders[i]) mkAdder(i);
+  };
+  const settleRace = () => {
+    stampRest();
+    a0.g.setAttribute('transform', 'translate(0 0)');
+    clearSums();
+    for (let i = 0; i < 8; i++){ fillSum(i); adders[i].r.classList.add('on'); }
+    counter.textContent = 'CYCLES USED: 1';
+    tallySerial.style.opacity = '1'; tallyPar.style.opacity = '1';
+    [oneBtn, allBtn].forEach(b => { b.disabled = true; b.classList.add('used'); });
+  };
 
   await flow.ask(async replay => {
-    if (replay !== undefined){
-      lists.fillAll();
-      track.set('serial', 1, 'cycle 8/8');
-      track.set('parallel', 1, '1 cycle');
-      tickBtn.disabled = true; autoBtn.disabled = true; paraBtn.disabled = true;
-      tickBtn.classList.add('used'); autoBtn.classList.add('used'); paraBtn.classList.add('used');
-      return replay;
-    }
+    if (replay !== undefined){ settleRace(); return replay; }
+    let n = 0, serialDone = false, parallelDone = false, busy = false;
 
-    let serialTicks = 0;
-    let serialDone = false, parallelDone = false;
-
-    function stepSerial(){
-      if (serialTicks >= 8) return;
-      serialTicks++;
-      track.set('serial', serialTicks / 8, `cycle ${serialTicks}/8`);
-      lists.fillSum(serialTicks - 1);
-      SFX.blip();
-      if (serialTicks >= 8){
-        serialDone = true;
-        tickBtn.disabled = true; autoBtn.disabled = true;
-        paraBtn.disabled = false;
+    oneBtn.addEventListener('click', async () => {
+      if (n >= 8 || busy) return;
+      busy = true;
+      SFX.click();
+      if (n > 0){
+        await Anim.tween(180, p => {
+          a0.g.setAttribute('transform', `translate(${((n - 1) + p) * COL_STEP} 0)`);
+        });
       }
-    }
-    tickBtn.addEventListener('click', () => { SFX.click(); stepSerial(); });
-    autoBtn.addEventListener('click', async () => {
-      SFX.click(); autoBtn.disabled = true; tickBtn.disabled = true;
-      while (serialTicks < 8){ stepSerial(); await sleep(160); }
+      a0.r.classList.add('on');
+      fillSum(n);
+      n++;
+      counter.textContent = `CYCLES USED: ${n}`;
+      busy = false;
+      if (n >= 8){
+        serialDone = true;
+        tallySerial.style.opacity = '1';
+        oneBtn.disabled = true; oneBtn.classList.add('used');
+        allBtn.disabled = false;
+        guide.say(`Eight cycles for eight pairs. Now stamp seven more copies of the same
+          adder and give each one its own pair.`);
+      }
     });
-    paraBtn.addEventListener('click', async () => {
-      if (parallelDone) return;
-      SFX.click(); paraBtn.disabled = true;
-      lists.reset();          // wipe the slow serial result…
-      lists.fillAll();        // …and land all eight sums in one beat
-      track.set('parallel', 1, '1 cycle');
+
+    allBtn.addEventListener('click', async () => {
+      if (parallelDone || !serialDone) return;
+      SFX.click();
+      allBtn.disabled = true; allBtn.classList.add('used');
+      clearSums();
+      counter.textContent = 'CYCLES USED: 0';
+      a0.r.classList.remove('on');
+      // the one adder returns home, then six siblings print in beside it
+      await Anim.tween(240, p => {
+        a0.g.setAttribute('transform', `translate(${7 * (1 - p) * COL_STEP} 0)`);
+      });
+      stampRest();
+      const fresh = adders.slice(1).map(a => a.g);
+      await fadeIn(fresh, 320);
+      await sleep(140);
+      adders.forEach(a => a.r.classList.add('on'));
+      for (let i = 0; i < 8; i++) fillSum(i);
+      counter.textContent = 'CYCLES USED: 1';
+      tallyPar.style.opacity = '1';
       SFX.success();
       parallelDone = true;
     });
 
-    await waitFor(() => serialDone && parallelDone, { hold: 300 });
+    await waitFor(() => serialDone && parallelDone, { hold: 320 });
     return true;
   });
 
-  guide.note(`<b>Eight ticks. Then one.</b> Same job, same total work — but the eight workers finished while the single worker was still on the first item. Many simple workers running at once beat one fast worker every time.`);
+  guide.say(`Eight cycles, then one. The same work, done by copies instead of by one part
+    working faster.`);
+  stage.focus(tally, { ring: true });
   await guide.next();
 
-  /* ---------- stamp the lane: eight workers become sixteen permanent lanes ---------- */
-  guide.say(`Two more terms. A <b>lane</b> is one simple worker — a single datapath that does one operation. To <b>stamp</b> means to copy one finished block many times, side by side, the way a fab prints the same design across a wafer (Act 3). The aim now: stamp sixteen permanent lanes into silicon, all wired to one shared instruction, so a single order runs on every lane at once. Press to lay them down.`);
+  /* ============ SCENE C — eight adders become one lane, then sixteen =============== */
 
-  await guide.button('Stamp 16 lanes ▸');
+  stage.clearFocus();
+  controls.innerHTML = '';        // the race buttons are spent; clear the bench
+  await fadeOut([job, counter, tally], 260);
+  await stage.packInto(adders.map(a => a.g), { x: 327, y: 207, w: 66, h: 66 });
 
-  // clear the bench: fade out the race visuals so the lane grid gets a clean stage.
-  const prior = Array.from(svg.childNodes);
-  if (flow.instant){
-    prior.forEach(n => n.style && (n.style.display = 'none'));
-  } else {
-    prior.forEach(n => { if (n.style){ n.style.transition = 'opacity 220ms'; n.style.opacity = '0'; } });
-    await sleep(240);
-    prior.forEach(n => n.style && (n.style.display = 'none'));
+  const laneTile = svgEl('g');
+  laneTile.append(
+    svgEl('rect', { x: 327, y: 207, width: 66, height: 66, rx: 4, class: 'lane' }),
+    svgEl('circle', { cx: 382, cy: 218, r: 4, class: 'lane-lamp' }),
+  );
+  const lanePlus = svgEl('text', { x: 360, y: 246, class: 'gate-lbl' });
+  lanePlus.textContent = '+';
+  laneTile.appendChild(lanePlus);
+  svg.appendChild(laneTile);
+  await fadeIn([laneTile], 300);
+
+  guide.say(`Pack one adder together with the numbers it works on and you get a
+    <b>lane</b>. A lane is your adder, copied, holding its own pair.`);
+  stage.focus(laneTile, { label: 'lane = one adder + its own numbers', at: 'bottom' });
+  await guide.next();
+
+  /* the lane travels to the first grid slot, the other fifteen print in behind it */
+  stage.clearFocus();
+  const GX = 216, GY = 120, CELL = 66, GAP = 8, GW = 4 * CELL + 3 * GAP;
+  const grid = makeLaneGrid(svg, { x: GX, y: GY, cols: 4, rows: 4, cell: CELL, gap: GAP });
+  grid.lanes.forEach(l => [l.rect, l.lamp, l.val].forEach(n => { n.style.opacity = '0'; }));
+
+  await Anim.tween(420, p => {
+    laneTile.setAttribute('transform', `translate(${(GX - 327) * p} ${(GY - 207) * p})`);
+  });
+  laneTile.style.display = 'none';
+  const show = i => [grid.lanes[i].rect, grid.lanes[i].lamp, grid.lanes[i].val]
+    .forEach(n => { n.style.opacity = '1'; });
+  show(0);
+  for (let i = 1; i < 16; i++){
+    show(i);
+    if (!flow.instant){ SFX.click(); await sleep(48); }
   }
 
-  const grid = makeLaneGrid(svg, { x: 194, y: 96, cols: 4, rows: 4, cell: 66, gap: 8 });
-  grid.g.querySelectorAll('rect, circle, text').forEach(n => n.style.opacity = '0');
+  guide.say(`Sixteen lanes on one chip. They fit because a lane cannot choose its own job.
+    It only ever does what it is told.`);
+  stage.focus(grid.g, { label: '16 lanes', at: 'bottom' });
+  await guide.next();
 
-  async function stampRow(r){
-    for (let c = 0; c < 4; c++){
-      const l = grid.lanes[r * 4 + c];
-      [l.rect, l.lamp, l.val].forEach(n => { n.style.transition = 'opacity 140ms'; n.style.opacity = '1'; });
-    }
-  }
-  if (flow.instant){
-    grid.g.querySelectorAll('rect, circle, text').forEach(n => n.style.opacity = '1');
-  } else {
-    for (let r = 0; r < 4; r++){ await stampRow(r); SFX.click(); await sleep(70); }
-  }
+  stage.clearFocus();
+  const rail = svgEl('g');
+  const chip = svgEl('g');
+  chip.appendChild(svgEl('rect', { x: GX, y: 74, width: 74, height: 26, rx: 4, class: 'tile-bg on' }));
+  const chipT = svgEl('text', { x: GX + 37, y: 92, class: 'gate-lbl' });
+  chipT.textContent = 'ADD';
+  chip.appendChild(chipT);
+  rail.appendChild(svgEl('path', { d: `M${GX} 108 H${GX + GW}`, class: 'wire dim' }));
+  rail.appendChild(chip);
+  svg.appendChild(rail);
+  await fadeIn([rail], 300);
 
-  /* ---------- one broadcast: an ADD instruction sweeps the top, all 16 lanes fire in lockstep ---------- */
-  // fixed, deterministic operands — every lane adds a DIFFERENT pair, but the SAME operation.
+  guide.say(`One order travels along this rail and reaches every lane at the same moment.`);
+  stage.focus(rail, { label: 'one instruction, sent to all 16', at: 'top' });
+
   const OPS_A = [3, 7, 2, 8, 4, 6, 1, 5, 9, 2, 7, 3, 6, 4, 8, 1];
   const OPS_B = [4, 1, 6, 3, 5, 2, 8, 2, 1, 7, 4, 9, 2, 6, 3, 5];
   const SUMS = OPS_A.map((a, i) => a + OPS_B[i]);
 
-  const gx = 194, gy = 96, cell = 66, gap = 8, gw = 4 * cell + 3 * gap;
-  const chipG = svgEl('g');
-  const chipY = gy - 34;
-  const chipBox = svgEl('rect', { x: gx, y: chipY - 16, width: 74, height: 26, rx: 4, class: 'lane hi' });
-  const chipTxt = svgEl('text', { x: gx + 37, y: chipY + 2, class: 'lane-val' }); chipTxt.textContent = 'ADD';
-  chipG.append(chipBox, chipTxt);
-  svg.appendChild(chipG);
+  await guide.button('Send ADD to all sixteen ▸');
+  stage.clearFocus();
 
-  guide.say(`How to read the grid: it is sixteen lanes, and <b>each lane holds a different pair of numbers</b> from the list. <b>The number printed on each tile is that lane's result — the sum of its own pair.</b> So the tiles all read differently, and that difference is the whole point: every lane runs the <em>same</em> operation (ADD) at the <em>same</em> time on <em>different</em> data. An <b>instruction</b> is the shared order telling every lane what operation to do. To <b>sweep the rail</b> means that one instruction reaches every lane at once, along the wire across the top. Set the instruction to <b>ADD</b> and broadcast it: every lane hears the same order at the same moment and fires on its own pair.`);
-
-  await guide.button('Broadcast ADD ▸');
-
-  function landAll(){
-    grid.flashAll(true);
-    for (let i = 0; i < 16; i++) grid.setValue(i, SUMS[i]);
-    chipG.setAttribute('transform', `translate(${gw - 74}, 0)`);
-  }
   if (flow.instant){
-    landAll();
+    grid.flashAll(true);
+    SUMS.forEach((v, i) => grid.setValue(i, v));
+    chip.setAttribute('transform', `translate(${GW - 74} 0)`);
   } else {
-    // instruction chip glides across the rail; every lane flashes the SAME op on DIFFERENT numbers
     for (let c = 0; c < 4; c++){
-      const dx = c * (cell + gap);
-      chipG.style.transition = 'transform 120ms'; chipG.setAttribute('transform', `translate(${dx}, 0)`);
+      chip.style.transition = 'transform 120ms';
+      chip.setAttribute('transform', `translate(${c * (CELL + GAP)} 0)`);
       for (let r = 0; r < 4; r++){
         const i = r * 4 + c;
         grid.setActive(i, true);
@@ -186,13 +367,12 @@ export async function step1(){
       SFX.blip();
       await sleep(110);
     }
-    chipG.setAttribute('transform', `translate(${gw - 74}, 0)`);
+    chip.setAttribute('transform', `translate(${GW - 74} 0)`);
     SFX.success();
   }
 
-  guide.note(`All sixteen sums landed together, on one order. Running every lane off one shared instruction, in the same tick, is called <b>lockstep</b>. <span class="mono">one instruction · sixteen lanes · lockstep</span>`);
-
-  guide.aha(`This is the trade a GPU makes: each lane gives up deciding what to do — one shared instruction decides for all of them — and in exchange, sixteen lanes fit where independent processors never could. One thing left to check: what operation do these lanes actually run all day? Not list-adding. In AI, almost all of the work is one specific move — <b>multiply two numbers, add the result onto a running total</b>. The next step builds it.`,
-    `A games studio called Nanovolt first: pixels are lists too.`);
+  guide.aha(`Sixteen answers in one cycle. One order, sixteen lanes, sixteen different
+    pairs of numbers.`,
+    `That is the whole trick of a GPU. The rest of this act makes each lane better at the one sum it does.`);
   await guide.next();
 }

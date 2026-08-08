@@ -13,18 +13,18 @@ export const ACT4_BASE_COST = 14000.0105;   // everything through Act 3
 export const ACT4 = [
   {
     id: 'race',
-    title: 'The marching band',
+    title: 'Eight adders at once',
     costDelta: 40000,
     inventory: 'a 16-lane compute block',
     businessCard: {
       company: 'Nanovolt Graphics',
-      location: 'NEW DESIGN CENTRE — SANTA CLARA, CALIFORNIA',
+      location: 'NEW DESIGN CENTRE, SANTA CLARA, CALIFORNIA',
       revenue: '$28B / YR',
-      body: 'A games studio called first — pixels are just long lists of numbers, and long lists are exactly what a crowd of simple adders eats for breakfast. The word "accelerator" is on every whiteboard.',
+      body: 'A games studio placed the first order. An image is a long list of numbers, and this block adds long lists fast.',
       cost: 'THIS DESIGN STUDY: $40,000',
     },
-    premise: `One clever worker doing sums one at a time is a CPU — and it's very good at it. But hand it a <em>list</em> of a million numbers and it's slow. The answer isn't a faster worker. It's <b>many simple workers</b>, all adding at once.`,
-    cta: 'Stamp the lanes ▸',
+    premise: `Your lanes can add. Almost all of the arithmetic in an AI model is one other move: <b>multiply two numbers, then add the result onto a running total</b>. Next you build that move, starting from a multiplication you already know the answer to.`,
+    cta: 'See how a chip multiplies ▸',
     run: step1,
   },
   {

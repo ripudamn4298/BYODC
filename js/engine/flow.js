@@ -83,9 +83,11 @@ export const flow = {
       this.updateNav();
       try {
         await step.run();
+        guide.endCards();     // venture card / premise / CTA always append normally
       } catch (err){
         if (!guard()) return;
         console.error('[BYODC] step crashed:', err);
+        guide.endCards();
         this._exitInstant();
         guide.note(`Something glitched on the bench — hit <b>↺ Restart step</b> above to reset it. (The fault is ours, not yours.)`);
         return;   // halt this runner; Restart/Back still work

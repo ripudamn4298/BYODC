@@ -6,10 +6,54 @@ import { flow } from './flow.js';
 
 export const guide = {
   root: null,
+  _cards: null,          // { slot, actions } while a step is in card mode
   init(){ this.root = $('#guide-scroll'); },
-  clear(){ this.root.innerHTML = ''; },
-  beat(node){
+  clear(){ this.root.innerHTML = ''; this._cards = null; },
+
+  /* ---------- card mode (DESIGN_MAKEOVER.md §2 rule 1) ----------
+     The panel holds ONE block of text. Next replaces it in the same place.
+     No history stack is needed: every card boundary is already a flow.ask(),
+     so BACK re-runs the step one answer short and lands on the previous card.
+     Call after title(), so the step head stays pinned above the card. */
+  cards(){
+    const slot = el('div', { class: 'card-slot' });
+    const actions = el('div', { class: 'card-actions' });
+    this.root.append(slot, actions);
+    this._cards = { slot, actions };
+    return this;
+  },
+  endCards(){ this._cards = null; },
+
+  /* replace whatever is in `host` with `node`; the outgoing card is taken out of
+     flow while it fades so the incoming one does not get pushed down the panel */
+  _swap(host, node){
+    const old = host.firstElementChild;
+    if (flow.instant){
+      host.innerHTML = '';
+      node.classList.add('instant', 'in');
+      host.appendChild(node);
+      return node;
+    }
+    if (old){
+      old.style.position = 'absolute';
+      old.style.insetInlineStart = '0';
+      old.style.top = '0';
+      old.style.width = '100%';
+      old.classList.add('out');
+      setTimeout(() => old.remove(), 260);
+    }
+    host.appendChild(node);
+    requestAnimationFrame(() => requestAnimationFrame(() => node.classList.add('in')));
+    return node;
+  },
+
+  beat(node, where){
     node.classList.add('beat');
+    if (this._cards){
+      // a fresh card retires the buttons that belonged to the previous one
+      if (where !== 'actions') this._cards.actions.innerHTML = '';
+      return this._swap(where === 'actions' ? this._cards.actions : this._cards.slot, node);
+    }
     if (flow.instant) node.classList.add('instant', 'in');
     this.root.appendChild(node);
     if (!flow.instant){
@@ -30,7 +74,7 @@ export const guide = {
   },
   async button(label, variant = 'primary'){
     const b = el('button', { class: 'btn ' + variant, 'data-label': slug(label) }, label);
-    const row = this.beat(el('div', { class: 'btn-row' }));
+    const row = this.beat(el('div', { class: 'btn-row' }), 'actions');
     row.appendChild(b);
     await flow.ask(replay => {
       if (replay !== undefined){ b.disabled = true; b.classList.add('used'); return true; }
@@ -41,7 +85,7 @@ export const guide = {
   },
   next(label = 'Next ▸'){ return this.button(label, 'primary'); },
   choose(options){
-    const row = this.beat(el('div', { class: 'choice-wrap' }));
+    const row = this.beat(el('div', { class: 'choice-wrap' }), 'actions');
     const btns = options.map(o => {
       const b = el('button', { class: 'btn choice', 'data-label': slug(o.label) },
         `<span>${o.label}</span>${o.hint ? `<small>${o.hint}</small>` : ''}`);
