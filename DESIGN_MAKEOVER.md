@@ -381,6 +381,16 @@ One pass, one commit, after every step has landed.
       Counts, types and every recorded end state still match, so Back and Restart are
       sound, but this violates the determinism rule the steps are held to and should be
       seeded or driven off `Anim.tween`.
+- [ ] **`guide._swap` leaks a card when two arrive within 260 ms.** It takes
+      `host.firstElementChild` as the outgoing card and removes it on a timer; a second
+      swap inside that window picks the *same* element again, so the card appended by the
+      first swap is never marked `.out` and never removed. The slot grows by one each
+      time. Only reachable at machine speed, so human play and replay are unaffected, but
+      it is in every ported step. Fix: treat **all** current children as outgoing and skip
+      any already carrying `.out`, rather than just the first child.
+- [ ] A hidden slot rect that keeps its `tabindex` still paints the `:focus-visible` ring
+      after it is placed. Steps currently drop `tabindex` and blur by hand; `makePlacer`
+      should do it when a slot is filled.
 - [ ] Re-verify steps 1 to 6 after those three land.
 
 **Still open after the registry pass (2026-08-08)**
