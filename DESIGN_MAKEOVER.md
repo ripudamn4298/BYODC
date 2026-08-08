@@ -132,20 +132,71 @@ plain sentences: who ordered, and why this component matters to them. Example, s
 > A games studio placed the first order. Images are long lists of numbers, and this
 > block adds long lists fast.
 
-## 4. Engine work
+## 4. Engine API (BUILT, commit 6233fdb)
 
-Three additions, no changes to the flow.ask replay contract. Cards are output only;
-recorded answers stay exactly as they are, so Back/Restart keep working.
+Three additions. The flow.ask record-and-replay contract is untouched: cards are output
+only, recorded answers are unchanged, Back/Restart work as before. All three are opt-in
+per step, so an un-ported step behaves exactly as it always did.
 
-1. **guide.js card mode.** `guide.say` renders into a single card slot instead of
-   appending. Internal history stack; Back re-shows the previous card. `guide.note`,
-   `guide.aha`, `guide.task` render in the same slot with their existing styles.
-2. **stage.js focus helpers.** `stage.focus(el | [els], {label, at})` dims everything
-   else and draws the label with a leader line. `stage.clearFocus()`. Labels are SVG
-   text in the existing microlabel style.
-3. **anim.js pack/morph helper.** A reusable "elements shrink and slide into a target
-   box" transition for Rule 5 moments. Respects `flow.instant` (skip to end state) and
-   reduced motion.
+### guide card mode
+
+```js
+guide.title('STEP 2 / 6 · NANOVOLT GRAPHICS', 'How a chip <em>multiplies</em>');
+guide.cards();          // call once, right after title()
+guide.say('…');         // replaces the card in the slot
+await guide.next();     // button lands in the pinned action row below the card
+```
+
+`say`, `note`, `aha` and `task` all render into the one card slot. `button`, `next` and
+`choose` render into the action row. A new card automatically clears the previous card's
+buttons. `flow` calls `guide.endCards()` after the step returns, so the venture card,
+premise and CTA append normally.
+
+**There is no card history stack and none is needed.** Every card boundary is already a
+`flow.ask()`, so the existing Back re-runs the step one answer short and lands on the
+previous card with its focus restored. This only holds if each card ends with an await on
+a `guide.next()` / `guide.button()` / `guide.choose()`. A card with no await is a card the
+player cannot go back to.
+
+### stage focus
+
+```js
+const stage = newStage('14', 'aria label');
+const { svg, controls } = stage;
+stage.focus(node | [nodes], { label: 'register file', at: 'top', ring: true });
+stage.clearFocus();
+stage.bbox(node);       // {x,y,w,h} in the stage's 720×480 user units
+```
+
+`at` is `'top' | 'bottom' | 'left' | 'right'`, default `'top'`. `label` is optional and is
+rendered uppercase in mono with a leader line. `ring: false` drops the dashed box, which is
+what you want when the ring would enclose something that is being dimmed.
+
+Focus works by covering the stage with a paper scrim and re-appending the focused nodes
+above it, then restoring their original sibling positions on clear. Do not delete or
+re-parent a focused node while it is focused; call `clearFocus()` first.
+
+### watched transitions
+
+```js
+await Anim.tween(dur, p => { /* p runs 0 → 1, eased */ });
+await stage.packInto(nodes, { x, y, w, h }, { dur, fade, scale });
+```
+
+`Anim.tween` collapses to a single `onUpdate(1)` while replaying or under reduced motion,
+so a step's end state is identical whether it was played or replayed. Never drive a visual
+change with a bare `setTimeout` loop; use `tween` or the existing `sleep`, both of which
+are replay-aware. `packInto` slides and shrinks nodes into a box; pass `fade: false` to
+leave them visible at the destination, and `scale` to control the final size.
+
+### CSS already in place
+
+`.card-slot`, `.card-actions`, `.focus-scrim`, `.focus-ring`, `.focus-leader`,
+`.focus-label`, `.tile-bg.on`. Reuse the existing SVG vocabulary (`.tile-bg`, `.gate-lbl`,
+`.lbl`, `.lbl-faint`, `.lbl-strong`, `.wire`, `.wire.dim`, `.bit-cell`, `.bit-t`, `.slot`,
+`.lane`, `.lane-lamp`, `.lane-val`) before inventing a new class.
+
+**Reference implementation: `js/acts/act4/step1.js`.** Read it before writing a step.
 
 ## 5. Act 4, step by step
 
@@ -153,7 +204,7 @@ Six steps. Stage numerals become 13-18; Act 5 shifts to 19-22; the course become
 steps. Cost ladder: the old step 3's $260K splits into $60K (registers) + $200K
 (weights); every other delta is unchanged, so the act still ends at $2.43M.
 
-### Step 1 — Eight adders at once
+### Step 1 — Eight adders at once  ·  BUILT (commit 6233fdb)
 
 Preface card: "You will turn your Act 2 machine into the first piece of a GPU."
 
@@ -277,11 +328,16 @@ As today, re-carded:
 
 ## 7. Build order
 
-1. Engine: guide card mode, stage focus/label helpers, pack/morph transition. Act 4
-   opts in first; other acts keep the old panel until they're ported.
-2. Rewrite Act 4 as card scripts per §5, including the step split and renumbering
-   (Act 5 numerals 19-22, progress.js keys unaffected since they store {act, step}).
-3. Playtest-for-confusion pass on Act 4, same method as PLAYTEST_FINDINGS.md: play it
+1. ~~Engine: guide card mode, stage focus/label helpers, pack/morph transition.~~ DONE.
+2. ~~Step 1.~~ DONE.
+3. Steps 2 to 6, one agent per step (`.claude/agents/byodc-act4-step*.md`). Each agent
+   owns exactly one file and must not touch `js/acts/act4/index.js`.
+4. Registry pass, done by the main agent once the steps land: the step-3 split, the new
+   6-entry `ACT4` array, stage numerals 13-18, Act 5 shifted to 19-22, and the $260K
+   cost split into $60K + $200K. `progress.js` stores `{act, step}` so saved runs are
+   unaffected in shape, but a run saved mid-Act-4 will resume one step off; that is
+   acceptable and is the reason renumbering happens in one pass rather than per step.
+5. Playtest-for-confusion pass on Act 4, same method as PLAYTEST_FINDINGS.md: play it
    as a confusion-prone undergrad, check every card against what's actually highlighted.
-4. Ripu reviews Act 4 live. Only after sign-off, port Acts 1, 2, 3, 5.
-5. Then DESIGN.md gains §6d (this contract) and the old guide behavior is removed.
+6. Ripu reviews Act 4 live. Only after sign-off, port Acts 1, 2, 3, 5.
+7. Then DESIGN.md gains §6d (this contract) and the old guide behavior is removed.
