@@ -389,6 +389,10 @@ One pass, one commit, after every step has landed.
       (`ACT 3 — From Cell to Chip`, `... — cleared`). Act 4's are now plain, so the house
       pattern is split until those acts are ported.
 
+- [ ] `makeOvershootDemo` spawns one carrier per frame with up to 26 alive, so the stream
+      renders as a solid bar rather than separable dots. Legible either way; a spacing knob
+      would improve it. Same behaviour in the old step, so this is polish, not a regression.
+
 **Cleanup and open questions**
 
 - [ ] `makeRoofline` in `js/engine/lanes.js` is now uncalled (grep-confirmed), and with it

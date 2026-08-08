@@ -97,6 +97,14 @@ mid-animation state and think something is broken.
 5. **A clean live run,** start to finish, with no console errors.
 6. **The other acts.** `__byodcStartAct(1|2|3|5)` must still render.
 
+## 3a. Do not fire two `flow.start()` calls back to back
+
+Restarting a run while a previous one is still unwinding leaves the old runner alive long
+enough to drain the new replay queue, and the step then sits on the wrong card. The epoch
+guard stops the zombie writing to the stage but not before it has eaten the queue. Only
+reachable from the console, since Back and Restart are one click at a time. Let one call
+settle before making the next.
+
 ## 3b. `flow.start` consumes the array you hand it
 
 `flow.start(i, queue)` shifts entries off `queue` as it replays them, so the array you
