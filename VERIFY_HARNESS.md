@@ -81,6 +81,17 @@ mid-animation state and think something is broken.
 5. **A clean live run,** start to finish, with no console errors.
 6. **The other acts.** `__byodcStartAct(1|2|3|5)` must still render.
 
+## 4a. Measuring geometry mid-transition
+
+In the backgrounded tab a CSS transition does not advance until something forces a paint,
+so a `getBoundingClientRect` taken while one is running reads the *start* position. Focus
+rings measured during a tile slide therefore box the tiles' old spots, and the ring lands
+in a different place live than on replay.
+
+This one is worth fixing in the source rather than working around: wait out the transition
+and clear it before you measure anything. The bug it hides is real even in a live tab,
+where the ring would simply be measured a few frames too early.
+
 ## 4b. Two engine constraints you will hit
 
 Both were found building step 3. Neither is fixed yet; work around them for now and the
