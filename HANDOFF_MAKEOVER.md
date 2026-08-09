@@ -28,7 +28,7 @@ step of this project is to move them there as §6d.
 | 2 · Logic, Math & Memory | 4 | **done, live** |
 | 3 · From Cell to Chip | 4 → **5** | **done, live** |
 | 4 · The GPU | 5 → **6** | **done, live.** The pilot |
-| 5 · The Data Centre | 4 → **5** | plan written, agents not created |
+| 5 · The Data Centre | 4 → **5** | **done, live** |
 
 23 commits, all pushed. Nothing is uncommitted or on a branch.
 
@@ -60,7 +60,7 @@ not treat the absence of complaints about Acts 2 and 4 as approval.
 | 2 | `ACT2_WALKTHROUGH.md` | `ACT2_MAKEOVER.md` (built) |
 | 3 | `ACT3_WALKTHROUGH.md` | `ACT3_MAKEOVER.md` (built) |
 | 4 | `ACT4_WALKTHROUGH.md` | `DESIGN_MAKEOVER.md` §5 (built) |
-| 5 | `ACT5_WALKTHROUGH.md` | `ACT5_MAKEOVER.md` |
+| 5 | `ACT5_WALKTHROUGH.md` | `ACT5_MAKEOVER.md` (built) |
 
 The walkthroughs describe the act **as it was before** the makeover and end with where it
 loses people. The makeover docs hold the per-step card scripts an agent is handed.
@@ -126,19 +126,25 @@ way and every brief must carry them:
 
 ## 6. Next steps, in order
 
-1. **Act 5**: create five agents from `ACT5_MAKEOVER.md`, same loop. Step 1 splits, and the
-   globe finale's "the same globe you saw on the very first screen" line is **cut**, decided
-   already, because the landing shows the frame scrub now.
-2. **The engine pass** (`DESIGN_MAKEOVER.md` §5b). Held deliberately until every act is
-   ported, because it needs one re-verify of all steps rather than five. Act 3 added seven
-   entries to that list, including two that every step now hand-rolls a workaround for.
-3. **The global renumbering pass** (`RENUMBERING.md`). Course goes to **25 steps**; Act 4
-   moves from 13–18 to 15–20 even though its content does not change.
-4. Move `DESIGN_MAKEOVER.md` §2 into `DESIGN.md` as §6d, and delete the old guide behaviour.
-5. **Repair the `byodc-s2`…`byodc-s6` entries in `launch.json`.** They point at scratchpad
-   directories belonging to sessions that no longer exist, so every Act 3 agent had to fall
-   back to serving its own copy by hand. A `byodc-live` entry now exists as the working
-   pattern; macOS TCC blocks serving `~/Documents`, so it serves a scratchpad copy.
+**All five acts are ported.** What is left is the three passes that were deliberately held
+until that was true, plus one fixture repair.
+
+1. **The engine pass** (`DESIGN_MAKEOVER.md` §5b). Held deliberately until every act was
+   ported, because it needs one re-verify of all steps rather than five. Acts 3 and 5 added
+   thirteen entries between them, including several that every ported step now hand-rolls a
+   workaround for: the `flow.ask`-with-no-button Back stop, CSS `text-anchor` beating the
+   presentation attribute, and `stage.focus` re-parenting in its various disguises.
+2. **The global renumbering pass** (`RENUMBERING.md`). Course goes to **25 steps**; Act 4
+   moves from 13–18 to 15–20 even though its content does not change. Act 5 currently holds
+   19, 23, 20, 21, 22 in step order, because its new step took the next free numeral rather
+   than displacing a sibling mid-port. That is deliberate and it is what this pass fixes.
+3. Move `DESIGN_MAKEOVER.md` §2 into `DESIGN.md` as §6d, and delete the old guide behaviour.
+4. **Repair the `byodc-s2`…`byodc-s6` entries in `launch.json`.** They point at scratchpad
+   directories belonging to sessions that no longer exist, so every Act 3 and Act 5 agent had
+   to fall back to serving its own copy by hand. macOS TCC blocks serving `~/Documents`, so
+   whatever replaces them must serve a copy, not the repo.
+
+Ripu has still reviewed **Act 1 only**. Four acts are live without his eyes on them.
 
 ---
 
@@ -179,7 +185,7 @@ None of these block Act 3 or Act 5.
 
 ## 9. What the makeover has actually found
 
-Eighteen defects in shipped code, across four acts, none of them looked for. Recorded here
+Twenty-two defects in shipped code, across all five acts, none of them looked for. Recorded here
 because they are the argument for doing the remaining two acts properly rather than quickly.
 
 - **The diode was wired backwards** (Act 1 step 2). P on the left, N on the right, and the
@@ -222,6 +228,18 @@ because they are the argument for doing the remaining two acts properly rather t
   with no player action. The whole point of the beat was the re-check.
 - **Two landing rows advertising renamed steps** (Act 3, `index.html` and `test.html`).
   Both still promised "play the yield game".
+- **A failure demo whose fabric was already broken** (Act 5 step 4). The leaner hall gave
+  each rack one uplink split across two switches with no path between the switches, so the
+  racks could not all reach each other *before* the kill and the training bar could never
+  have started. Fixed with a switch-to-switch peer link.
+- **A globe drawn mirrored** (Act 5 step 5). The yaw/pitch projection rendered east to the
+  left, so New York sat east of Dublin. Invisible while the globe rotated and the site was
+  arbitrary; obvious the moment the chosen site is centred.
+- **A rack power figure that contradicted its own working** (Act 5 step 1). The script asked
+  for "about 7 kW" a node and "about 58 kW" a filled rack of eight. 8 × 7 is 56.
+- **A cooling task that could be passed the wrong way** (Act 5 step 4's wiring). Reachability
+  alone was satisfied by putting all four cables into one switch, which would have made the
+  next card's "count the cables: eight" false.
 
 Plus engine defects, all logged in `DESIGN_MAKEOVER.md` §5b and all deferred to the engine
 pass: `guide._swap` leaks a card when two arrive within 260 ms; `stage.focus` re-parenting

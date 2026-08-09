@@ -420,11 +420,33 @@ One pass, one commit, after every step has landed.
       (`if (e.detail) node.blur()`) so keyboard focus still shows. Related to the `tabindex`
       item above, but reached without `makePlacer`.
 
+**Found porting Act 5 (2026-08-10)**
+
+- [ ] **`stage.focus` on a `makeTopoBoard` group puts the ring in the stage corner.**
+      `enableWiring` parks an invisible preview `<line>` inside the board group with no
+      `x1/y1/x2/y2`, so it defaults to 0,0 and drags the measured bbox out to the origin.
+      Only visible on a render, not in the DOM. Fix: give the preview line degenerate coords
+      on a real node, or `display:none` it while idle. Both Act 5 steps that wire a board
+      had to focus the parts in document order instead of the group.
+- [ ] **`makePowerLadder` never moves its limit label.** `set()` repositions the dashed
+      limit line but `limitT`'s `y` is fixed at construction, so the label only lands on the
+      line when `limitMW === capMW`.
+- [ ] **`makePowerLadder` draws its total caption above the bar**, where an over-limit stack
+      paints straight over it. At 30 MW of IT load on air the stack reaches 44.3 MW and
+      covers "44.3 MW DRAWN".
+- [ ] **`makePowerLadder`'s `segs[].label` is defined but never rendered**, so the component
+      draws no rung labels at all and every step re-draws them by hand.
+- [ ] **`.ladder-seg` carries a CSS `height`/`y` transition**, which is the "never measure or
+      focus a moving node" trap built into the stylesheet. Steps have to disable it and drive
+      the ladder through `Anim.tween` to keep replay deterministic.
+- [ ] **`dc.js` `addNode` puts a switch's label inside its 40-unit box**, where "SWITCH 1"
+      overflows the box it names.
+
 **Still open after the registry pass (2026-08-08)**
 
-- [ ] Acts 1, 2 and 5 still use em dashes in their summary titles and locked banners
-      (`... — cleared`). Acts 3 and 4 are now plain, so the house pattern is split until
-      those acts are ported.
+- [ ] Acts 1 and 2 still use em dashes in their summary titles and locked banners
+      (`... — cleared`). Acts 3, 4 and 5 are now plain, so the house pattern is split until
+      those two acts are ported.
 
 - [ ] `makeOvershootDemo` spawns one carrier per frame with up to 26 alive, so the stream
       renders as a solid bar rather than separable dots. Legible either way; a spacing knob
