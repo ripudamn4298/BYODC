@@ -26,7 +26,7 @@ step of this project is to move them there as §6d.
 |---|---|---|
 | 1 · The Physics of a Switch | 4 → **5** | **done, live.** Reviewed by Ripu: granularity "very good, significantly better" |
 | 2 · Logic, Math & Memory | 4 | **done, live** |
-| 3 · From Cell to Chip | 4 → **5** | plan written, **five agents created and not yet fired** |
+| 3 · From Cell to Chip | 4 → **5** | **done, live** |
 | 4 · The GPU | 5 → **6** | **done, live.** The pilot |
 | 5 · The Data Centre | 4 → **5** | plan written, agents not created |
 
@@ -58,7 +58,7 @@ not treat the absence of complaints about Acts 2 and 4 as approval.
 |---|---|---|
 | 1 | `ACT1_WALKTHROUGH.md` | `ACT1_MAKEOVER.md` (built) |
 | 2 | `ACT2_WALKTHROUGH.md` | `ACT2_MAKEOVER.md` (built) |
-| 3 | `ACT3_WALKTHROUGH.md` | `ACT3_MAKEOVER.md` (next) |
+| 3 | `ACT3_WALKTHROUGH.md` | `ACT3_MAKEOVER.md` (built) |
 | 4 | `ACT4_WALKTHROUGH.md` | `DESIGN_MAKEOVER.md` §5 (built) |
 | 5 | `ACT5_WALKTHROUGH.md` | `ACT5_MAKEOVER.md` |
 
@@ -126,21 +126,19 @@ way and every brief must carry them:
 
 ## 6. Next steps, in order
 
-1. **Fire the five Act 3 agents.** They are already written and registered:
-   `byodc-act3-step1` … `byodc-act3-step5`. Step 1 is a **redesign**, not a re-card: the
-   moving-band pull-speed chase is a dexterity test, replaced by three discrete speeds whose
-   consequences are visible before committing. Act 3's defect maps are the first place a
-   replay could legitimately draw a different wafer than the player saw, so seeded
-   randomness via `mulberry32` with the seed recorded through `flow.ask` is mandatory.
-2. Act 3 registry pass, verify, commit, push.
-3. **Act 5**: create five agents from `ACT5_MAKEOVER.md`, same loop. Step 1 splits, and the
+1. **Act 5**: create five agents from `ACT5_MAKEOVER.md`, same loop. Step 1 splits, and the
    globe finale's "the same globe you saw on the very first screen" line is **cut**, decided
    already, because the landing shows the frame scrub now.
-4. **The engine pass** (`DESIGN_MAKEOVER.md` §5b). Held deliberately until every act is
-   ported, because it needs one re-verify of all steps rather than five.
-5. **The global renumbering pass** (`RENUMBERING.md`). Course goes to **25 steps**; Act 4
+2. **The engine pass** (`DESIGN_MAKEOVER.md` §5b). Held deliberately until every act is
+   ported, because it needs one re-verify of all steps rather than five. Act 3 added seven
+   entries to that list, including two that every step now hand-rolls a workaround for.
+3. **The global renumbering pass** (`RENUMBERING.md`). Course goes to **25 steps**; Act 4
    moves from 13–18 to 15–20 even though its content does not change.
-6. Move `DESIGN_MAKEOVER.md` §2 into `DESIGN.md` as §6d, and delete the old guide behaviour.
+4. Move `DESIGN_MAKEOVER.md` §2 into `DESIGN.md` as §6d, and delete the old guide behaviour.
+5. **Repair the `byodc-s2`…`byodc-s6` entries in `launch.json`.** They point at scratchpad
+   directories belonging to sessions that no longer exist, so every Act 3 agent had to fall
+   back to serving its own copy by hand. A `byodc-live` entry now exists as the working
+   pattern; macOS TCC blocks serving `~/Documents`, so it serves a scratchpad copy.
 
 ---
 
@@ -181,7 +179,7 @@ None of these block Act 3 or Act 5.
 
 ## 9. What the makeover has actually found
 
-Fourteen defects in shipped code, across three acts, none of them looked for. Recorded here
+Eighteen defects in shipped code, across four acts, none of them looked for. Recorded here
 because they are the argument for doing the remaining two acts properly rather than quickly.
 
 - **The diode was wired backwards** (Act 1 step 2). P on the left, N on the right, and the
@@ -213,6 +211,17 @@ because they are the argument for doing the remaining two acts properly rather t
 - **A stale CTA** (Act 4 step 1). It still said "Stamp the lanes" after that step had been
   folded into step 1.
 - **A landing row advertising a renamed step** (Act 4). It promised the NV-1.
+- **A fab that printed the whole wafer in one flash** (Act 3 step 2). The copy said "one
+  exposure prints every die on the wafer, all at once". A scanner exposes one field at a
+  time and steps across the wafer; only the per-field count was defensible.
+- **An alignment task that accepted a wrong answer** (Act 3 step 2). The rig shipped with
+  `tol: 4`, so a player could stop at an offset of 3 while the card said "bring both
+  offsets to 0" and the payoff claimed they had.
+- **A second test that tested nothing** (Act 3 step 3). The second wafer kept the player's
+  die size from the first, which already cleared the new target, so the re-check resolved
+  with no player action. The whole point of the beat was the re-check.
+- **Two landing rows advertising renamed steps** (Act 3, `index.html` and `test.html`).
+  Both still promised "play the yield game".
 
 Plus engine defects, all logged in `DESIGN_MAKEOVER.md` §5b and all deferred to the engine
 pass: `guide._swap` leaks a card when two arrive within 260 ms; `stage.focus` re-parenting

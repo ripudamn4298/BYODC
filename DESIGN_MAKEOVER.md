@@ -393,11 +393,38 @@ One pass, one commit, after every step has landed.
       should do it when a slot is filled.
 - [ ] Re-verify steps 1 to 6 after those three land.
 
+**Found porting Act 3 (2026-08-09)**
+
+- [ ] **A `flow.ask` with no button of its own is an invisible Back stop.** Any step that
+      records a generated value (a seed, a die size) must make that value's ask *be* a card
+      boundary, with the ask rendering its own Next. Otherwise one Back press appears to do
+      nothing and silently rerolls the value. Act 3 steps 3, 4 and 5 each hand-rolled a
+      local wrapper for this; the engine should offer one.
+- [ ] **CSS `text-anchor` on `.lbl` / `.lbl-strong` beats the presentation attribute**, so a
+      label set with `setAttribute('text-anchor', …)` silently does nothing. Same failure
+      mode as the known `fill` trap. Steps must use `style.textAnchor`. Worth fixing in CSS
+      rather than in every step.
+- [ ] **`stage.focus` on a child inside a CSS-transformed tile flings it to the stage
+      corner** — the same re-parenting root cause as above, reached a new way. Act 3 step 4
+      had to focus the parent and label the child instead.
+- [ ] **`packInto` composes with the `transform` *attribute*, and a CSS `style.transform`
+      silently beats it.** A step that positions nodes by style then packs them sees them
+      not move.
+- [ ] **`stage.focus` clamps a label back onto the element it labels** when the lift
+      distance is large, putting the text on top of the thing it is naming.
+- [ ] **`.chip b` is hard-coded blue in `css/base.css`**, which fights `DESIGN.md §1a` for
+      any readout chip not showing a live signal. Act 3 steps 1 and 2 both overrode it
+      inline. The colour belongs to the step, not the chip.
+- [ ] **Chrome's `:focus-visible` paints an amber ring** on clicked SVG targets, which reads
+      as a sixth meaning for amber. Act 3 step 5 blurs on pointer-driven clicks only
+      (`if (e.detail) node.blur()`) so keyboard focus still shows. Related to the `tabindex`
+      item above, but reached without `makePlacer`.
+
 **Still open after the registry pass (2026-08-08)**
 
-- [ ] Acts 1, 2, 3 and 5 still use em dashes in their summary titles and locked banners
-      (`ACT 3 — From Cell to Chip`, `... — cleared`). Act 4's are now plain, so the house
-      pattern is split until those acts are ported.
+- [ ] Acts 1, 2 and 5 still use em dashes in their summary titles and locked banners
+      (`... — cleared`). Acts 3 and 4 are now plain, so the house pattern is split until
+      those acts are ported.
 
 - [ ] `makeOvershootDemo` spawns one carrier per frame with up to 26 alive, so the stream
       renders as a solid bar rather than separable dots. Legible either way; a spacing knob
