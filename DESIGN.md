@@ -63,13 +63,47 @@ toggle; the old periodic hole-hop beep is removed.
 | `--hairline` | `rgba(29,33,23,.16)` | 1px rules, borders |
 | `--hairline-soft` | `rgba(29,33,23,.09)` | grids, dashed cells |
 | `--dark` | `#181B12` | dark contrast blocks (business cards, aha) |
-| `--blue` | `#2946CC` | **electrons / N-type** only |
-| `--red` | `#D9481E` | **holes / P-type** only |
-| `--amber` | `#A8741F` | **cost / heat / power** only |
+| `--blue` | `#2946CC` | **electrons / N-type**, and a live 1 in logic |
+| `--red` | `#D9481E` | **holes / P-type**, and **something lost or broken** |
+| `--amber` | `#A8741F` | **cost / heat / power**, and **not yet connected** |
 | `--green` | `#5C6B45` | success ticks, olive accents |
 
-Rules: color NEVER decorates — it always means something (blue=electron, red=hole, amber=money/power).
-Everything else is ink on paper.
+Rules: color NEVER decorates. It always means something, and each colour carries a small
+fixed set of meanings, listed below in full. Everything else is ink on paper.
+
+### 1a. What each colour is allowed to mean (binding, amended 2026-08-08)
+
+The earlier one-line version of this rule named a single meaning per colour, but the course
+had already grown a second meaning for each, unrecorded. Five agents porting five different
+acts each had to guess. So the full list, and nothing outside it:
+
+**Blue `--blue`**
+1. An electron, free or bonded, and N-type silicon by extension.
+2. A logic 1: a lit bit lamp, a live signal wire, an energised gate pin, a lane doing work.
+
+Both are "something is present and moving", which is why one colour carries them. Acts 1 and
+3 speak in carriers, Acts 2, 4 and 5 speak in logic levels, and no step mixes the two.
+
+**Red `--red`**
+1. A hole, drawn as a vacancy ring, and P-type silicon by extension.
+2. Something lost or broken: a die killed by a defect (Act 3), a digit dropped off the end of
+   a register (Act 2), a failed switch (Act 5).
+
+Meaning 2 is the older convention in the code and reads correctly, so it stays. A step that
+teaches carriers must not also use red for a fault in the same scene.
+
+**Amber `--amber`**
+1. Cost, heat and power. The running spend, a wattage readout, a cooler.
+2. Not yet connected: an unwired pin (`.pin.free`), a wire being previewed before it lands
+   (`.wire.sig.preview`), a carry still travelling between columns.
+
+Meaning 2 is "this is in flight, it is not settled yet", which is distinct enough from ink
+that it earns a colour. It predates the makeover in `css/game.css`.
+
+**Green `--green`** stays as it is: a completed check, nothing else.
+
+When a step needs a distinction the list does not cover, reach for **ink weight, dash pattern
+or opacity** before adding a colour. A sixth meaning is a spec change, not a step decision.
 
 ### Type (local files in `fonts/fonts.css`, already vendored — never hotlink)
 - **Display:** `'Instrument Serif', serif` — headlines, step titles, big numerals. Often paired roman + `<em>` italic.
