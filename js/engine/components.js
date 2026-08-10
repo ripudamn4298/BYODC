@@ -104,14 +104,28 @@ export function makePlacer({ svg, tiles, slots, validate, onWrong, onPlace }){
     armed = t; if (t) t.g.classList.add('armed');
     slots.forEach(s => s.rect.classList.toggle('hot', !!t && !s.value));
   };
+  /* A filled slot is no longer a control, so it must stop being focusable: a
+     hidden slot rect that keeps its tabindex still paints the :focus-visible
+     ring after it is covered. Steps were dropping tabindex and blurring by hand. */
+  function setSlotFocusable(slot, on){
+    if (on) slot.rect.setAttribute('tabindex', '0');
+    else {
+      slot.rect.removeAttribute('tabindex');
+      if (document.activeElement === slot.rect) slot.rect.blur();
+    }
+  }
   function place(tile, slot){
     slot.value = tile.value; slot.tile = tile; tile.slot = slot;
     setT(tile, slot.x + slot.w / 2 - tile.w / 2, slot.y + slot.h / 2 - tile.h / 2, true);
     SFX.dope(); arm(null);
+    setSlotFocusable(slot, false);
     if (onPlace) onPlace();
   }
   function unplace(tile){
-    if (tile.slot){ tile.slot.value = null; tile.slot.tile = null; tile.slot = null; }
+    if (tile.slot){
+      setSlotFocusable(tile.slot, true);
+      tile.slot.value = null; tile.slot.tile = null; tile.slot = null;
+    }
   }
   function goHome(tile, anim = true){ unplace(tile); setT(tile, tile.home.x, tile.home.y, anim); }
   let resolveDone;
@@ -145,6 +159,7 @@ export function makePlacer({ svg, tiles, slots, validate, onWrong, onPlace }){
     let drag = null;
     g.addEventListener('pointerdown', e => {
       e.preventDefault();
+      g.blur();                       // pointer-driven: no focus ring (keyboard still gets one)
       g.setPointerCapture(e.pointerId);
       const p = svgPt(svg, e.clientX, e.clientY);
       drag = { ox: p.x - tile.tx, oy: p.y - tile.ty, sx: e.clientX, sy: e.clientY, moved: false };
@@ -176,7 +191,10 @@ export function makePlacer({ svg, tiles, slots, validate, onWrong, onPlace }){
     });
   });
   slots.forEach(slot => {
-    slot.rect.addEventListener('click', () => {
+    slot.rect.addEventListener('click', e => {
+      // e.detail > 0 means a real pointer click; drop the ring the browser would
+      // paint for it, while a keyboard Enter (detail 0) keeps its focus outline.
+      if (e.detail) slot.rect.blur();
       if (armed && !slot.value){ place(armed, slot); checkAll(); }
     });
     slot.rect.setAttribute('tabindex', '0');

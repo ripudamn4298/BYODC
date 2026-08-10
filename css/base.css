@@ -116,10 +116,13 @@ img,svg{display:block;max-width:100%}
   background:var(--paper-high);
   padding:7px 12px;white-space:nowrap;
 }
-.chip b{color:var(--blue);font-weight:500}
+/* The chip is a readout, not a meaning. Blue means a live signal (DESIGN §1a), so
+   a chip showing cost, heat or a plain count must not inherit it — it takes the
+   ink colour unless the step opts into a meaning with .warm / .state-* / .live. */
+.chip b{color:var(--ink);font-weight:500}
+.chip.live b,.chip.state-on b{color:var(--blue)}
 .chip.warm b{color:var(--amber)}
 .chip.state-off b{color:var(--ink-faint)}
-.chip.state-on b{color:var(--blue)}
 
 /* ---------- range inputs ---------- */
 input[type=range]{

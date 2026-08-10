@@ -213,19 +213,14 @@ export async function step3(){
   await fadeOut([sceneA]);
 
   const ladder = makePowerLadder(svg, { x: LAD.x, y: LAD.y, w: LAD.w, h: LAD.h, capMW: CAP });
-  const [frameRect, itRect, coolRect, lossRect, limitLine, limitTxt, totalTxt] = ladder.g.children;
-  // the component prints its total above the bar, where a stack that runs past the line
-  // covers it. The sum belongs under the three rungs it is the sum of, so it moves there.
-  totalTxt.setAttribute('y', String(LAD.y + LAD.h + 32));
-  // the segments carry a CSS height/y transition; every move here is a tween instead, so
-  // nothing is ever measured or focused while it is sliding
-  [itRect, coolRect, lossRect].forEach(r => { r.style.transition = 'none'; });
-  limitTxt.style.textAnchor = 'start';           // CSS text-anchor beats the attribute
-  // makePowerLadder moves the limit line on every set() but never moves its label, which
-  // only matches when the bar's full scale is the limit. This bar is scaled to CAP so the
-  // line sits inside it, so the label is placed on the line here and stays there.
-  const limitY = LAD.y + LAD.h - (LIMIT / CAP) * LAD.h;
-  limitTxt.setAttribute('y', String(limitY + 4));
+  /* Named handles, never `g.children`: the engine appends to that group, and reading it
+     positionally silently rebinds every name the moment it does. This step draws its own
+     NAME + value pair per rung, so the component's own labels stay off (the default). */
+  const frameRect = ladder.frame;
+  const itRect = ladder.rects.it, coolRect = ladder.rects.cool, lossRect = ladder.rects.loss;
+  const limitLine = ladder.limit, limitTxt = ladder.limitLabel, totalTxt = ladder.caption;
+  // The engine now puts the total below the bar and tracks the limit label to its line,
+  // and .ladder-seg no longer carries a CSS transition, so all three workarounds are gone.
   [limitLine, limitTxt].forEach(n => { n.style.opacity = '0'; });
 
   const RUNGS = [

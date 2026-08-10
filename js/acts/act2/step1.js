@@ -318,6 +318,7 @@ export async function step1(){
     outWire.set(!!out); outWireB.set(!!out);
     lamp.set(out);
     chipOut.set(`OUT: <b>${out}</b>`);
+    chipOut.cls('state-on', !!out);
     visited.add(a * 2 + b);
     if (cancelHint){ cancelHint(); cancelHint = null; }
     if (!silent) SFX.blip();

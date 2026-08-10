@@ -1,5 +1,5 @@
 // BYODC engine — wandering free carriers (electrons / holes) inside a bounded region
-import { svgEl, rand, RM } from './util.js';
+import { svgEl, rand, noise, RM } from './util.js';
 import { Anim } from './anim.js';
 
 export class Field {
@@ -7,6 +7,7 @@ export class Field {
     this.layer = layer || svgEl('g', { class: 'field-layer', 'pointer-events': 'none' });
     if (!layer) svg.appendChild(this.layer);
     this.parts = []; this.drift = 0;
+    this.t = 0; this.nextId = 0;      // accumulated time drives the jitter, not a random walk
     this.ticker = Anim.add(dt => this.tick(dt));
   }
   spawn({ x, y, kind = 'e', bounds }){
@@ -14,7 +15,7 @@ export class Field {
     const c = svgEl('circle', { cx: x, cy: y, r: isE ? 4.3 : 5, class: isE ? 'electron' : 'hole' });
     c.classList.add('pop-in');
     this.layer.appendChild(c);
-    const p = { x, y, vx: rand(-22, 22), vy: rand(-22, 22), c, bounds };
+    const p = { x, y, vx: rand(-22, 22), vy: rand(-22, 22), c, bounds, id: this.nextId++ };
     this.parts.push(p);
     return p;
   }
@@ -22,9 +23,12 @@ export class Field {
   clear(){ this.parts.forEach(p => p.c.remove()); this.parts = []; }
   setDrift(v){ this.drift = v; }
   tick(dt){
+    this.t += dt;
     for (const p of this.parts){
-      p.vx += (Math.random() - .5) * 150 * dt + (this.drift - p.vx) * 1.1 * dt;
-      p.vy += (Math.random() - .5) * 150 * dt + (0 - p.vy) * .9 * dt;
+      // jitter is a function of the particle and the clock, so the same elapsed time
+      // always produces the same wander however many frames were drawn to get there
+      p.vx += noise(p.id * 2 + 1, this.t * 7) * 75 * dt + (this.drift - p.vx) * 1.1 * dt;
+      p.vy += noise(p.id * 2 + 2, this.t * 7) * 75 * dt + (0 - p.vy) * .9 * dt;
       const sp = Math.hypot(p.vx, p.vy), mx = this.drift ? 100 : 52;
       if (sp > mx){ p.vx *= mx / sp; p.vy *= mx / sp; }
       p.x += p.vx * dt; p.y += p.vy * dt;

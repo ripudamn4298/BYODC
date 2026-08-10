@@ -147,11 +147,35 @@ plain sentences: who ordered, and why this component matters to them. Example, s
 > A games studio placed the first order. Images are long lists of numbers, and this
 > block adds long lists fast.
 
-## 4. Engine API (BUILT, commit 6233fdb)
+## 4. Engine API (BUILT, commit 6233fdb; extended by the engine pass 2026-08-10)
 
 Three additions. The flow.ask record-and-replay contract is untouched: cards are output
 only, recorded answers are unchanged, Back/Restart work as before. All three are opt-in
 per step, so an un-ported step behaves exactly as it always did.
+
+**Added by the engine pass**, so steps stop hand-rolling these:
+
+```js
+guide.hint('still after $70 a good die');   // renders BELOW the card, never replaces it
+guide.clearHint();                          // a new card clears it automatically
+flow.hintAfter(15000, '…');                 // now routes through guide.hint()
+
+// record a generated value ON a card boundary — the ask renders its own Next, so it
+// can never be an invisible Back stop
+const seed = await flow.askCard(
+  (v, replaying) => { drawWafer(v); guide.say(`Twelve specks landed.`); },
+  () => Math.floor(Math.random() * 1e9),
+);
+
+import { mulberry32, rand, random, noise, reseed } from './util.js';
+// rand/random draw from a stream flow.start reseeds per step; noise(id, t) is a pure
+// function for decorative motion. Never Math.random in engine or step code.
+```
+
+`stage.focus` dims by opacity and re-parents nothing, so it is now safe to focus a node
+inside a transformed group, to keep a click listener on an ancestor, and to pass an
+unordered list of targets. Labels flip to the opposite side rather than landing on the
+thing they name.
 
 ### guide card mode
 
@@ -358,89 +382,106 @@ One pass, one commit, after every step has landed.
 - [x] `progress.js` stores `{act, step}`, so a run saved mid-Act-4 resumes one step off
       after the split. Acceptable, and the reason renumbering happens in one pass.
 
-**Engine fixes deferred so the agents could verify against stable behaviour**
+**The engine pass — DONE (2026-08-10, commit follows this line landing)**
 
-- [ ] `flow.hintAfter` routes through `guide.note`, which in card mode overwrites the
-      current card. Give hints their own non-destructive slot.
-- [ ] `stage.focus` re-parents raised nodes onto the SVG root, so a click listener on an
-      ancestor group stops receiving events from a focused child. Dim the non-ancestor
-      siblings by opacity instead of raising, which needs no re-parenting at all. Two more
-      symptoms of the same root cause, both hit building Act 1: raising a node out of a
-      transformed parent **drops that parent's transform**, flinging it across the stage;
-      and `clearFocus` throws `NotFoundError` when the focus list was not in document
-      order, because it restores back to front and ends up inserting before a node that is
-      itself still raised. Switching to opacity dimming removes all three at once.
-- [ ] Never measure geometry while a CSS transition is running (see `VERIFY_HARNESS.md`
-      §4a). Wait it out and clear it first.
-- [ ] `.pop-in` and any other scaling keyframe needs `transform-box: fill-box`. Without it
-      the scale is about the SVG origin, so a box measured mid-keyframe lands off-stage.
-      Every step currently strips the class by hand to work around this.
-- [ ] **Engine determinism holes, pre-existing.** `field.spawn` uses `rand()`, `Field.tick`
-      uses `Math.random`, and `lattice.js` `ensureHopper` uses `Math.random` plus a bare
-      `setTimeout`. Carrier *positions* therefore differ between a live run and a replay.
-      Counts, types and every recorded end state still match, so Back and Restart are
-      sound, but this violates the determinism rule the steps are held to and should be
-      seeded or driven off `Anim.tween`.
-- [ ] **`guide._swap` leaks a card when two arrive within 260 ms.** It takes
-      `host.firstElementChild` as the outgoing card and removes it on a timer; a second
-      swap inside that window picks the *same* element again, so the card appended by the
-      first swap is never marked `.out` and never removed. The slot grows by one each
-      time. Only reachable at machine speed, so human play and replay are unaffected, but
-      it is in every ported step. Fix: treat **all** current children as outgoing and skip
-      any already carrying `.out`, rather than just the first child.
-- [ ] A hidden slot rect that keeps its `tabindex` still paints the `:focus-visible` ring
-      after it is placed. Steps currently drop `tabindex` and blur by hand; `makePlacer`
-      should do it when a slot is filled.
-- [ ] Re-verify steps 1 to 6 after those three land.
+Every item below was fixed in one pass and re-verified across all 25 steps.
 
-**Found porting Act 3 (2026-08-09)**
+- [x] `flow.hintAfter` and `guide.truthTable`'s built-in messages overwrote the current
+      card. Hints now render into `guide.hint()`, a slot of their own below the card, and
+      a new card clears it.
+- [x] **`stage.focus` no longer re-parents anything.** It walks from each target up to the
+      SVG root and dims only the SIBLINGS along that path, so no ancestor of a target is
+      dimmed and the dimming cannot multiply down onto it. That one change removed all four
+      symptoms at once: ancestor click listeners keep firing, a node in a transformed parent
+      keeps its transform, `clearFocus` cannot throw `NotFoundError` on an unordered list,
+      and focusing a child inside a CSS-transformed tile no longer flings it to the corner.
+      The scrim is gone; `.focus-scrim` is kept as `display:none` only so a cached older
+      step cannot paint a bare rect.
+- [x] `stage.focus` clamped a label back onto the element it named. It now FLIPS to the
+      opposite side when the requested one has no room, and only clamps as a last resort.
+- [x] `.pop-in` got `transform-box: fill-box` + `transform-origin: 50% 50%`, so a box
+      measured mid-keyframe no longer lands off-stage.
+- [x] `.ladder-seg`'s CSS `height`/`y` transition is gone — it was the "never measure a
+      moving node" trap built into the stylesheet. Steps drive the ladder with `Anim.tween`.
+- [x] **Engine determinism.** `Math.random` is gone from the engine. `util.js` now owns the
+      single `mulberry32` (re-exported by `fab.js`) plus a seeded `rand`/`random` stream that
+      `flow.start` reseeds per step, and a pure `noise(id, t)` used for carrier jitter.
+      `lattice.js`'s hopper draws from the seeded stream and waits on the replay-aware
+      `sleep()` instead of a bare `setTimeout`. **Known limit, stated honestly:** carrier
+      motion is a time integration, so its positions still depend on how many frames were
+      drawn; what is fixed is that nothing draws from an unseeded global any more, and a
+      given frame sequence now reproduces exactly.
+- [x] **`guide._swap` card leak.** It now retires every current child that is not already
+      `.out`, instead of taking `firstElementChild` twice inside the same 260 ms window.
+      Verified: five cards fired inside one fade window settle to exactly one.
+- [x] `makePlacer` drops a filled slot's `tabindex` and blurs it, and blurs on
+      pointer-driven interaction only, so the `:focus-visible` ring stops painting on a
+      placed slot while keyboard focus still shows one.
+- [x] **`flow.askCard(render, make)`** — the engine now offers the wrapper that Act 3 steps
+      3, 4 and 5 each hand-rolled. A recorded generated value gets its own card and its own
+      Next, so it can never be an invisible Back stop.
+- [x] CSS `text-anchor` on `.lbl` / `.lbl-faint` / `.lbl-strong` / `.tile-cap` no longer
+      beats the presentation attribute: each default is now scoped to `:not([text-anchor])`,
+      and explicit `text-anchor="start|end"` wins.
+- [x] `.chip b` is no longer hard-coded blue. It is ink by default; blue is opt-in via
+      `.chip.live` / `.chip.state-on`, amber via `.chip.warm`, per `DESIGN.md §1a`.
+- [x] `makeTopoBoard`'s wiring preview line is `display:none` while idle. It used to sit at
+      0,0 with no coordinates and drag any focus bbox out to the stage origin.
+- [x] `makePowerLadder`: the limit label now tracks the limit line at any limit (it only
+      ever sat on the line when `limitMW === capMW`); the total caption moved BELOW the bar,
+      where an over-limit stack cannot paint over it; and `segs[].label` is finally rendered
+      instead of being declared and ignored.
+- [x] `dc.js addNode`: the switch box is now 62 units wide so "SWITCH 1" fits inside the box
+      it names. (First attempt moved the label above the box, which put it exactly where
+      focus labels land — they printed over each other in Act 5 step 4. Widening beats moving.)
 
-- [ ] **A `flow.ask` with no button of its own is an invisible Back stop.** Any step that
-      records a generated value (a seed, a die size) must make that value's ask *be* a card
-      boundary, with the ask rendering its own Next. Otherwise one Back press appears to do
-      nothing and silently rerolls the value. Act 3 steps 3, 4 and 5 each hand-rolled a
-      local wrapper for this; the engine should offer one.
-- [ ] **CSS `text-anchor` on `.lbl` / `.lbl-strong` beats the presentation attribute**, so a
-      label set with `setAttribute('text-anchor', …)` silently does nothing. Same failure
-      mode as the known `fill` trap. Steps must use `style.textAnchor`. Worth fixing in CSS
-      rather than in every step.
-- [ ] **`stage.focus` on a child inside a CSS-transformed tile flings it to the stage
-      corner** — the same re-parenting root cause as above, reached a new way. Act 3 step 4
-      had to focus the parent and label the child instead.
-- [ ] **`packInto` composes with the `transform` *attribute*, and a CSS `style.transform`
-      silently beats it.** A step that positions nodes by style then packs them sees them
-      not move.
-- [ ] **`stage.focus` clamps a label back onto the element it labels** when the lift
-      distance is large, putting the text on top of the thing it is naming.
-- [ ] **`.chip b` is hard-coded blue in `css/base.css`**, which fights `DESIGN.md §1a` for
-      any readout chip not showing a live signal. Act 3 steps 1 and 2 both overrode it
-      inline. The colour belongs to the step, not the chip.
-- [ ] **Chrome's `:focus-visible` paints an amber ring** on clicked SVG targets, which reads
-      as a sixth meaning for amber. Act 3 step 5 blurs on pointer-driven clicks only
-      (`if (e.detail) node.blur()`) so keyboard focus still shows. Related to the `tabindex`
-      item above, but reached without `makePlacer`.
+**Caught by the five-act re-verification, and fixed in the same pass**
 
-**Found porting Act 5 (2026-08-10)**
+Each of these was introduced *by* the fixes above, which is the argument for re-verifying
+every act rather than trusting the component tests.
 
-- [ ] **`stage.focus` on a `makeTopoBoard` group puts the ring in the stage corner.**
-      `enableWiring` parks an invisible preview `<line>` inside the board group with no
-      `x1/y1/x2/y2`, so it defaults to 0,0 and drags the measured bbox out to the origin.
-      Only visible on a render, not in the DOM. Fix: give the preview line degenerate coords
-      on a real node, or `display:none` it while idle. Both Act 5 steps that wire a board
-      had to focus the parts in document order instead of the group.
-- [ ] **`makePowerLadder` never moves its limit label.** `set()` repositions the dashed
-      limit line but `limitT`'s `y` is fixed at construction, so the label only lands on the
-      line when `limitMW === capMW`.
-- [ ] **`makePowerLadder` draws its total caption above the bar**, where an over-limit stack
-      paints straight over it. At 30 MW of IT load on air the stack reaches 44.3 MW and
-      covers "44.3 MW DRAWN".
-- [ ] **`makePowerLadder`'s `segs[].label` is defined but never rendered**, so the component
-      draws no rung labels at all and every step re-draws them by hand.
-- [ ] **`.ladder-seg` carries a CSS `height`/`y` transition**, which is the "never measure or
-      focus a moving node" trap built into the stylesheet. Steps have to disable it and drive
-      the ladder through `Anim.tween` to keep replay deterministic.
-- [ ] **`dc.js` `addNode` puts a switch's label inside its 40-unit box**, where "SWITCH 1"
-      overflows the box it names.
+- [x] **Dimming may only ever REDUCE opacity.** The first `dim()` wrote `.25`
+      unconditionally, so a node a step had deliberately pre-hidden at `opacity: 0` was
+      *raised into view* — spoiling Act 4 step 4's punchline caption, Act 2 step 4's
+      "SIXTEENS BIT DROPPED" warning, and several Act 3 and Act 5 labels. The old
+      raise-above-a-scrim focus left such nodes invisible, so this was a trap the new
+      approach introduced. `dim()` now skips anything already at or under .25.
+- [x] **A focus label could still be clipped by the stage edge.** Clamping the anchor is not
+      enough for a middle-anchored label: half its width still hangs past the edge, which is
+      how "COST PER GOOD DIE" rendered as "…GOOD DI". The label is now measured with
+      `getComputedTextLength()` and the whole box slid back inside.
+- [x] **`guide.note` destroyed the card in card mode.** Every `makePlacer` `onWrong` calls
+      it, so getting a placement wrong deleted the instruction the player was reading —
+      exactly what the hint slot was built to prevent, in the one place it was not wired up.
+      `note` now routes to the hint slot whenever card mode is active. This fixed six steps
+      across three acts without touching any of them.
+- [x] **A clicked stage element kept its `:focus-visible` ring.** `makePlacer`'s blur only
+      covered placer tiles and slots; Act 1 step 1's atoms carry their own `tabindex` and
+      left a bright ring sitting on an atom no card was talking about. `newStage` now blurs
+      any focused element inside the stage SVG on a trusted pointerdown, so every step gets
+      it, and keyboard focus still shows.
+- [x] **`makePowerLadder` rung labels are OPT-IN (`labels: true`), off by default**, and the
+      component returns named handles (`frame`, `rects`, `limit`, `limitLabel`, `caption`).
+      Rendering them by default doubled every label in Act 5 step 3 *and* shifted
+      `g.children`, which that step destructured positionally — so its cards focused the
+      wrong rungs entirely (the "losses" card lit the cooling rung; the card quoting
+      "29.4 MW DRAWN" dimmed the number it quoted). Step 3 now binds by name and its three
+      hand-rolled workarounds are deleted.
+- [x] **Act 2's logic chips lost their blue** when `.chip b` stopped defaulting to it:
+      `OUT: 1`, `SUM: 1` and `CARRY OUT: 1` read identically to their `0` state. They now
+      take `.state-on` when the value is 1. Act 1 step 2's `current: N mA` takes `.live`
+      while current flows, for the same reason.
+
+**Known and deliberately left (cosmetic, pre-existing or inherent)**
+
+- A focus label avoids the thing it names, but not *other* drawings: Act 4 step 6's
+  "compute die" label overlaps an HBM stack, and Act 5 step 4's board labels can cross a
+  switch. Fixing this needs collision avoidance against arbitrary content, which is a
+  bigger change than this pass.
+- Act 3 step 1's three test-pull buttons wrap outside the stage frame.
+- `waitFor`'s `setInterval` is starved by Chrome's hidden-tab throttling, so a gate can
+  appear hung for 30–60 s in the preview after its condition is met. A preview artifact,
+  worth adding to `VERIFY_HARNESS.md` §2 beside the rAF note.
 
 **Still open after the registry pass (2026-08-08)**
 

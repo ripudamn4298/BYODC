@@ -1,7 +1,7 @@
 // BYODC engine — act runner with BACK / RESTART via record-and-replay.
 // Steps are deterministic async fns; every interaction resolves through flow.ask()
 // and is recorded. Back = re-run the step, auto-answering all but the last answer.
-import { $, el, setInstantCheck, cancelAllWaits } from './util.js';
+import { $, el, setInstantCheck, cancelAllWaits, reseed } from './util.js';
 import { Anim } from './anim.js';
 import { SFX } from './sfx.js';
 import { guide } from './guide.js';
@@ -41,12 +41,33 @@ export const flow = {
     return v;
   },
 
-  /* guarded hint: fires only if the run is still current */
+  /* guarded hint: fires only if the run is still current. Renders into the card
+     mode's own hint slot, so it can never replace the card it is helping with. */
   hintAfter(ms, text){
     const ep = this._epoch;
-    const id = setTimeout(() => { if (ep === this._epoch) guide.note(text); }, ms);
+    const id = setTimeout(() => { if (ep === this._epoch) guide.hint(text); }, ms);
     this._hints.add(id);
-    return () => { clearTimeout(id); this._hints.delete(id); };
+    return () => { clearTimeout(id); this._hints.delete(id); guide.clearHint(); };
+  },
+
+  /* askCard(render, make) — record a generated value (a seed, a shuffled order)
+     ON a card boundary. A bare ask() with no button of its own is an INVISIBLE
+     BACK STOP: it consumes an answer while drawing no card, so one Back press
+     looks like it did nothing and silently rerolls the value. Here the ask owns
+     its own Next, so one answer is always exactly one card.
+       render(value, replaying) draws the card; make() produces the value live. */
+  askCard(render, make, label = 'Next ▸'){
+    return this.ask(async replay => {
+      const v = replay !== undefined ? replay : make();
+      await render(v, replay !== undefined);
+      const b = el('button', { class: 'btn primary', 'data-label': 'next' }, label);
+      guide.beat(el('div', { class: 'btn-row' }), 'actions').appendChild(b);
+      if (replay !== undefined){ b.disabled = true; b.classList.add('used'); return v; }
+      await new Promise(res => b.addEventListener('click', () => {
+        SFX.click(); b.disabled = true; b.classList.add('used'); res();
+      }));
+      return v;
+    });
   },
 
   _enterInstant(){ this.instant = true; this._sfxWas = SFX.muted; SFX.muted = true; },
@@ -63,6 +84,8 @@ export const flow = {
     this.stepIndex = stepIndex;
     this.queue = queue;
     this.answers = [];
+    // same step ⇒ same random stream, so a replay draws what the live run drew
+    reseed(0x9E3779B9 ^ (stepIndex * 0x85EBCA6B));
     cancelAllWaits();
     this._hints.forEach(id => clearTimeout(id));
     this._hints.clear();

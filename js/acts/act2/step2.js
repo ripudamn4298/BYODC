@@ -362,7 +362,9 @@ export async function step2(){
     sumWire.set(s2); lampSum.set(s2 ? 1 : 0);
     coutWire.set(cout); lampCout.set(cout ? 1 : 0);
     chipSum.set(`SUM: <b>${s2 ? 1 : 0}</b>`);
+    chipSum.cls('state-on', !!s2);
     chipCout.set(`CARRY OUT: <b>${cout ? 1 : 0}</b>`);
+    chipCout.cls('state-on', !!cout);
     if (changed && !silent) SFX.blip();
     return { sum: s2, cout };
   }

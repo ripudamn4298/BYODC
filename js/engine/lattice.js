@@ -4,7 +4,7 @@
 // N-doping: phosphorus's 5th electron visibly ejects → free carrier (Field).
 // P-doping: a bond is left one electron short → a red VACANCY ring; hole motion
 // is an adjacent bond-electron hopping INTO the vacancy (the ring relocates).
-import { svgEl, rand, RM, isInstant } from './util.js';
+import { svgEl, rand, random, sleep, RM, isInstant } from './util.js';
 import { Anim } from './anim.js';
 import { SFX } from './sfx.js';
 
@@ -197,7 +197,7 @@ function ensureHopper(lattice){
       // vacancy should MOVE along bias ⇒ take the electron whose position is furthest along bias
       cands.sort((p, q) => (q.bond.e[q.slot].hx - p.bond.e[p.slot].hx) * lattice.hopper.bias);
       pick = cands[0];
-    } else pick = cands[(Math.random() * cands.length) | 0];
+    } else pick = cands[(random() * cands.length) | 0];   // seeded: flow.start resets the stream
 
     const from = pick.bond.e[pick.slot], to = v.bond.e[v.slot];
     // silent — the periodic hop no longer beeps; the ambient music carries the moment
@@ -216,7 +216,7 @@ function ensureHopper(lattice){
   }
   (async function loop(){
     while (!lattice.hopper.stop){
-      await new Promise(r => setTimeout(r, cadence()));
+      await sleep(cadence());        // sleep() collapses during replay; a bare setTimeout does not
       if (lattice.hopper.stop) break;
       for (const v of lattice.vacancies) await hopOne(v);
     }

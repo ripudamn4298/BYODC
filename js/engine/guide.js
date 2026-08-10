@@ -17,24 +17,41 @@ export const guide = {
      Call after title(), so the step head stays pinned above the card. */
   cards(){
     const slot = el('div', { class: 'card-slot' });
+    const hint = el('div', { class: 'card-hint', hidden: '' });
     const actions = el('div', { class: 'card-actions' });
-    this.root.append(slot, actions);
-    this._cards = { slot, actions };
+    this.root.append(slot, hint, actions);
+    this._cards = { slot, hint, actions };
     return this;
   },
   endCards(){ this._cards = null; },
 
+  /* A hint must never replace the card it is helping with. In card mode it gets
+     its own slot below the card; outside card mode it is an ordinary note. */
+  hint(html){
+    if (!this._cards) return this.note(html);
+    const h = this._cards.hint;
+    h.innerHTML = `<p class="guide-note">${html}</p>`;
+    h.hidden = false;
+    return h;
+  },
+  clearHint(){
+    if (this._cards){ this._cards.hint.innerHTML = ''; this._cards.hint.hidden = true; }
+  },
+
   /* replace whatever is in `host` with `node`; the outgoing card is taken out of
-     flow while it fades so the incoming one does not get pushed down the panel */
+     flow while it fades so the incoming one does not get pushed down the panel.
+     Every current child is retired, not just the first: taking firstElementChild
+     twice inside the 260 ms fade picked the SAME node both times and orphaned the
+     card appended in between, so the slot grew by one on every fast swap. */
   _swap(host, node){
-    const old = host.firstElementChild;
     if (flow.instant){
       host.innerHTML = '';
       node.classList.add('instant', 'in');
       host.appendChild(node);
       return node;
     }
-    if (old){
+    for (const old of Array.from(host.children)){
+      if (old.classList.contains('out')) continue;    // already retiring
       old.style.position = 'absolute';
       old.style.insetInlineStart = '0';
       old.style.top = '0';
@@ -50,8 +67,8 @@ export const guide = {
   beat(node, where){
     node.classList.add('beat');
     if (this._cards){
-      // a fresh card retires the buttons that belonged to the previous one
-      if (where !== 'actions') this._cards.actions.innerHTML = '';
+      // a fresh card retires the buttons and the hint that belonged to the previous one
+      if (where !== 'actions'){ this._cards.actions.innerHTML = ''; this.clearHint(); }
       return this._swap(where === 'actions' ? this._cards.actions : this._cards.slot, node);
     }
     if (flow.instant) node.classList.add('instant', 'in');
@@ -67,7 +84,14 @@ export const guide = {
       `<div class="eyebrow">${eyebrow}</div><h2>${html}</h2>`));
   },
   say(html){ return this.beat(el('p', { class: 'guide-p' }, html)); },
-  note(html){ return this.beat(el('p', { class: 'guide-note' }, html)); },
+  /* In card mode a note is a correction or an aside, never the card itself — it used to
+     _swap into the one card slot and destroy the instruction the player was still reading
+     (every makePlacer onWrong does this). It now lands in the hint slot below the card,
+     which the next card clears. Outside card mode it appends as it always did. */
+  note(html){
+    if (this._cards) return this.hint(html);
+    return this.beat(el('p', { class: 'guide-note' }, html));
+  },
   aha(html, sub){
     if (!flow.instant) SFX.success();
     return this.beat(el('div', { class: 'aha' }, html + (sub ? `<span class="sub">${sub}</span>` : '')));
@@ -140,7 +164,7 @@ export const guide = {
         check.addEventListener('click', () => {
           SFX.click();
           if (cells.some(c => c.state === null)){
-            guide.note(`Fill every row first — tap a cell to cycle it.`);
+            guide.hint(`Fill every row first — tap a cell to cycle it.`);
             return;
           }
           const wrong = cells.filter((c, i) => c.state !== spec.expected[i]);
@@ -150,7 +174,7 @@ export const guide = {
             res(true);
           } else {
             wrong.forEach(c => { c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); c.classList.add('bad'); setTimeout(() => c.classList.remove('bad'), 900); });
-            if (spec.hint) guide.note(spec.hint);
+            if (spec.hint) guide.hint(spec.hint);
           }
         });
       });

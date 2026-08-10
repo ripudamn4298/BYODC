@@ -27,24 +27,45 @@ export function makeRackElevation(svg, { x = 120, y = 70, w = 150, slots = 8, sl
 }
 
 /* ---------- PowerLadder: budget a feed across IT load / cooling / losses ---------- */
-export function makePowerLadder(svg, { x = 470, y = 90, w = 130, h = 300, capMW = 30 } = {}){
+/* opts.labels draws the rung names (IT LOAD / COOLING / LOSSES) down the left of the bar.
+   It is OPT-IN and off by default on purpose: `segs[].label` went years unrendered, so
+   every existing caller already draws its own, and switching the component on for them
+   would double every label and shift `g.children` under any caller reading it positionally.
+   Prefer the named handles this returns over `g.children` — that is what broke. */
+export function makePowerLadder(svg, { x = 470, y = 90, w = 130, h = 300, capMW = 30, labels = false } = {}){
   const g = svgEl('g');
-  g.appendChild(svgEl('rect', { x, y, width: w, height: h, rx: 3, class: 'ladder-frame' }));
+  const frame = svgEl('rect', { x, y, width: w, height: h, rx: 3, class: 'ladder-frame' });
+  g.appendChild(frame);
   const segs = [
     { key: 'it', label: 'IT LOAD', cls: 'seg-it' },
     { key: 'cool', label: 'COOLING', cls: 'seg-cool' },
     { key: 'loss', label: 'LOSSES', cls: 'seg-loss' },
   ];
-  const rects = {}, caption = svgEl('text', { x: x + w / 2, y: y - 10, class: 'lbl-strong' });
+  const rects = {}, segT = {};
+  /* The caption sits BELOW the bar. Above it, an over-limit stack grows straight
+     over the text: at 30 MW of IT load on air the stack reaches 44.3 MW and painted
+     right across "44.3 MW DRAWN". */
+  const caption = svgEl('text', { x: x + w / 2, y: y + h + 20, class: 'lbl-strong' });
   caption.textContent = '';
-  segs.forEach(s => { rects[s.key] = svgEl('rect', { x: x + 2, y, width: w - 4, height: 0, class: 'ladder-seg ' + s.cls }); g.appendChild(rects[s.key]); });
+  segs.forEach(s => {
+    rects[s.key] = svgEl('rect', { x: x + 2, y, width: w - 4, height: 0, class: 'ladder-seg ' + s.cls });
+    g.appendChild(rects[s.key]);
+  });
   const limit = svgEl('line', { x1: x - 6, y1: y, x2: x + w + 6, y2: y, class: 'ladder-limit' });
-  const limitT = svgEl('text', { x: x + w + 10, y: y + 4, class: 'lbl-faint', 'text-anchor': 'start' });
+  const limitT = svgEl('text', { x: x + w + 10, y: y + 4, class: 'lbl-faint' });
+  limitT.style.textAnchor = 'start';
   g.append(limit, limitT, caption);
+  if (labels) segs.forEach(s => {
+    segT[s.key] = svgEl('text', { x: x - 10, y, class: 'lbl-faint' });
+    segT[s.key].style.textAnchor = 'end';
+    segT[s.key].textContent = s.label;
+    segT[s.key].setAttribute('opacity', '0');
+    g.appendChild(segT[s.key]);      // appended last, so earlier children keep their order
+  });
   svg.appendChild(g);
 
   return {
-    g,
+    g, frame, rects, limit, limitLabel: limitT, segLabels: segT, caption,
     // values in MW; limitMW draws the red line the stack must stay under
     set({ it = 0, cool = 0, loss = 0 } = {}, limitMW = capMW){
       const total = it + cool + loss;
@@ -53,9 +74,16 @@ export function makePowerLadder(svg, { x = 470, y = 90, w = 130, h = 300, capMW 
       [['it', it], ['cool', cool], ['loss', loss]].forEach(([k, v]) => {
         const ph = px(v); yc -= ph;
         rects[k].setAttribute('y', String(yc)); rects[k].setAttribute('height', String(Math.max(0, ph)));
+        if (segT[k]){        // a rung shorter than ~13px cannot hold its own label legibly
+          segT[k].setAttribute('y', String(yc + ph / 2 + 3.5));
+          segT[k].setAttribute('opacity', ph >= 13 ? '1' : '0');
+        }
       });
       const ly = y + h - px(limitMW);
       limit.setAttribute('y1', String(ly)); limit.setAttribute('y2', String(ly));
+      // the label used to keep its construction-time y, so it only ever sat on the
+      // line when limitMW happened to equal capMW
+      limitT.setAttribute('y', String(ly + 4));
       limitT.textContent = `${limitMW} MW LIMIT`;
       const over = total > limitMW + 0.01;
       caption.textContent = `${total.toFixed(1)} MW DRAWN`;
@@ -76,11 +104,17 @@ export function makeTopoBoard(svg){
 
   function addNode(id, x, y, kind = 'rack', label = ''){
     const ng = svgEl('g', { class: 'topo-node ' + kind, 'data-node': id });
+    // The switch box was 40 units wide, so a label like "SWITCH 1" overflowed the very box
+    // it named. Widen the box to hold it rather than moving the label out: above the box is
+    // where focus labels land, and putting it there had them printing over each other.
     const shape = kind === 'switch'
-      ? svgEl('rect', { x: x - 20, y: y - 14, width: 40, height: 28, rx: 3, class: 'node-box' })
+      ? svgEl('rect', { x: x - 31, y: y - 14, width: 62, height: 28, rx: 3, class: 'node-box' })
       : svgEl('circle', { cx: x, cy: y, r: 15, class: 'node-box' });
     ng.appendChild(shape);
-    if (label){ const t = svgEl('text', { x, y: y + (kind === 'switch' ? 4 : 30), class: 'lbl-faint' }); t.textContent = label; ng.appendChild(t); }
+    if (label){
+      const t = svgEl('text', { x, y: y + (kind === 'switch' ? 4 : 30), class: 'lbl-faint' });
+      t.textContent = label; ng.appendChild(t);
+    }
     nodeLayer.appendChild(ng);
     const node = { id, x, y, kind, el: ng, shape, dead: false };
     nodes.push(node);
@@ -115,23 +149,30 @@ export function makeTopoBoard(svg){
   /* interactive wiring: click node A then node B to draw a link. onLink(a,b) callback. */
   let armed = null;
   function enableWiring(onLink, { validPair } = {}){
-    const preview = svgEl('line', { class: 'topo-link preview', opacity: 0 });
+    /* display:none while idle. With no x1/y1/x2/y2 the line defaults to 0,0, which
+       is inside the board group's bbox — so focusing the group measured a box that
+       reached the stage origin and the ring landed in the corner. Invisible in the
+       DOM, obvious on a render. */
+    const preview = svgEl('line', { class: 'topo-link preview', opacity: 0, x1: 0, y1: 0, x2: 0, y2: 0 });
+    preview.style.display = 'none';
     linkLayer.appendChild(preview);
     svg.addEventListener('pointermove', e => {
       if (armed == null) return;
       const p = svgPt(svg, e.clientX, e.clientY); const na = nodes.find(n => n.id === armed);
       preview.setAttribute('x1', na.x); preview.setAttribute('y1', na.y);
-      preview.setAttribute('x2', p.x); preview.setAttribute('y2', p.y); preview.setAttribute('opacity', 1);
+      preview.setAttribute('x2', p.x); preview.setAttribute('y2', p.y);
+      preview.setAttribute('opacity', 1); preview.style.display = '';
     });
+    const hidePreview = () => { preview.setAttribute('opacity', 0); preview.style.display = 'none'; };
     nodes.forEach(node => {
       node.el.style.cursor = 'pointer';
       node.el.addEventListener('click', () => {
         SFX.click();
         if (armed == null){ armed = node.id; node.el.classList.add('armed'); return; }
-        if (armed === node.id){ node.el.classList.remove('armed'); armed = null; preview.setAttribute('opacity', 0); return; }
+        if (armed === node.id){ node.el.classList.remove('armed'); armed = null; hidePreview(); return; }
         const a = armed, b = node.id;
         nodes.find(n => n.id === a).el.classList.remove('armed');
-        armed = null; preview.setAttribute('opacity', 0);
+        armed = null; hidePreview();
         if (linkExists(a, b)) return;
         if (validPair && !validPair(a, b)) return;
         drawLink(a, b); onLink && onLink(a, b);

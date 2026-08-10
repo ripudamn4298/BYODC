@@ -48,9 +48,10 @@ throttled that way.
     window.cancelAnimationFrame = i => q.delete(i);
     if (window.gsap) window.gsap.ticker.lagSmoothing(0);
   }
-  const s = document.createElement('style');
-  s.textContent = '.focus-scrim{animation:none !important}';   // paused first keyframe in a hidden tab
-  document.head.appendChild(s);
+  // (The old `.focus-scrim{animation:none}` line is gone: since the engine pass, focus
+  // dims siblings by inline opacity and paints no scrim at all. Note that a hidden tab
+  // does not advance the .dimmed opacity TRANSITION either, so read `node.style.opacity`
+  // rather than getComputedStyle when you check that dimming happened.)
   document.querySelector('#landing').style.display = 'none';
   document.querySelector('#game').classList.add('active');
   window.scrollTo(0,0);
@@ -138,22 +139,23 @@ instant. Two ways that bites, both found building Act 1 step 1:
 
 ## 4b. Two engine constraints you will hit
 
-Both were found building step 3. Neither is fixed yet; work around them for now and the
-engine pass will address them once every step has landed.
+**FIXED in the engine pass (2026-08-10). Kept here as history, because three acts were
+written around these and their workarounds are still in the step files.**
 
-**`stage.focus` re-parents the nodes it raises.** They move onto the SVG root, which breaks
-three things:
+~~**`stage.focus` re-parents the nodes it raises.**~~ It no longer does. Focus now walks
+from each target up to the SVG root and dims only the siblings along that path, so nothing
+moves in the DOM. All three symptoms are gone:
 
-- A click listener on an ancestor group stops receiving events from a focused child. If a
-  card needs the player to click something, put the listener on the element itself or run
-  that card with no focus at all.
-- A node raised out of a **transformed** parent loses that transform and lands wherever its
-  own coordinates put it, usually a stage corner. Bake the parent's translate into the
-  children before focusing them, and kill any CSS transition on the parent first or
-  clearing its transform animates it back to the origin.
-- `clearFocus` throws `NotFoundError` if the focus list was not in document order. It
-  restores back to front, so an out-of-order list asks it to insert before a node that is
-  itself still raised. Collect focus targets in document order.
+- ~~A click listener on an ancestor group stops receiving events from a focused child.~~
+  Ancestor listeners keep firing; you no longer need to run interaction cards unfocused.
+- ~~A node raised out of a **transformed** parent loses that transform.~~ Transforms are
+  untouched, so focusing a child inside a transformed group is safe.
+- ~~`clearFocus` throws `NotFoundError` if the focus list was not in document order.~~
+  There is nothing to restore, so order does not matter.
+
+The workarounds in existing steps (focusing a parent and labelling the child, sorting by
+`compareDocumentPosition`, running interaction cards with no focus) are all still correct
+and were left in place; they are simply no longer required for new work.
 
 Two more label traps, neither in `focus` itself:
 
@@ -163,10 +165,16 @@ Two more label traps, neither in `focus` itself:
   render rather than trusting the call.
 - **A `fill` presentation attribute loses to a class's CSS `fill`.** Recolouring a
   classed node needs `style.fill`, not `setAttribute('fill', …)`.
+- **`text-anchor` had the same problem and is now FIXED**: `.lbl`, `.lbl-faint`,
+  `.lbl-strong` and `.tile-cap` scope their default to `:not([text-anchor])`, so an
+  explicit `text-anchor="start|end"` attribute wins again. `style.textAnchor` still works
+  and is what the engine itself uses.
 
-**`flow.hintAfter` replaces the current card.** It calls `guide.note`, which in card mode
-writes into the one card slot, so a pending hint can wipe interaction feedback mid-task.
-Cancel the hint on the player's first interaction (`hintAfter` returns a cancel function).
+~~**`flow.hintAfter` replaces the current card.**~~ **FIXED in the engine pass.** Hints
+render into `guide.hint()`, a slot of their own below the card, and the next card clears
+it. `guide.truthTable`'s built-in messages route there too. Cancelling on the player's
+first interaction is still good manners (`hintAfter` returns a cancel function, which now
+also clears the slot).
 
 ## 5. Busting the module cache
 

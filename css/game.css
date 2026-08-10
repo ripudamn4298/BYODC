@@ -136,9 +136,12 @@
 text[text-anchor="start"],tspan[text-anchor="start"]{text-anchor:start}
 text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
 
-.lbl{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;fill:var(--ink-soft);text-anchor:middle;pointer-events:none}
-.lbl-faint{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;fill:var(--ink-faint);text-anchor:middle;pointer-events:none}
-.lbl-strong{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;fill:var(--ink);text-anchor:middle;pointer-events:none;font-weight:500}
+.lbl:not([text-anchor]){text-anchor:middle}
+.lbl{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;fill:var(--ink-soft);pointer-events:none}
+.lbl-faint:not([text-anchor]){text-anchor:middle}
+.lbl-faint{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;fill:var(--ink-faint);pointer-events:none}
+.lbl-strong:not([text-anchor]){text-anchor:middle}
+.lbl-strong{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;fill:var(--ink);pointer-events:none;font-weight:500}
 
 .bond{stroke:var(--hairline-strong);stroke-width:1.4}
 .bond.fade{stroke:var(--hairline)}
@@ -182,7 +185,8 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
 .tile-bg{fill:var(--paper-high);stroke:var(--hairline-strong);stroke-width:1.3;transition:all .2s}
 .tile-bg.on{fill:var(--blue-soft);stroke:var(--blue)}
 .tile-letter{font-family:var(--font-display);font-size:24px;text-anchor:middle;pointer-events:none}
-.tile-cap{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;fill:var(--ink-soft);text-anchor:middle;pointer-events:none}
+.tile-cap:not([text-anchor]){text-anchor:middle}
+.tile-cap{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;fill:var(--ink-soft);pointer-events:none}
 .bridge{fill:var(--blue);opacity:0;transition:opacity .3s}
 .bridge.p{fill:var(--red)}
 .node-dot{fill:var(--ink)}
@@ -244,10 +248,11 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
    The scrim sits over the whole stage and the focused nodes are raised above
    it, so a card always has exactly one thing on screen at full strength, named
    where it stands. */
-/* the base rule carries the FINAL opacity and the keyframe only supplies the
-   fade-in, so a throttled or disabled animation still leaves the scrim visible */
-.focus-scrim{fill:var(--paper-high);opacity:.8;animation:focus-in .34s var(--ease);pointer-events:none}
-@keyframes focus-in{from{opacity:0}}
+/* Focus no longer paints a scrim: stage.focus dims the non-ancestor siblings by
+   opacity instead of raising the target above a wash, so nothing is re-parented.
+   .focus-scrim is kept only so an older cached step cannot paint a bare rect. */
+.focus-scrim{display:none}
+.dimmed{transition:opacity .3s var(--ease)}
 .focus-marks{pointer-events:none}
 .focus-ring{fill:none;stroke:var(--ink);stroke-width:1.2;stroke-dasharray:4 4;opacity:.75}
 .focus-leader{stroke:var(--ink);stroke-width:1;opacity:.7}
@@ -281,7 +286,9 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
 .sled-gpu{fill:var(--hairline-strong);transition:fill .2s}
 .sled-gpu.on,g.on .sled-gpu{fill:var(--blue)}
 .ladder-frame{fill:rgba(29,33,23,.04);stroke:var(--hairline-strong);stroke-width:1}
-.ladder-seg{transition:height .3s,y .3s}
+/* No geometry transition here on purpose: a rung measured mid-transition reads
+   stale, and a replay would land on a different frame than the live run. Steps
+   move the ladder with Anim.tween instead. */
 .seg-it{fill:var(--blue)}
 .seg-cool{fill:var(--amber)}
 .seg-loss{fill:var(--hairline-strong)}
@@ -297,7 +304,10 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
 
 .wiggle{animation:wig .42s ease}
 @keyframes wig{25%{transform:translate(2px,-1.6px)}55%{transform:translate(-2px,1.2px)}80%{transform:translate(.8px,.4px)}}
-.pop-in{animation:popin .45s var(--ease)}
+/* transform-box keeps the scale about the element, not the SVG origin — without it
+   a box measured mid-keyframe lands off-stage, which every step used to work around
+   by stripping the class by hand. */
+.pop-in{animation:popin .45s var(--ease);transform-box:fill-box;transform-origin:50% 50%}
 @keyframes popin{from{transform:scale(.4);opacity:0}}
 .shake{animation:shake .45s ease}
 @keyframes shake{20%{transform:translateX(-5px)}45%{transform:translateX(5px)}70%{transform:translateX(-3px)}90%{transform:translateX(2px)}}

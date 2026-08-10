@@ -277,6 +277,7 @@ export async function step2(){
       chipBarrier.set(v < 0.025 ? 'barrier: <b>standing</b>' : 'barrier: <b>taller</b>');
       chipBarrier.cls('state-on', false);
       chipCurrent.set('current: <b>0 mA</b>');
+      chipCurrent.el.classList.remove('live');
       return;
     }
     hill.setBias(v);
@@ -287,6 +288,7 @@ export async function step2(){
       lamp.set(0);
       chipBarrier.set('barrier: <b>standing</b>'); chipBarrier.cls('state-on', false);
       chipCurrent.set('current: <b>0 mA</b>');
+      chipCurrent.el.classList.remove('live');
     } else {
       bands.quiver(false);
       bands.collapse();
@@ -296,6 +298,7 @@ export async function step2(){
       lamp.set(clamp(0.3 + (v - V_ON) / 0.8, 0, 1));
       chipBarrier.set('barrier: <b>flat</b>'); chipBarrier.cls('state-on', true);
       chipCurrent.set(`current: <b>${mA} mA</b>`);
+      chipCurrent.el.classList.toggle('live', +mA > 0);
       if (!didFlow){ didFlow = true; if (!flow.instant) SFX.flow(); }
     }
   }

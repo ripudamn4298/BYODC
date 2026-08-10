@@ -1,19 +1,13 @@
 // BYODC engine — Act 3 fabrication vocabulary, paper style.
 // WaferMap (round wafer + die grid + yield sim), MaskAlign (two nudgeable layers),
 // process-step tiles, and a seeded PRNG so defect scatter is replay-deterministic.
-import { el, svgEl, clamp } from './util.js';
+import { el, svgEl, clamp, mulberry32 } from './util.js';
 import { SFX } from './sfx.js';
 
-/* deterministic RNG — seed it, record the seed via flow.ask, reproduce on replay */
-export function mulberry32(seed){
-  let a = seed >>> 0;
-  return () => {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+/* deterministic RNG — seed it, record the seed via flow.askCard, reproduce on replay.
+   One implementation, in util.js; re-exported here because every Act 3 step imports
+   it from this module. */
+export { mulberry32 };
 
 /* ---------- WaferMap: a round wafer tiled into dies, with a yield sim ---------- */
 export function makeWaferMap(svg, { cx = 262, cy = 232, r = 168 } = {}){

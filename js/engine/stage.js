@@ -39,25 +39,34 @@ export function newStage(numeral, label){
     wm.textContent = numeral; svg.appendChild(wm);
   }
   stageEl.appendChild(svg);
+  /* Any focusable stage element (steps give atoms, slots and tiles a tabindex for keyboard
+     play) keeps its :focus-visible ring after a real click, leaving a bright box on
+     something no card is talking about. Drop it for pointer-driven interaction only —
+     e.detail is 0 for a keyboard-generated activation, so keyboard focus still shows. */
+  svg.addEventListener('pointerdown', e => {
+    const a = document.activeElement;
+    if (e.isTrusted && a && a !== document.body && svg.contains(a)) a.blur();
+  }, true);
   const controls = el('div', { class: 'stage-controls' });
   stageEl.appendChild(controls);
 
   /* ---------- focus: spotlight one thing and name it ----------
-     A translucent paper scrim covers the stage, then the focused nodes are
-     re-appended above it. Dimming by opacity instead would multiply down
-     through nested groups; raising the real nodes keeps them at full strength
-     however deeply they sit, and their event handlers survive the move. */
-  let scrim = null, raised = [], marks = null;
+     Nothing is re-parented. We walk from each target up to the SVG root and dim
+     only the SIBLINGS along that path, so no ancestor of a target is ever dimmed
+     and the dimming cannot multiply down onto it. That leaves every node exactly
+     where it was, which is what the old raise-above-a-scrim approach could not
+     do: raising broke click listeners on ancestor groups, dropped the parent's
+     transform (flinging the node into a corner), and made clearFocus throw
+     NotFoundError when the focus list was not in document order. */
+  let dimmed = [], marks = null;
 
   function clearFocus(){
-    // restore in reverse so each insertBefore sees a sibling that is already home
-    for (let i = raised.length - 1; i >= 0; i--){
-      const { node, parent, next } = raised[i];
-      parent.insertBefore(node, next);
+    for (const { node, prev } of dimmed){
+      node.classList.remove('dimmed');
+      if (prev) node.style.opacity = prev; else node.style.removeProperty('opacity');
     }
-    raised = [];
+    dimmed = [];
     if (marks){ marks.remove(); marks = null; }
-    if (scrim){ scrim.remove(); scrim = null; }
   }
 
   /* focus(target|[targets], { label, at, ring }) — at is the side the label sits
@@ -67,13 +76,37 @@ export function newStage(numeral, label){
     const list = (Array.isArray(target) ? target : [target]).filter(Boolean);
     if (!list.length) return;
 
-    scrim = svgEl('rect', { x: 0, y: 0, width: W, height: H, class: 'focus-scrim' });
-    svg.appendChild(scrim);
-
     const box = unionBox(list.map(n => bboxIn(svg, n)));
-    // record every original position BEFORE moving any of them
-    list.forEach(node => raised.push({ node, parent: node.parentNode, next: node.nextSibling }));
-    raised.forEach(({ node }) => svg.appendChild(node));
+
+    // every node on an ancestor path from a target up to the root stays lit
+    const keep = new Set(), targets = new Set(list);
+    for (const n of list){
+      let p = n;
+      while (p && p !== svg){ keep.add(p); p = p.parentNode; }
+    }
+    /* Dimming may only ever REDUCE. A step that pre-hides a node with opacity 0 (a
+       caption it reveals later) would otherwise have it raised to .25 and spoiled the
+       moment: the old raise-above-a-scrim focus left such nodes invisible, so this is
+       a trap the new approach introduces if you write .25 unconditionally. */
+    const dim = node => {
+      const inline = node.style.opacity;
+      let cur = inline !== '' ? parseFloat(inline) : NaN;
+      if (Number.isNaN(cur)){
+        const c = getComputedStyle(node).opacity;
+        cur = c === '' ? 1 : parseFloat(c);
+      }
+      if (!(cur > 0.25)) return;      // already at or under the dim level, or hidden
+      dimmed.push({ node, prev: inline || '' });
+      node.classList.add('dimmed');
+      node.style.opacity = '.25';     // inline, so a class on the node cannot beat it
+    };
+    (function walk(parent){
+      for (const child of Array.from(parent.children)){
+        if (targets.has(child)) continue;          // a target: leave its subtree alone
+        if (keep.has(child)) walk(child);          // on the path: recurse, never dim
+        else dim(child);
+      }
+    })(svg);
 
     marks = svgEl('g', { class: 'focus-marks' });
     svg.appendChild(marks);
@@ -87,9 +120,18 @@ export function newStage(numeral, label){
     }
 
     if (opts.label){
-      const at = opts.at || 'top';
       const gap = 26, pad = 9;
       const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+      /* Flip to the opposite side when the requested one has no room, rather than
+         clamping — clamping used to slide the text back on top of the very thing
+         it is naming. Only if BOTH sides are tight do we clamp, and then the
+         label sits outside the box because the flip already picked the roomier one. */
+      const room = { top: box.y, bottom: H - (box.y + box.h), left: box.x, right: W - (box.x + box.w) };
+      const need = { top: gap + 6, bottom: gap + 14, left: gap + 10, right: gap + 10 };
+      const opposite = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+      let at = opts.at || 'top';
+      if (room[at] < need[at] && room[opposite[at]] >= need[opposite[at]]) at = opposite[at];
+
       let tx, ty, anchor = 'middle', x1, y1, x2, y2;
       if (at === 'top'){
         tx = cx; ty = box.y - gap; x1 = cx; y1 = ty + 5; x2 = cx; y2 = box.y - pad;
@@ -100,13 +142,34 @@ export function newStage(numeral, label){
       } else {
         tx = box.x + box.w + gap; ty = cy + 4; anchor = 'start'; x1 = tx - 6; y1 = cy; x2 = box.x + box.w + pad; y2 = cy;
       }
-      // keep the label inside the stage
-      tx = Math.max(14, Math.min(W - 14, tx));
-      ty = Math.max(16, Math.min(H - 10, ty));
+      // final safety clamp, kept off the box itself on the axis the label sits on
+      if (at === 'top' || at === 'bottom'){
+        tx = Math.max(14, Math.min(W - 14, tx));
+        ty = at === 'top' ? Math.max(12, ty) : Math.min(H - 6, ty);
+      } else {
+        ty = Math.max(16, Math.min(H - 10, ty));
+        tx = at === 'left' ? Math.max(14, tx) : Math.min(W - 14, tx);
+      }
       marks.appendChild(svgEl('line', { x1, y1, x2, y2, class: 'focus-leader' }));
-      const t = svgEl('text', { x: tx, y: ty, 'text-anchor': anchor, class: 'focus-label' });
+      const t = svgEl('text', { x: tx, y: ty, class: 'focus-label' });
+      t.style.textAnchor = anchor;      // CSS wins over the presentation attribute
       t.textContent = opts.label;
       marks.appendChild(t);
+
+      /* Clamping the anchor is not enough: a middle-anchored label still hangs half its
+         width past the edge, which is how "COST PER GOOD DIE" rendered as "…GOOD DI".
+         Measure the drawn text and slide the whole box back inside the stage. */
+      let tw = 0;
+      try { tw = t.getComputedTextLength(); } catch { /* not laid out yet */ }
+      if (tw > 0){
+        const edge = 6;
+        const left = anchor === 'middle' ? tx - tw / 2 : anchor === 'end' ? tx - tw : tx;
+        const right = left + tw;
+        let shift = 0;
+        if (right > W - edge) shift = (W - edge) - right;
+        if (left + shift < edge) shift = edge - left;
+        if (shift) t.setAttribute('x', String(tx + shift));
+      }
     }
   }
 
@@ -122,7 +185,18 @@ export function newStage(numeral, label){
       const b = bboxIn(svg, node);
       const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
       const s = scale != null ? scale : (b.w > 0 ? Math.min(1, (box.w * 0.5) / b.w) : 0.4);
-      return { node, cx, cy, s, orig: node.getAttribute('transform') || '' };
+      /* A CSS `style.transform` beats the transform attribute outright, so a node
+         positioned that way would sit still while we animated the attribute. Fold
+         the computed matrix into the attribute and drop the style, so the base we
+         compose against is whatever the node is actually showing right now. */
+      let orig = node.getAttribute('transform') || '';
+      if (node.style && node.style.transform){
+        let m = '';
+        try { m = getComputedStyle(node).transform; } catch { /* detached */ }
+        node.style.removeProperty('transform');
+        if (m && m !== 'none'){ orig = m; node.setAttribute('transform', m); }
+      }
+      return { node, cx, cy, s, orig };
     });
     await Anim.tween(dur, p => {
       items.forEach(({ node, cx, cy, s, orig }) => {
