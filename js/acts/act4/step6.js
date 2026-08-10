@@ -83,7 +83,7 @@ export async function step6(){
   guide.title('STEP 6 / 6 · NANOVOLT AI', 'Assemble <em>the GPU</em>');
   guide.cards();
 
-  const stage = newStage('18', 'One package: a compute die and two memory stacks on an interposer, under a cooler');
+  const stage = newStage('20', 'One package: a compute die and two memory stacks on an interposer, under a cooler');
   const { svg, controls } = stage;
 
   /* ============ CARD 1 — what this step builds ==================================== */
@@ -277,7 +277,7 @@ export async function step6(){
   /* ============ CARDS 9-12 — the training loop ==================================== */
 
   stage.clearFocus();
-  const stage2 = newStage('18', 'A training pass: data streaming from memory into the sixteen lanes');
+  const stage2 = newStage('20', 'A training pass: data streaming from memory into the sixteen lanes');
   const svg2 = stage2.svg, controls2 = stage2.controls;
 
   const src = svgEl('g');

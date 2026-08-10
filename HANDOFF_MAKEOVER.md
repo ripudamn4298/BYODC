@@ -15,8 +15,9 @@ lessons. The makeover replaces the scrolling guide panel with **one card at a ti
 every card highlights and names the one thing it is about, every term is defined on its own
 card before use, and every step opens by pointing back at what the player already built.
 
-The binding rules are `DESIGN_MAKEOVER.md` §2. They are not yet in `DESIGN.md`; the last
-step of this project is to move them there as §6d.
+The binding rules are **`DESIGN.md` §6d** (moved there 2026-08-10, and the copy to read).
+`DESIGN_MAKEOVER.md` §2 is the superseded original, kept only as the record of what was
+agreed at the start.
 
 ---
 
@@ -41,13 +42,14 @@ not treat the absence of complaints about Acts 2 and 4 as approval.
 
 **Read these before touching anything:**
 
-- `DESIGN.md` is the original binding spec. §1 is the visual identity and the palette,
-  **§1a (added 2026-08-08) lists every meaning each colour may carry**, §4 is the
-  non-negotiable physics rules, §6 / §6b / §6c are the voice and teaching frameworks.
+- `DESIGN.md` is the binding spec, and now the only one. §1 is the visual identity and the
+  palette, **§1a lists every meaning each colour may carry**, §4 is the non-negotiable
+  physics rules, §6 / §6b / §6c are the voice and teaching frameworks, and **§6d is the
+  micro-learning card contract** plus the engine behaviours it depends on.
   Note: agent briefs that say "§4" for colour are wrong; colour lives in §1a.
-- `DESIGN_MAKEOVER.md`: **§2 is the course-wide contract, §4 is the engine API.** Both are
-  shared by every act. The rest of the file is Act 4's own plan, kept as the worked example.
-  §5b is the running checklist of everything deferred.
+- `DESIGN_MAKEOVER.md`: §2 is **superseded by `DESIGN.md` §6d**; §4 is the engine API. The
+  rest is Act 4's own plan, kept as the worked example. §5b is the record of every engine
+  defect found and fixed, and the three cosmetic ones deliberately left.
 - `VERIFY_HARNESS.md` is how to run and check a step in the preview, plus every trap fifteen
   agents have hit. Read it before verifying anything; it will save hours.
 - `RENUMBERING.md` says why no act renumbers itself, and where every numeral lands at the end.
@@ -126,23 +128,24 @@ way and every brief must carry them:
 
 ## 6. Next steps, in order
 
-**All five acts are ported.** What is left is the three passes that were deliberately held
-until that was true, plus one fixture repair.
+**All five acts are ported, and all three follow-up passes are done.** What remains is
+Ripu's review.
 
-1. **The engine pass** (`DESIGN_MAKEOVER.md` §5b). Held deliberately until every act was
-   ported, because it needs one re-verify of all steps rather than five. Acts 3 and 5 added
-   thirteen entries between them, including several that every ported step now hand-rolls a
-   workaround for: the `flow.ask`-with-no-button Back stop, CSS `text-anchor` beating the
-   presentation attribute, and `stage.focus` re-parenting in its various disguises.
-2. **The global renumbering pass** (`RENUMBERING.md`). Course goes to **25 steps**; Act 4
-   moves from 13–18 to 15–20 even though its content does not change. Act 5 currently holds
-   19, 23, 20, 21, 22 in step order, because its new step took the next free numeral rather
-   than displacing a sibling mid-port. That is deliberate and it is what this pass fixes.
-3. Move `DESIGN_MAKEOVER.md` §2 into `DESIGN.md` as §6d, and delete the old guide behaviour.
-4. **Repair the `byodc-s2`…`byodc-s6` entries in `launch.json`.** They point at scratchpad
-   directories belonging to sessions that no longer exist, so every Act 3 and Act 5 agent had
-   to fall back to serving its own copy by hand. macOS TCC blocks serving `~/Documents`, so
-   whatever replaces them must serve a copy, not the repo.
+1. ~~The engine pass~~ — **done** (`bbcb8e6`). Every item in `DESIGN_MAKEOVER.md` §5b,
+   the biggest being that `stage.focus` no longer re-parents anything. Re-verifying all
+   25 steps afterwards caught six regressions the component tests could not; both the
+   fixes and the regressions are logged in §5b.
+2. ~~The global renumbering pass~~ — **done**. Numerals 01-25, unique and sequential, HUD
+   figures unchanged at every act boundary. See `RENUMBERING.md`.
+3. ~~Move the card contract into `DESIGN.md`~~ — **done**. It is now `DESIGN.md` §6d and
+   is the binding copy; `DESIGN_MAKEOVER.md` §2 is marked superseded and kept only as the
+   record of what was agreed at the start.
+
+Still open, all logged and none blocking: the three cosmetic items at the end of §5b
+(focus labels can overlap unrelated drawings, Act 3 step 1's buttons wrap outside the
+stage frame, `waitFor` looks hung under hidden-tab throttling), the four parked decisions
+in §8, and the `byodc-s2`…`byodc-s6` entries in `launch.json` that still point at dead
+sessions' scratchpads.
 
 Ripu has still reviewed **Act 1 only**. Four acts are live without his eyes on them.
 

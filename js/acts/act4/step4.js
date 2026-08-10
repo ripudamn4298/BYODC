@@ -77,7 +77,7 @@ export async function step4(){
   guide.title('STEP 4 / 6 · NANOVOLT GRAPHICS', 'Move the data, <em>not the weights</em>');
   guide.cards();
 
-  const stage = newStage('16', 'Weights parked in four engines while data moves through them');
+  const stage = newStage('18', 'Weights parked in four engines while data moves through them');
   const { svg } = stage;
 
   // everything inside the border lives in one group, so it can shrink as one thing

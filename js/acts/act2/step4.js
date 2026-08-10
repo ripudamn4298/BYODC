@@ -54,7 +54,7 @@ export async function step4(){
   guide.title('STEP 4 / 4 · NANOVOLT SYSTEMS', 'Fetch, compute, <em>store, repeat</em>');
   guide.cards();
 
-  const stage = newStage('08', 'A register and an adder wired into a loop, driven by a clock');
+  const stage = newStage('09', 'A register and an adder wired into a loop, driven by a clock');
   const { svg, controls } = stage;
 
   /* ---------- everything that is drawn, in document order ----------

@@ -53,7 +53,7 @@ export async function step2(){
   guide.title('STEP 2 / 4 · NANOVOLT COMPUTE', 'Add the way <em>you do on paper</em>');
   guide.cards();
 
-  const stage = newStage('06', 'Place value, the same sum worked on paper, one column of circuit, then four of them chained');
+  const stage = newStage('07', 'Place value, the same sum worked on paper, one column of circuit, then four of them chained');
   const { svg, controls } = stage;
 
   /* ================= SCENE A — the answer they already have, then place value ======= */

@@ -64,7 +64,7 @@ export async function step3(){
   guide.title('STEP 3 / 4 · NANOVOLT MEMORY', 'A circuit <em>that remembers</em>');
   guide.cards();
 
-  const stage = newStage('07', 'An adder that forgets, then two NANDs wired into a loop that holds one bit');
+  const stage = newStage('08', 'An adder that forgets, then two NANDs wired into a loop that holds one bit');
   const { svg, controls } = stage;
 
   /* ============ SCENE A — the adder they just built, and what it forgets ========== */

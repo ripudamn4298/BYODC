@@ -64,7 +64,7 @@ export async function step1(){
   guide.title('STEP 1 / 6 · NANOVOLT GRAPHICS', 'Eight adders <em>at once</em>');
   guide.cards();
 
-  const stage = newStage('13', 'One adder, then eight, then sixteen lanes');
+  const stage = newStage('15', 'One adder, then eight, then sixteen lanes');
   const { svg, controls } = stage;
 
   /* ============ SCENE A — start from the machine the player already built ========== */

@@ -52,7 +52,7 @@ export async function step3(){
   guide.title('STEP 3 / 6 · NANOVOLT GRAPHICS', 'Registers: <em>where numbers are stored</em>');
   guide.cards();
 
-  const stage = newStage('15', 'One register, then a register file, then the mux that picks one of them');
+  const stage = newStage('17', 'One register, then a register file, then the mux that picks one of them');
   const { svg } = stage;
 
   /* ============ the engine from step 2, the thing everything is delivered to ======== */

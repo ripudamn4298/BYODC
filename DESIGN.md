@@ -431,6 +431,74 @@ dumps several new ideas at once before any checkpoint, split it: known case → 
 - Add 19's bits into the pile → **64.**
 - *Then* introduce the compressor as the tool that adds a tall column. (the final layer)
 
+## 6d. THE MICRO-LEARNING CARD CONTRACT (binding, 2026-08-10)
+
+Ripu played Act 4 and got lost, and diagnosed it precisely: never the ideas, always the
+packaging. His words: **"USE THE CONCEPT OF MICRO LEARNING, MINIMAL INFORMATION AND TEXT IN
+ONE GO AT A TIME ON SCREEN."** These seven rules replace the scrolling guide panel, in which
+each beat appended below the last until the player faced a column of prose. All five acts
+are built to them; `js/acts/act4/step1.js` is the reference implementation.
+
+**Rule 1 — one card at a time.** The side panel holds ONE short block of text. Next replaces
+it in place, Back brings the previous one back. No transcript pile-up, no scrolling column.
+About 30 words, two short sentences, one idea. If a card needs a third sentence, it is two
+cards.
+
+**Rule 2 — every card points at something.** When a card talks about a thing, that thing is
+highlighted on the stage and labelled at that moment; everything else dims to ~25%. The
+player never hunts the diagram for what the text means. One highlight target per card: if a
+card would need two, it is two cards.
+
+**Rule 3 — define before use, one term per card.** A new word gets its own card: the word,
+what it is in plain language, and its label landing on the diagram at the same moment. Only
+then may later cards use the word.
+
+**Rule 4 — connect to what the player already built.** Every step opens by showing where we
+are and what we are reusing, so the player thinks "that's mine" before anything new appears.
+
+**Rule 5 — transitions are shown, not told.** When the stage reorganises, the player watches
+the old thing become the new thing. No jump cuts to a new diagram.
+
+**Rule 6 — plain names, plain verbs.** Step titles say what you build or learn; button labels
+say what the button does. The real industry term is still taught, but as a label on the thing
+or as the reveal at the end, per §6b. It is never the hook.
+
+**Rule 7 — preface every step.** First card: what you will build here, in one sentence. If the
+step has a test or a payoff number, say what it will be. No mystery.
+
+### The engine contract these run on
+
+```js
+guide.cards();                                   // once, right after guide.title()
+guide.say('…');                                  // replaces the card in the slot
+guide.hint('…');                                 // a slot BELOW the card; the next card clears it
+stage.focus(node, { label: 'register file' });   // spotlight and name one thing
+await stage.packInto(nodes, box);                // watch N things become one
+await Anim.tween(dur, p => { … });               // replay-aware, collapses on replay
+const v = await flow.askCard(draw, make);        // record a generated value AT a card boundary
+```
+
+**There is no card history stack and none is needed.** Every card boundary is already a
+`flow.ask()`, so the existing Back re-runs the step one answer short and lands on the previous
+card. **This only holds if each card ends with an await.** A card that does not is invisible
+to Back: one press appears to do nothing and silently re-rolls whatever the step generated.
+
+Four engine behaviours the rules depend on, all fixed in the engine pass and easy to
+re-break:
+
+- **Focus dims siblings; it never re-parents.** It walks from each target to the SVG root and
+  dims only the siblings along that path, so ancestors of a target keep their listeners and
+  their transforms. Dimming may only ever *reduce* opacity — a step that pre-hides a node at
+  `opacity: 0` must not have it raised into view.
+- **Corrections and hints never touch the card.** `guide.note` and `flow.hintAfter` both route
+  to the hint slot while card mode is on, so a wrong answer cannot delete the instruction the
+  player is still reading.
+- **Determinism.** Anything generated (a defect map, a speed test, which switch fails) comes
+  from `mulberry32` seeded off a value recorded through `flow.ask`, so a replay draws exactly
+  what the player saw. No `Math.random`, no `Date.now`, no bare `setTimeout` driving a visual.
+- **Colour stays semantic per §1a.** Readout chips do not default to blue; a chip earns
+  `.live` / `.state-on` only when it is showing a live signal or a logic 1.
+
 ## 7. QUALITY FLOOR
 Responsive ≥360px. Keyboard: all interactive SVG elements tabbable (`tabindex`, Enter/Space).
 `prefers-reduced-motion` honored everywhere. No runtime network. No localStorage.

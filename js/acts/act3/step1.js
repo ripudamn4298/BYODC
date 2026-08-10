@@ -68,7 +68,7 @@ export async function step1(){
   guide.title('STEP 1 / 5 · NANOVOLT MATERIALS', 'Grow <em>one perfect crystal</em>');
   guide.cards();
 
-  const stage = newStage('09', 'Czochralski crystal pull, with the lattice at the growth face');
+  const stage = newStage('10', 'Czochralski crystal pull, with the lattice at the growth face');
   const { svg, controls } = stage;
 
   /* ================= the puller ================= */

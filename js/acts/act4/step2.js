@@ -35,7 +35,7 @@ export async function step2(){
   guide.title('STEP 2 / 6 · NANOVOLT GRAPHICS', 'How a chip <em>multiplies</em>');
   guide.cards();
 
-  const stage = newStage('14', 'Multiplying 7 by 7 with AND gates and a pile of place-value columns');
+  const stage = newStage('16', 'Multiplying 7 by 7 with AND gates and a pile of place-value columns');
   const { svg, controls } = stage;
 
   /* ============ the two numbers, in binary, on paper ============================== */
@@ -373,7 +373,7 @@ export async function step2(){
   /* ============ the precision square ============================================== */
 
   stage.clearFocus();
-  const stage2 = newStage('14', 'The AND grid shrinks on both sides as the bit width falls');
+  const stage2 = newStage('16', 'The AND grid shrinks on both sides as the bit width falls');
   const { svg: svg2, controls: controls2 } = stage2;
 
   const foot = { x: 250, y: 118, size: 224 };

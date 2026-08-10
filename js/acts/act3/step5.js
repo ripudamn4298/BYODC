@@ -99,7 +99,7 @@ export async function step5(){
   guide.title('STEP 5 / 5 · NANOVOLT TEST', 'Same chip, <em>three prices</em>');
   guide.cards();
 
-  const stage = newStage('13', 'Six packaged chips, a speed tester, and three bins');
+  const stage = newStage('14', 'Six packaged chips, a speed tester, and three bins');
   const { svg } = stage;
   cornerTicks(svg, 40, 40, 640, 400, 8);
 

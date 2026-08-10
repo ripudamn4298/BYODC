@@ -136,7 +136,7 @@ export async function step5(){
 
   /* ============ SCENE A — the plan, one building per card ============ */
 
-  const stage = newStage('22', 'The site plan, the bill, and then the globe');
+  const stage = newStage('25', 'The site plan, the bill, and then the globe');
   const { svg } = stage;
 
   const planG = svgEl('g');
@@ -317,7 +317,7 @@ export async function step5(){
   await fadeOut([specG], 220);
   await stage.packInto([planG], { x: 191, y: 243, w: 8, h: 8 }, { dur: 620 });
 
-  const gstage = newStage('22', 'The globe: data centres in amber, cables in blue, and yours');
+  const gstage = newStage('25', 'The globe: data centres in amber, cables in blue, and yours');
   const gsvg = gstage.svg;
 
   const cx = 360, cy = 238, R = 178;

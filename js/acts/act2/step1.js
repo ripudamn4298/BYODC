@@ -66,7 +66,7 @@ export async function step1(){
   guide.title('STEP 1 / 4 · NANOVOLT LOGIC', 'Weigh <em>two inputs at once</em>');
   guide.cards();
 
-  const stage = newStage('05', 'The Act 1 inverter, then four switches wired into a two-input gate');
+  const stage = newStage('06', 'The Act 1 inverter, then four switches wired into a two-input gate');
   const { svg, controls } = stage;
   const focusOn = (nodes, opts) => stage.focus(inOrder(Array.isArray(nodes) ? nodes : [nodes]), opts);
 

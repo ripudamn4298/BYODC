@@ -98,7 +98,7 @@ export async function step4(){
   guide.title('STEP 4 / 5 · NANOVOLT CLOUD', 'Wire it so a failure <em>does not stop it</em>');
   guide.cards();
 
-  const stage = newStage('21', 'Racks wired up to switches, then a switch fails mid-job');
+  const stage = newStage('24', 'Racks wired up to switches, then a switch fails mid-job');
   const { svg, controls } = stage;
 
   /* ============ CARD 1 — the count the player already paid ======================== */
@@ -279,7 +279,7 @@ export async function step4(){
 
   /* ============ CARD 11 — a leaner hall =========================================== */
 
-  const stage2 = newStage('21', 'A leaner hall: one cable per rack, and a switch fails');
+  const stage2 = newStage('24', 'A leaner hall: one cable per rack, and a switch fails');
   const { svg: svg2, controls: controls2 } = stage2;
   const { board: board2, racks: racks2 } = buildBoard(svg2);
   // One cable up per rack, split across the two switches, and the switches cabled to

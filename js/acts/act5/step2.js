@@ -72,7 +72,7 @@ export async function step2(){
   guide.title('STEP 2 / 5 · NANOVOLT CLOUD', 'Why you cannot wire them <em>all together</em>');
   guide.cards();
 
-  const stage = newStage('23', 'Four GPUs wired to each other, and a table of how the link count grows');
+  const stage = newStage('22', 'Four GPUs wired to each other, and a table of how the link count grows');
   const { svg, controls } = stage;
 
   /* ================= SCENE A — the node the player filled last step ================= */

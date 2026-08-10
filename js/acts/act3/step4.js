@@ -73,7 +73,7 @@ export async function step4(){
   guide.title('STEP 4 / 5 · NANOVOLT ASSEMBLY', 'Package <em>the die</em>');
   guide.cards();
 
-  const stage = newStage('12', 'A wafer diced into loose dies, then one die bonded face down onto a substrate and sealed under a lid');
+  const stage = newStage('13', 'A wafer diced into loose dies, then one die bonded face down onto a substrate and sealed under a lid');
   const { svg } = stage;
 
   /* ================= SCENE A — dice the wafer ================= */

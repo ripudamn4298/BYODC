@@ -73,7 +73,7 @@ export async function step2(){
   guide.title('STEP 2 / 5 · NANOVOLT FAB 3', 'Print <em>with light</em>');
   guide.cards();
 
-  const stage = newStage('10', 'A wafer coated in resist under a mask, the five printing steps, then two layers lined up');
+  const stage = newStage('11', 'A wafer coated in resist under a mask, the five printing steps, then two layers lined up');
   const { svg, controls } = stage;
 
   /* ================= SCENE A — resist, mask, light ================================= */

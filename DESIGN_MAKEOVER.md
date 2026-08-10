@@ -51,6 +51,11 @@ text and the picture don't point at each other.**
 
 ## 2. The micro-learning contract
 
+> **SUPERSEDED, 2026-08-10.** This contract now lives in `DESIGN.md` §6d, which is the
+> binding copy and the one to read. It is kept here unchanged as the record of what was
+> agreed at the start of the makeover, and because §5 below reads as a worked example
+> against it. Do not edit this section; edit §6d.
+
 These rules replace the current guide-panel behavior. They apply to every step after the
 makeover.
 

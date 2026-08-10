@@ -77,7 +77,7 @@ export async function step3(){
   guide.title('STEP 3 / 5 · NANOVOLT CLOUD', 'Cooling costs you <em>megawatts</em>');
   guide.cards();
 
-  const stage = newStage('20', 'A meter twitching as an inverter flips, then a power ladder splitting a 30 MW line between IT load, cooling and losses');
+  const stage = newStage('23', 'A meter twitching as an inverter flips, then a power ladder splitting a 30 MW line between IT load, cooling and losses');
   const { svg, controls } = stage;
 
   /* ==================== SCENE A — the Act 1 inverter, still true ==================== */

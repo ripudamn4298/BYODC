@@ -40,7 +40,7 @@ export async function step5(){
   guide.title('STEP 5 / 6 · NANOVOLT GRAPHICS', 'Match memory <em>to compute</em>');
   guide.cards();
 
-  const stage = newStage('17', 'HBM stacks feeding a grid of sixteen lanes over a bundle of wires');
+  const stage = newStage('19', 'HBM stacks feeding a grid of sixteen lanes over a bundle of wires');
   const { svg, controls } = stage;
 
   /* live state: the sliders write into these, render() reads them */

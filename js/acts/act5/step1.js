@@ -126,7 +126,7 @@ export async function step1(){
   guide.title('STEP 1 / 5 · NANOVOLT CLOUD', 'Eight GPUs <em>to a rack</em>');
   guide.cards();
 
-  const stage = newStage('19', 'One GPU into a sled, eight sleds into a rack');
+  const stage = newStage('21', 'One GPU into a sled, eight sleds into a rack');
   const { svg, controls } = stage;
 
   /* ================= CARD 1 — the GPU the player already built ==================== */

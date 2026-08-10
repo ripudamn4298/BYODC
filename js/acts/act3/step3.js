@@ -46,7 +46,7 @@ export async function step3(){
   guide.title('STEP 3 / 5 · NANOVOLT FAB 3', 'How big to cut <em>each chip</em>');
   guide.cards();
 
-  const stage = newStage('11', 'A wafer cut into dies, with dust killing some of them');
+  const stage = newStage('12', 'A wafer cut into dies, with dust killing some of them');
   const { svg, controls } = stage;
   cornerTicks(svg, 30, 68, 348, 348, 8);
 

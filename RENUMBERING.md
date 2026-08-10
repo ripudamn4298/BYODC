@@ -1,5 +1,11 @@
 # The global renumbering pass
 
+> **DONE, 2026-08-10.** Ran after all five acts were ported and the engine pass landed.
+> Numerals are 01-25, unique and sequential; every `STEP n / N` eyebrow matches its act's
+> count; every act boundary's HUD figure is unchanged ($0.0015 / $0.0105 / $14,000 /
+> $2.43M) and the course still totals $1,102,834,000. Kept as the record of why it ran
+> once rather than five times.
+
 Three acts are splitting steps, so stage numerals and step counts move. If each act
 renumbers itself as it lands, the numbers churn four times and every act after the one
 being worked on is briefly wrong.
