@@ -96,6 +96,12 @@ export const guide = {
     if (!flow.instant) SFX.success();
     return this.beat(el('div', { class: 'aha' }, html + (sub ? `<span class="sub">${sub}</span>` : '')));
   },
+  /* The same dark block as an aha, for narration rather than a payoff: who you are, why
+     you are here. Deliberately not `aha`, which plays the success chime and would ring
+     before the player has done anything. Same class, so the two boxes look identical. */
+  story(html, sub){
+    return this.beat(el('div', { class: 'aha' }, html + (sub ? `<span class="sub">${sub}</span>` : '')));
+  },
   async button(label, variant = 'primary'){
     const b = el('button', { class: 'btn ' + variant, 'data-label': slug(label) }, label);
     const row = this.beat(el('div', { class: 'btn-row' }), 'actions');

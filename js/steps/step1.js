@@ -84,6 +84,21 @@ export async function step1(){
     });
 
     if (pass === 0){
+      /* ---------- who you are, and why you are starting at sand ----------
+         The act used to open on the silicon lattice with "NANOVOLT SEMICONDUCTORS" in the
+         eyebrow and no explanation of who that was. These two cards introduce the company
+         and the reason for building from the bottom, so the venture cards that follow every
+         step land as your company rather than a name that arrived out of nowhere. They run
+         on pass 0 only: the retry after melting the crystal down does not replay the story.
+         No focus on either one, deliberately. Nothing on the stage has been named yet. */
+      guide.story(`You run Nanovolt: nine people, a rented unit in Penang, and a plan to
+        build your own data centre.`);
+      await guide.next();
+
+      guide.story(`You could buy the machines when the day comes. You would rather know what
+        is inside them, so you are building every layer yourself, starting at sand.`);
+      await guide.next();
+
       /* ---------- what silicon is ---------- */
       guide.say(`This is silicon, refined from sand. By the end of this step it will carry
         a current.`);
