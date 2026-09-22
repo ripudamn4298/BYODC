@@ -51,7 +51,7 @@ async function fadeIn(nodes, dur = 320){
 }
 
 export async function step1(){
-  guide.title('STEP 1 / 5 · NANOVOLT SEMICONDUCTORS', 'Make silicon <em>conduct</em>');
+  guide.title('STEP 1 / 5 · NANOVOLT SEMICONDUCTORS', 'How do you make sand <em>conduct electricity?</em>');
   guide.cards();
 
   let pass = 0;               // 0 = first crystal, 1 = the retry with the other element
@@ -100,8 +100,8 @@ export async function step1(){
       await guide.next();
 
       /* ---------- what silicon is ---------- */
-      guide.say(`This is silicon, refined from sand. By the end of this step it will carry
-        a current.`);
+      guide.say(`This is a zoomed-in silicon crystal lattice, refined from sand. By the end
+        of this step, you will learn how to drive a current through it.`);
       stage.focus(lat.g, { label: 'silicon lattice', at: 'top' });
       await guide.next();
 
@@ -110,8 +110,8 @@ export async function step1(){
       stage.focus([hero.pos, ...heroBonds], { label: 'four bonds', at: 'top' });
       await guide.next();
 
-      guide.say(`Each bond is a pair of electrons, one given by each atom. Both sit in the
-        bond and stay there.`);
+      guide.say(`Each bond is a pair of electrons, one contributed by each atom. Both
+        electrons stay locked in the bond.`);
       stage.focus(oneBondNodes, { label: 'one bond, two electrons', at: 'top' });
       await guide.next();
 
@@ -126,21 +126,23 @@ export async function step1(){
       });
       mode = 'off'; onTap = null;
 
-      guide.say(`The bond electrons strained and settled back where they started. Nothing
-        came loose.`);
+      guide.say(`When you tapped it, the bond electrons wobbled and settled back where they
+        were. None of them came loose.`);
       stage.focus([hero.pos, ...heroBonds], { label: 'still four full bonds', at: 'top' });
       await guide.next();
 
       /* ---------- the aim (DESIGN_MAKEOVER.md §2 rule 7) ---------- */
-      guide.say(`With every electron locked in a bond, nothing can move, so nothing can
-        carry a current. <b>Your goal: make it conduct.</b>`);
+      guide.say(`Because every electron is locked in a bond, nothing can move, so nothing
+        can carry a current. <b>Your goal is to make it conduct electricity.</b>`);
       stage.focus(lat.g, { label: 'no free electrons', at: 'top' });
       await guide.next();
 
-      guide.say(`To do that, swap a few of the silicon atoms for a different element.
-        Pick one:`);
+      guide.say(`To do that, we dope the crystal (swap a few silicon atoms for a different
+        element, such as phosphorus or boron, which bring extra electrons or holes). Pick
+        one:`);
     } else {
-      guide.say(`A fresh crystal, every bond full again. Same move, the other element:`);
+      guide.say(`Here is a fresh crystal, with every bond full again. Now dope it with the
+        other element:`);
     }
 
     /* ---------- choose the element ---------- */
@@ -206,26 +208,26 @@ export async function step1(){
       // the arrival animation scales the circle about the SVG origin, so a box measured
       // while it is still running lands nowhere near the electron (VERIFY_HARNESS §4a)
       field.parts.forEach(p => p.c.classList.remove('pop-in'));
-      guide.say(`Four of the five electrons took the four bonds. The fifth has no bond to
-        sit in, so it roams. That loose electron is a <span class="e-blue"><b>free
-        electron</b></span>.`);
+      guide.say(`Phosphorus has five outer electrons. Four of them fill the four bonds, but
+        the fifth has no bond to sit in, so it is free to move. This loose electron is
+        called a <span class="e-blue"><b>free electron</b></span>.`);
       stage.focus(field.parts[0]?.c || field.layer, { label: 'free electron', at: 'top' });
       await guide.next();
       Anim.add(field.ticker);
     } else {
       const held = lat.vacancies.splice(0);
       held.forEach(v => v.ring.classList.remove('pop-in'));
-      guide.say(`Three bonds filled, and the fourth came up one electron short. That empty
-        seat is drawn as a red ring, and it is called a
-        <span class="e-red"><b>hole</b></span>.`);
+      guide.say(`Boron has only three outer electrons, so three bonds are filled and the
+        fourth is one electron short. This missing electron is drawn as a red ring and is
+        called a <span class="e-red"><b>hole</b></span>.`);
       stage.focus(held[0]?.ring, { label: 'hole', at: 'top' });
       await guide.next();
       lat.vacancies.push(...held);
 
       // no scrim here: the thing to watch is an ordinary bond electron sliding into the
       // ring, and dimming the lattice would hide it
-      guide.say(`An electron from a neighbouring bond keeps hopping into the ring. The bond
-        it came from is the empty seat now, so the hole itself moves.`);
+      guide.say(`When an electron from a neighbouring bond hops into the hole, the bond it
+        came from becomes the new hole. So the hole itself appears to move.`);
       stage.focus(lat.g, { label: 'the hole drifts', at: 'top' });
       await guide.next();
     }
@@ -266,8 +268,8 @@ export async function step1(){
     stage.focus(batt, { label: 'battery', at: 'bottom' });
     await guide.next();
 
-    guide.say(`The wires meet the crystal on its left and right faces. Any current has to
-      pass through the silicon to reach the lamp.`);
+    guide.say(`The wires connect to the left and right faces of the crystal, so any current
+      has to pass through the silicon to reach the lamp.`);
     stage.focus([wireL, wireR, contactL, contactR], { label: 'contacts', at: 'bottom' });
     await guide.next();
 
@@ -308,21 +310,28 @@ export async function step1(){
       eFlow.setSpeed(0);
       iFlow.setSpeed(-120);
       SFX.blip();
-      guide.say(`Schematics draw the arrows the other way: out of <b>+</b> and back into
-        <b>−</b>. The direction was guessed before anyone knew electrons existed, and it
-        stuck.`);
+      guide.say(`Electric current was discovered before electrons were. At the time,
+        people drew current flowing from <b>+</b> to <b>−</b>, and that is what these
+        arrows show.`);
       stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
       await guide.next();
 
-      guide.say(`Every circuit after this one shows those arrows, like every real schematic.
-        When it matters, we will remind you that the electrons run the other way.`);
+      guide.say(`We now know current is electrons flowing from <b>−</b> to <b>+</b>. The
+        drawing convention never changed, and honestly it does not matter, as long as we
+        are consistent.`);
+      stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
+      await guide.next();
+
+      guide.say(`Every circuit from here on uses those + to − arrows, because that is how
+        every real schematic is drawn. When it matters, we will remind you that the
+        electrons actually run the other way.`);
       stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
       await guide.next();
     } else {
       eFlow.setSpeed(0);
       iFlow.setSpeed(-120);
-      guide.say(`The arrows are conventional current, as agreed on the first crystal. The
-        electrons underneath run the other way.`);
+      guide.say(`These arrows show conventional current, from + to −, the convention we
+        agreed on with the first crystal. The electrons underneath still run the other way.`);
       stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
       await guide.next();
     }
@@ -330,10 +339,11 @@ export async function step1(){
     /* ---------- grow a fresh crystal and run the other element? ---------- */
     if (pass === 0){
       stage.clearFocus();
-      guide.say(`You need both kinds of silicon later in this act. A doped crystal cannot be
-        re-doped with the opposite element, so chipmakers grow a fresh one.`);
+      guide.say(`You will need both kinds of silicon later in this act. Because a doped
+        crystal cannot be re-doped with the opposite element, chipmakers grow a fresh
+        crystal instead.`);
       const again = await guide.choose([
-        { label: 'Melt it down, run the other element ↺', value: 'again', hint: 'fresh crystal, other dopant. Recommended.' },
+        { label: 'Melt it down and dope with the other element ↺', value: 'again', hint: 'fresh crystal, other dopant. Recommended.' },
         { label: 'Move on with this wafer ▸', value: 'continue', hint: 'you can always come back' },
       ]);
       if (again === 'again'){

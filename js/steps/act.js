@@ -11,7 +11,7 @@ import { step5 } from './step5.js';
 export const ACT1 = [
   {
     id: 'pn-semiconductor',
-    title: 'Make silicon conduct',
+    title: 'How do you make sand conduct electricity?',
     costDelta: 0.0004,
     inventory: 'a doped silicon wafer',
     businessCard: {
@@ -21,13 +21,13 @@ export const ACT1 = [
       body: 'First doped wafer out of the Penang fab this morning. Thin margins, and a shelf of orders for parts that do exactly one thing.',
       cost: 'THIS DOPING RUN: $0.0004',
     },
-    premise: `You have both kinds of doped silicon. Nothing useful happens until they touch. Press them together and a barrier builds itself at the seam, one you can raise and lower with a voltage.`,
+    premise: `Silicon now conducts. But so does a copper wire, so what have we gained? The answer starts on the line where an N block meets a P block.`,
     cta: 'Press N against P ▸',
     run: step1,
   },
   {
     id: 'pn-junction',
-    title: 'Where N meets P',
+    title: 'What happens where N meets P?',
     costDelta: 0.0001,
     inventory: 'a diode, current one way only',
     businessCard: {
@@ -37,13 +37,13 @@ export const ACT1 = [
       body: 'A power supply maker two streets over needs a part that passes current one way and blocks it the other. Yours does, at a hundredth of a cent, and the diode line is on three shifts to keep up.',
       cost: 'THIS DIODE: $0.0001',
     },
-    premise: `A diode passes current one way and blocks the other. Put two of those junctions back to back and the block in the middle becomes a control: a small current there decides whether a much larger one flows.`,
-    cta: 'Control a big current with a small one ▸',
+    premise: `A diode is a one-way street, and that is still just a passive pipe. The next device is the one that put a microphone, a motor and a radio in every pocket: a single part that lets a tiny signal command a massive current.`,
+    cta: 'Take control of the current ▸',
     run: step2,
   },
   {
     id: 'npn-transistor',
-    title: 'A small current controls a big one',
+    title: 'What is wrong with using copper wires?',
     costDelta: 0.0001,
     inventory: 'a working transistor',
     businessCard: {
@@ -53,13 +53,13 @@ export const ACT1 = [
       body: 'The part number is NV-2N, and a radio maker in Osaka has a standing order for it. Transistor number one works.',
       cost: 'THIS TRANSISTOR: $0.0001',
     },
-    premise: `Your transistor drinks control current the whole time it is on. That is fine for hundreds of them and impossible for billions. The fix is a switch held on by a voltage instead of a current.`,
-    cta: 'Switch it with voltage ▸',
+    premise: `Your transistor can now control a large current. The catch is that it consumes a small current the whole time it is on, just to stay on. That is acceptable for hundreds of transistors and impossible for billions. Wouldn't it be better if we could hold it on without any current at all?`,
+    cta: 'Find a better switch ▸',
     run: step3,
   },
   {
     id: 'mosfet',
-    title: 'Switch it with voltage, not current',
+    title: 'Can a switch stay on without spending any current?',
     costDelta: 0.0003,
     inventory: 'a voltage-driven switch (MOSFET)',
     businessCard: {
@@ -69,13 +69,13 @@ export const ACT1 = [
       body: 'Fab 2 in Dresden cost more than Nanovolt made last year, and the field-effect line inside it is still learning to yield. The calculator contract covers it. Just.',
       cost: 'THIS MOSFET: $0.0003',
     },
-    premise: `A single MOSFET still leaks while it is on, because its path to ground stays open. Pair it with its mirror twin so exactly one of them is always off, and the leak nearly disappears.`,
+    premise: `Your new switch costs nothing to hold on. But watch the meter: while it is on, current still runs straight from the supply to ground, and keeps running. One switch is nothing. A billion would cook the chip. Can a switch hold a value and draw nothing?`,
     cta: 'Stop the leak ▸',
     run: step4,
   },
   {
     id: 'cmos-inverter',
-    title: 'Why a billion switches do not melt',
+    title: 'Why don\'t a billion switches melt?',
     costDelta: 0.0006,
     inventory: 'a CMOS inverter, the cell every processor repeats',
     businessCard: {

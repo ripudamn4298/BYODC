@@ -70,7 +70,7 @@ function ensureCollarHatch(svg){
 }
 
 export async function step4(){
-  guide.title('STEP 4 / 5 · NANOVOLT MICRO', 'Switch it with voltage, <em>not current</em>');
+  guide.title('STEP 4 / 5 · NANOVOLT MICRO', 'Can a switch stay on <em>without spending any current?</em>');
   guide.cards();
 
   const stage = newStage('04', 'A MOSFET cross-section: two N regions in P, glass over the gap, metal gate on top');
@@ -96,12 +96,13 @@ export async function step4(){
     <text x="317" y="150" class="lbl-strong" style="fill:var(--amber)">10 µA IN, ALWAYS</text>`;
   svg.appendChild(bjtCost);
 
-  guide.say(`Here is last step's transistor, switched on. Holding it on is not free.`);
+  guide.say(`Here is last step's transistor, switched on. Keeping it on costs a constant
+    current.`);
   stage.focus(bjt, { label: 'from last step', at: 'bottom' });
   await guide.next();
 
-  guide.say(`About 10 µA keeps running into the base for as long as the switch stays on.
-    Put a billion of these on one chip and the heat melts it.`);
+  guide.say(`About 10 µA keeps flowing into the base for as long as the switch stays on. If
+    you put a billion of these on one chip, the heat would melt it.`);
   stage.focus(bjtCost, { label: 'base current', at: 'left' });
   await guide.next();
 
@@ -112,8 +113,9 @@ export async function step4(){
   frame.style.opacity = '0';
   await fadeIn([frame], 300);
 
-  guide.say(`So control the switch with a voltage instead. Nothing has to keep flowing.
-    <b>Your goal: build it one layer at a time, then find the voltage that turns it on.</b>`);
+  guide.say(`So instead, we will control the switch with a voltage, so that nothing has to
+    keep flowing. <b>Your goal is to build this new switch one layer at a time, then find
+    the voltage that turns it on.</b>`);
   stage.focus(frame, { ring: true });
   await guide.next();
 
@@ -146,8 +148,8 @@ export async function step4(){
   });
   await fadeIn([subRect, holeLayer], 380);
 
-  guide.say(`Start with a block of P-type silicon. It is full of holes, and there is not one
-    spare electron anywhere in it.`);
+  guide.say(`Start with a block of P-type silicon. It is full of holes and has no spare
+    electrons anywhere.`);
   stage.focus([subRect, holeLayer], { label: 'p-type silicon', at: 'bottom' });
   await guide.next();
 
@@ -193,8 +195,8 @@ export async function step4(){
     validate: v => v.every(x => x === 'N'),
   });
 
-  guide.say(`Now dope a patch at each end into N silicon. Each one is packed with spare
-    electrons. Drag them in.`);
+  guide.say(`Now dope a patch at each end into N-type silicon, so that each patch is packed
+    with spare electrons. Drag them in.`);
   stage.focus([...nTiles.map(t => t.g), ...wellSlots.map(s => s.rect)], { label: 'two n regions', at: 'top', ring: false });
 
   await flow.ask(async replay => {
@@ -225,8 +227,8 @@ export async function step4(){
   const gapMark = svgEl('rect', { x: GAP.x, y: GAP.y, width: GAP.w, height: GAP.h, fill: 'none' });
   svg.appendChild(gapMark);
 
-  guide.say(`Between them sits a strip of P silicon with no spare electrons in it. Nothing
-    crosses this gap. Closing it on demand is the whole job.`);
+  guide.say(`Between the two patches is a strip of P silicon with no spare electrons, so
+    nothing can cross this gap. Our whole job is to close this gap on demand.`);
   stage.focus(gapMark, { label: 'the gap', at: 'bottom' });
   await guide.next();
 
@@ -278,8 +280,8 @@ export async function step4(){
   const gateTile = makeTile('M', 150, 30, 'metal', '▬', { x: 285, y: 404 });
   const gtPlacer = makePlacer({ svg, tiles: [gateTile], slots: gtSlot, validate: v => v[0] === 'M' });
 
-  guide.say(`Now the metal pad, on top of the glass this time. It sits directly over the
-    gap and never touches the silicon. This pad is the gate.`);
+  guide.say(`Now place the metal pad on top of the glass. It sits directly over the gap and
+    never touches the silicon. This pad is called the gate.`);
   stage.focus([gateTile.g, gtSlot[0].rect], { label: 'metal gate', at: 'top', ring: false });
 
   await flow.ask(async replay => {
@@ -329,8 +331,8 @@ export async function step4(){
   const collarDrn = makeCollar(WELL_DRN, 'left');
   await fadeIn([collarSrc.g, collarDrn.g], 380);
 
-  guide.say(`The hatched bands are depletion layers, the same barrier you built in step 2.
-    There are two junctions in here, so there are two of them.`);
+  guide.say(`The hatched bands are depletion layers, the same barriers you built in step 2.
+    Because there are two junctions here, there are two of them.`);
   stage.focus([collarSrc.g, collarDrn.g], { label: 'two junctions', at: 'bottom', ring: false });
   await guide.next();
 
@@ -365,8 +367,8 @@ export async function step4(){
   svg.appendChild(blockedRoute);
   const chipFlow = makeChip(controls, 'current: <b>?</b>');
 
-  guide.say(`Wire a battery across them, plus at the drain and minus at the source. Then
-    push current through.`);
+  guide.say(`Now wire a battery across them, with plus at the drain and minus at the source,
+    and try to push a current through.`);
   // 'left' would run the label off the stage: the rig's box starts at x=80
   stage.focus(rig, { label: 'battery and lamp', at: 'bottom', ring: false });
   await guide.button('Push current through ▸');
@@ -386,23 +388,23 @@ export async function step4(){
   chipFlow.set('current: <b>blocked</b>');
   chipFlow.cls('state-off', true);
 
-  guide.say(`Blocked, for the reason you already know. Two junctions, and one of them
-    always faces the wrong way.`);
+  guide.say(`The current is blocked, for the reason you already know: there are two
+    junctions, and one of them always faces the wrong way.`);
   stage.focus([collarDrn.g, stuck], { label: 'blocked here', at: 'right', ring: false });
   await guide.next();
 
   /* ============ SCENE D — metal, glass, silicon is a capacitor ============ */
 
   stage.clearFocus();
-  guide.say(`Metal, then glass, then silicon. Those three layers are a capacitor: two
-    plates with an insulator between them.`);
+  guide.say(`Metal, then glass, then silicon: these three layers form a capacitor (two
+    conducting plates with an insulator between them).`);
   stage.focus([subRect, oxide, gateRect], { label: 'capacitor', at: 'left' });
   await guide.next();
 
   const chipI = makeChip(controls, 'into gate: <b>0 A</b>');
 
-  guide.say(`Charging the top plate costs no current, because the glass is in the way. What
-    reaches the silicon below is the plate's electric field.`);
+  guide.say(`Charging the top plate costs no steady current, because the glass blocks any
+    flow. What does reach the silicon below is the plate's electric field.`);
   stage.focus([gateRect, gateStem], { label: 'into gate: 0 A', at: 'top' });
   await guide.next();
 
@@ -499,27 +501,27 @@ export async function step4(){
     .filter(h => h.row < 2 && h.x >= OXIDE.x && h.x <= OXIDE.x + OXIDE.w)
     .map(h => h.node);
 
-  guide.say(`Put a small voltage on the gate. A positive plate pushes the holes underneath
-    it straight down, away from the glass.`);
+  guide.say(`If you put a small positive voltage on the gate, the positive plate pushes the
+    holes underneath it downward, away from the glass.`);
   stage.focus(underHoles, { label: 'holes pushed down', at: 'bottom', ring: false });
   await guide.button('Raise the gate to 0.5 V ▸');
   await rampTo(0.5);
 
-  guide.say(`Keep going. The same field pulls electrons up out of the silicon and holds them
-    against the underside of the glass.`);
+  guide.say(`If you keep going, the same field pulls electrons up out of the silicon and
+    holds them against the underside of the glass.`);
   stage.focus(chLayer, { label: 'electrons pulled up', at: 'bottom', ring: false });
   await guide.button('Raise it to 1.0 V ▸');
   await rampTo(1.0);
 
-  guide.say(`A little more, and that sheet of electrons reaches both N regions. Source to
-    drain becomes one unbroken path.`);
+  guide.say(`With a little more voltage, that sheet of electrons reaches both N regions, and
+    the source and drain become one unbroken path.`);
   stage.focus(chLayer, { label: 'channel', at: 'bottom', ring: false });
   await guide.button('Raise it to 1.2 V ▸');
   await rampTo(1.2);
   stage.clearFocus();
 
   guide.aha(`The lamp is lit. Current runs from drain to source through a sheet of electrons
-    that only exists while the gate is held up.`,
+    that only exists while the gate voltage is held high.`,
     `Nothing went into the gate to make it. The glass never let any charge through.`);
   await guide.next();
 
@@ -527,8 +529,8 @@ export async function step4(){
 
   slider.input.disabled = false;
 
-  guide.say(`The slider is yours now. Push the gate higher and the sheet gets denser, so
-    more current flows. <b>Your goal: take it fully on, above 2.6 V.</b>`);
+  guide.say(`The slider is yours now. If you push the gate voltage higher, the sheet gets
+    denser and more current flows. <b>Your goal is to switch it fully on, above 2.6 V.</b>`);
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
     const cancel = flow.hintAfter(14000, 'Drag the gate voltage slider under the stage up to 2.6 V or more.');
@@ -539,8 +541,8 @@ export async function step4(){
   });
   if (!flow.instant) SFX.success();
 
-  guide.say(`Now bring it back down. The sheet breaks the moment the gate drops below
-    1.2 V. <b>Your goal: take it fully off, below 0.3 V.</b>`);
+  guide.say(`Now bring it back down. The sheet breaks the moment the gate voltage drops
+    below 1.2 V. <b>Your goal is to switch it fully off, below 0.3 V.</b>`);
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
     const cancel = flow.hintAfter(14000, 'Drag the gate voltage slider back down to 0.3 V or less.');
@@ -561,11 +563,12 @@ export async function step4(){
   ]);
   if (ans === 'gate'){
     guide.aha(`Right. Holding a voltage on the gate costs no ongoing current, because the
-      glass never lets charge through. The transistor has to keep drinking base current the
-      entire time it is on.`,
+      glass never lets charge through. The NPN transistor has to keep consuming base current
+        the entire time it is on.`,
       `That one difference is why a billion of these fit on a chip and a billion transistors do not.`);
   } else {
-    guide.note(`Other way around. The transistor keeps drinking base current while it is on.
+    guide.note(`Other way around. The NPN transistor keeps consuming base current while it
+      is on.
       This one only holds a voltage on the gate, and the glass stops any current getting in.`);
   }
   await guide.next();
@@ -573,7 +576,8 @@ export async function step4(){
   /* ============ SCENE H — the names ============ */
 
   guide.say(`The three layers you stacked give the device its name: metal, oxide,
-    semiconductor. Oxide is the glass. It is called a MOSFET.`);
+    semiconductor. Oxide is the glass. It is called a MOSFET (metal-oxide-semiconductor
+      field-effect transistor).`);
   // 'left' would push this long label off the stage: the box starts at x=140
   stage.focus([subRect, oxide, gateRect], { label: 'metal · oxide · semiconductor', at: 'top' });
   await guide.next();
@@ -581,8 +585,8 @@ export async function step4(){
   stage.clearFocus();
   await rampTo(2.4);            // put it back on, so the channel is there to point at
 
-  guide.say(`Yours is an <b>NMOS</b>. A high gate fills the channel with electrons, and
-    electrons are the N. Drop the gate and the channel empties.`);
+  guide.say(`Yours is an <b>NMOS</b>. A high gate voltage fills the channel with electrons
+    (the N in NMOS). If you drop the gate voltage, the channel empties.`);
   stage.focus(chLayer, { label: 'n-channel', at: 'bottom', ring: false });
   await guide.next();
   stage.clearFocus();

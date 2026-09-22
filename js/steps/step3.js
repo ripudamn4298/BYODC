@@ -54,7 +54,7 @@ function arrow(parent, x1, y1, x2, y2, stroke){
 }
 
 export async function step3(){
-  guide.title('STEP 3 / 5 · NANOVOLT SEMICONDUCTORS', 'A small current controls <em>a big one</em>');
+  guide.title('STEP 3 / 5 · NANOVOLT SEMICONDUCTORS', 'What is wrong with <em>using copper wires?</em>');
   guide.cards();
 
   const stage = newStage('03', 'Two junctions back to back: emitter, base and collector, with a base dial');
@@ -77,8 +77,24 @@ export async function step3(){
   makeDepletionBands(jg, { cx: 360, y: 170, h: 130, wNeg: 32, wPos: 32, labels: false });
   jg.appendChild(svgEl('line', { x1: 360, y1: 170, x2: 360, y2: 300, class: 'junction' }));
 
+  /* ---------- why this device matters, before the mechanism (F1) ----------
+     Three story boxes that sell what the transistor made possible, so the step is not
+     "here is the mechanism" but "here is the part that changed everything". */
+  guide.story(`A copper wire is great: it conducts. But it is dumb. It lets electricity
+    flow anywhere, any time.`);
+  await guide.next();
+
+  guide.story(`Your diode was the first step toward control: a one-way street. Impressive,
+    but still a passive pipe.`);
+  await guide.next();
+
+  guide.story(`Semiconductors changed the world because they let us command electricity on
+    the fly. Today you will build an NPN transistor and use a tiny signal to switch a
+    massive current on, off, or up. A wire could never do that.`);
+  await guide.next();
+
   guide.say(`This is the junction you built last step: N against P, with a depletion layer
-    at the seam. Current only crosses it above about <b>0.7 V</b>.`);
+    between them. Current only crosses it above about <b>0.7 V</b>.`);
   stage.focus(jg, { label: 'from last step', at: 'bottom' });
   await guide.next();
 
@@ -104,8 +120,8 @@ export async function step3(){
   svg.appendChild(slotG);
   await fadeIn([slotG]);
 
-  guide.say(`Two of those junctions back to back give you a switch you can control. That
-    takes three blocks: N, then a thin P, then N.`);
+  guide.say(`If you put two of these junctions back to back, you get a switch you can
+    control. That takes three blocks: N, then a thin P, then N.`);
   stage.focus(slotG, { label: 'three slots', at: 'bottom' });
   await guide.next();
 
@@ -130,22 +146,22 @@ export async function step3(){
   const tiles = [tileE, tileB, tileC];
 
   await fadeIn([tileE.g]);
-  guide.say(`The <b>emitter</b> is where the electrons come from. It is the small block,
-    because all it does is push them into the one next door.`);
+  guide.say(`The <b>emitter</b> is the block that emits (sends out) the electrons. It is
+    small because its only job is to push electrons into the block next to it.`);
   stage.focus(tileE.g, { label: 'emitter (n)', at: 'top' });
   await guide.next();
 
   stage.clearFocus();
   await fadeIn([tileB.g]);
-  guide.say(`The <b>base</b> is the thin P block that goes in the middle. Every electron the
-    emitter sends has to cross it.`);
+  guide.say(`The <b>base</b> is the thin P block in the middle. Every electron the emitter
+    sends out has to cross it.`);
   stage.focus(tileB.g, { label: 'base (p)', at: 'top' });
   await guide.next();
 
   stage.clearFocus();
   await fadeIn([tileC.g]);
-  guide.say(`The <b>collector</b> catches the electrons that make it across. It is wide
-    because it carries the whole current, and current makes heat.`);
+  guide.say(`The <b>collector</b> collects the electrons that make it across. It is wide
+    because it carries the whole current, and a large current produces heat.`);
   stage.focus(tileC.g, { label: 'collector (n)', at: 'top' });
   await guide.next();
 
@@ -225,8 +241,8 @@ export async function step3(){
   });
   await fadeIn([wallL.el, wallR.el]);
 
-  guide.say(`Each seam builds its own barrier, the same way the single junction did. Two
-    junctions, so two barriers, facing opposite ways.`);
+  guide.say(`Each junction builds its own depletion layer, just like the single junction
+    did. Because there are two junctions, there are two barriers, facing opposite ways.`);
   stage.focus([wallL.el, wallR.el], { label: 'two barriers', at: 'top' });
   await guide.next();
 
@@ -250,8 +266,8 @@ export async function step3(){
   mainRig.forEach(n => { n.style.display = 'none'; });
   await fadeIn(mainRig);
 
-  guide.say(`Now a battery across the device, collector to emitter. One of the two barriers
-    always faces the wrong way, so the LED stays dark.`);
+  guide.say(`Now we connect a battery across the device, from collector to emitter. Because
+    one of the two barriers always faces the wrong way, the LED stays dark.`);
   stage.focus(led.g, { label: 'led stays dark', at: 'left' });
   await guide.next();
 
@@ -322,8 +338,8 @@ export async function step3(){
   applyBias(4);
   await sleep(360);
 
-  guide.say(`It leans on the left barrier only. That barrier narrows, and electrons start
-    crossing from the emitter into the base.`);
+  guide.say(`This voltage acts on the left barrier only. When that barrier narrows,
+    electrons start crossing from the emitter into the base.`);
   stage.focus(wallL.el, { label: 'left barrier narrows', at: 'top' });
   await guide.next();
 
@@ -402,8 +418,8 @@ export async function step3(){
   });
   dial.on(applyBias);
 
-  guide.say(`Swap the fixed battery for a dial. It sets how much current you push into the
-    base.`);
+  guide.say(`Now we swap the fixed battery for a dial, which sets how much current you push
+    into the base.`);
   stage.focus(ctlRig, { label: 'base dial', at: 'right' });
   await guide.next();
 
@@ -421,8 +437,8 @@ export async function step3(){
      and the emitter-side barrier all readable at once. */
 
   stage.clearFocus();
-  guide.say(`<b>Your goal: switch the big current with the small one.</b> Turn the dial to
-    zero and take the LED fully off.`);
+  guide.say(`<b>Your goal is to switch the large current using the small one.</b> First,
+    turn the dial to zero and switch the LED fully off.`);
 
   await flow.ask(async replay => {
     if (replay !== undefined){ dial.set(replay); applyBias(replay); return replay; }
@@ -448,8 +464,8 @@ export async function step3(){
 
   /* ================= CARD 18 — the ratio ========================================== */
 
-  guide.aha(`<b>10 µA in, 1,000 µA out.</b> The base current holds the emitter-side barrier
-    down, and the device passes a hundred times what you spend on it.`,
+  guide.aha(`<b>10 µA in, 1,000 µA out.</b> The small base current keeps the emitter-side
+    barrier lowered, so the device passes a hundred times more current than you put in.`,
     `Flick the dial and it is a switch. Move it smoothly and it is an amplifier.`);
   stage.focus([baseC.g, mainC.g], { label: '1 in, 100 out', at: 'top' });
   await guide.next();
@@ -469,8 +485,9 @@ export async function step3(){
   eArrow.style.display = 'none';
   await fadeIn([eArrow]);
 
-  guide.say(`Inside the crystal the electrons run from emitter to collector. The chevrons on
-    the wires point the other way: they show conventional current, as agreed in step 1.`);
+  guide.say(`Inside the crystal the electrons run from emitter to collector. The arrows on
+    the wires point the other way, because they show conventional current, as agreed in step
+    1.`);
   stage.focus(eArrow, { label: 'electrons', at: 'right' });
   await guide.next();
   stage.clearFocus();

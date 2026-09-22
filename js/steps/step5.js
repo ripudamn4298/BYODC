@@ -53,7 +53,7 @@ async function fadeOut(nodes, dur = 260){
 }
 
 export async function step5(){
-  guide.title('STEP 5 / 5 · NANOVOLT LOGIC', 'Why a billion switches <em>do not melt</em>');
+  guide.title('STEP 5 / 5 · NANOVOLT LOGIC', 'Why don\'t a billion switches <em>melt?</em>');
   guide.cards();
 
   const stage = newStage('05', 'An NMOS switch on the supply rails, then the same switch paired with its PMOS twin as an inverter');
@@ -199,8 +199,8 @@ export async function step5(){
 
   const nmosA = placedMOS(DEV.bot, 'NMOS');
 
-  guide.say(`One NMOS leaks. While its gate is high, current runs from the supply straight
-    to ground and keeps running. Watch it happen, then fix it.`);
+  guide.say(`One NMOS on its own leaks. While its gate is high, current runs from the supply
+    straight to ground and keeps running. First watch it happen, then fix it.`);
   stage.focus(nmosA.g, { label: 'one nmos', at: 'right' });
   await guide.next();
 
@@ -214,13 +214,13 @@ export async function step5(){
   /* ================= CARD 3 — the meter ========================================== */
 
   guide.say(`This meter sits in the supply wire, so everything the battery pushes out
-    passes through it. Nothing is moving yet, and the needle sits at rest.`);
+    passes through it. Nothing is moving yet, so the needle sits at rest.`);
   stage.focus(meterG, { label: 'supply current', at: 'right' });
   await guide.next();
 
   /* ================= CARD 4 — switch it on ======================================= */
 
-  guide.say(`One wire feeds the gate. Set it high and the switch conducts.`);
+  guide.say(`One wire feeds the gate. If you set it high, the switch conducts.`);
   stage.focus(gateG, { label: 'gate input', at: 'bottom' });
   await guide.button('Set the gate high ▸');
 
@@ -239,8 +239,9 @@ export async function step5(){
 
   /* ================= CARD 6 — the aim ============================================ */
 
-  guide.say(`One switch drawing this much is nothing. A billion of them holding at once
-    would cook the chip. <b>Your goal: hold a value and draw nothing.</b>`);
+  guide.say(`One switch drawing this much is nothing. But a billion of them holding at once
+    would cook the chip. <b>Your goal is to hold a value (a 0 or a 1) while drawing no
+    current.</b>`);
   stage.focus(meterG, { label: 'still drawing', at: 'right' });
   await guide.next();
 
@@ -271,8 +272,8 @@ export async function step5(){
 
   /* ================= CARD 7 — define the PMOS ==================================== */
 
-  guide.say(`Here is a PMOS. Same switch built the other way round: a low gate turns it
-    on, a high gate turns it off.`);
+  guide.say(`Here is a PMOS: the same switch built the other way round, so a low gate turns
+    it on and a high gate turns it off.`);
   stage.focus(tiles[0].g, { label: 'pmos', at: 'left' });
   await guide.next();
 
@@ -305,8 +306,8 @@ export async function step5(){
   stage.clearFocus();
   await fadeOut([sTop], 200);
   await fadeIn([slotsG], 300);
-  guide.say(`Two slots now. The top one joins the output to power, the bottom one joins it
-    to ground. One twin goes in each.`);
+  guide.say(`There are two slots now. The top one joins the output to power, and the bottom
+    one joins it to ground. One of the two switches goes in each.`);
   stage.focus(slotsG, { label: 'two slots', at: 'left' });
   await guide.next();
 
@@ -315,8 +316,8 @@ export async function step5(){
      placer's pointer handling on anything it lifts. */
 
   stage.clearFocus();
-  guide.say(`<b>Your goal: fill both slots</b> so that an input of 0 leaves the output
-    connected up to power. Drag a twin into each slot.`);
+  guide.say(`<b>Your goal is to fill both slots</b> so that an input of 0 connects the
+    output up to power. Drag a twin into each slot.`);
 
   const placer = makePlacer({
     svg, tiles, slots,
@@ -341,8 +342,8 @@ export async function step5(){
 
   /* ================= CARD 11 — one input, both gates ============================= */
 
-  guide.say(`Wired. The input on the left runs to both gates at once, so both twins always
-    read the same signal.`);
+  guide.say(`It is wired. The input on the left runs to both gates at once, so both switches
+    always read the same signal.`);
   stage.focus(gateG, { label: 'one input, both gates', at: 'bottom' });
   await guide.next();
 
@@ -425,8 +426,8 @@ export async function step5(){
 
   /* ================= CARD 15 — name the inverter ================================= */
 
-  guide.say(`Input 0 gave output 1. Input 1 gave output 0. The output is always the
-    opposite of the input, so this pair is an <b>inverter</b>.`);
+  guide.say(`Input 0 gave output 1. Input 1 gave output 0. The output is always the opposite
+    of the input, so this pair is called an <b>inverter</b> (it inverts the input).`);
   stage.focus([pmos.g, nmos.g, outG], { label: 'inverter', at: 'top' });
   await guide.next();
 
@@ -445,7 +446,8 @@ export async function step5(){
   /* ================= CARD 17 — the payoff ======================================== */
 
   guide.aha(`The battery stayed connected the whole time, and the needle only twitched on
-    each flip. Between flips one twin is off, so there is no path from power to ground.`,
+    each flip. Between flips, one of the two switches is always off, so there is no path
+      from power to ground.`,
     `The only current is the pulse that fills or empties the output wire while it changes.`);
   stage.focus(battG, { label: 'connected the whole time', at: 'right' });
   await guide.next();
@@ -459,8 +461,8 @@ export async function step5(){
 
   /* ================= CARD 19 — back to step 3 ==================================== */
 
-  guide.note(`Your transistor in step 3 drank current the whole time it was on. This pair
-    pays only when it changes.`);
+  guide.note(`Your NPN transistor from step 3 consumed current the whole time it was on.
+    This pair only consumes current at the moment it changes.`);
   stage.focus(meterG, { label: 'pays only on a change', at: 'right' });
   await guide.next();
   stage.clearFocus();

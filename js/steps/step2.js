@@ -55,7 +55,7 @@ const hillPath = top =>
   ` C${SEAM + HILL_W * 0.18} ${top} ${HX1 - HILL_W * 0.30} ${HILL_BASE} ${HX1} ${HILL_BASE}`;
 
 export async function step2(){
-  guide.title('STEP 2 / 5 · NANOVOLT SEMICONDUCTORS', 'Where <em>N meets P</em>');
+  guide.title('STEP 2 / 5 · NANOVOLT SEMICONDUCTORS', 'What happens where <em>N meets P?</em>');
   guide.cards();
 
   const stage = newStage('02', 'A PN junction: the depletion layer builds itself, then a voltage flattens it');
@@ -91,20 +91,23 @@ export async function step2(){
   pGrid.el.style.opacity = '0';
   nGrid.el.style.opacity = '0';
 
-  guide.say(`In step 1 you doped silicon two ways. Here is a block of each.
-    <b>Your goal: press them together and find the voltage that pushes current across.</b>`);
+  guide.say(`In step 1 you doped silicon two ways. Here is one block of each. <b>Your goal
+    is to press them together and find the voltage that pushes a current across the
+    join.</b>`);
   stage.focus([pBlock, nTile], { label: 'both from step 1', at: 'bottom' });
   await guide.next();
 
   await fadeIn([nGrid.el], 340);
-  guide.say(`This block got phosphorus. Each phosphorus atom left one
-    <span class="e-blue">spare electron</span> that no bond holds, so it drifts freely.`);
+  guide.say(`This block was doped with phosphorus, so each phosphorus atom contributed one
+    <span class="e-blue">spare electron</span> that no bond holds. These free electrons
+    drift around the block.`);
   stage.focus(nTile, { label: 'n-type', at: 'top' });
   await guide.next();
 
   await fadeIn([pGrid.el], 340);
-  guide.say(`This one got boron. Each boron atom left a bond one electron short. That empty
-    seat is a <span class="e-red">hole</span>, drawn as a ring, and it drifts too.`);
+  guide.say(`This one was doped with boron, so each boron atom left one bond an electron
+    short. Each of those is a <span class="e-red">hole</span>, drawn as a ring, and the
+    holes drift too.`);
   stage.focus(pBlock, { label: 'p-type', at: 'top' });
   await guide.next();
 
@@ -121,8 +124,8 @@ export async function step2(){
     onWrong: () => {},
   });
 
-  guide.say(`Press them flush. Drag the N block onto the dashed outline, or tap the block
-    and then the outline.`);
+  guide.say(`Press the two blocks together: drag the N block onto the dashed outline, or tap
+    the block and then the outline.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ placer.autoPlace(); return replay; }
     await placer.done;
@@ -156,8 +159,9 @@ export async function step2(){
   svg.appendChild(seam);
   if (!flow.instant) SFX.success();
 
-  guide.say(`No battery yet. Watch what the carriers next to the seam do on their own.`);
-  stage.focus(seam, { label: 'the seam', at: 'top' });
+  guide.say(`There is no battery yet. Watch what the carriers (the free electrons and holes)
+    next to the junction do on their own.`);
+  stage.focus(seam, { label: 'the junction, where N meets P', at: 'top' });
   await guide.next();
 
   /* ============ SCENE C — the layer builds itself ========================== */
@@ -177,8 +181,8 @@ export async function step2(){
      itself still raised, and the restore throws. */
   const ionNodes = [...pGrid.dots, ...nGrid.dots].filter(d => d.state === 'ion').map(d => d.node);
 
-  guide.say(`The nearest electrons crossed and filled the nearest holes. Each one left a
-    charged atom behind, locked in the crystal, unable to move.`);
+  guide.say(`The electrons nearest the junction crossed over and filled the nearest holes.
+    Each one left behind a charged atom that is locked in the crystal and cannot move.`);
   stage.focus(ionNodes, { label: 'fixed ions', at: 'top' });
   await guide.next();
 
@@ -186,13 +190,13 @@ export async function step2(){
   const bands = makeDepletionBands(svg, { cx: SEAM, y: BY, h: BH, wNeg: DEPL, wPos: DEPL });
   await fadeIn([bands.el], 420);
 
-  guide.say(`The strip they left has no free electrons and no free holes in it. That strip
-    is the <b>depletion layer</b>.`);
+  guide.say(`The region around the junction now has no free electrons and no free holes.
+    This region is called the <b>depletion layer</b> (a layer depleted of carriers).`);
   stage.focus(bands.el, { label: 'depletion layer', at: 'top' });
   await guide.next();
 
-  guide.say(`It stopped on its own. The P side is now slightly negative and the N side
-    slightly positive, and that pushes the next electron back.`);
+  guide.say(`The crossing stopped on its own, because the P side is now slightly negative
+    and the N side slightly positive, and that pushes the next electron back.`);
   stage.focus(bands.el, { label: 'built-in push', at: 'top' });
   await guide.next();
 
@@ -212,8 +216,8 @@ export async function step2(){
   hill.setBias(0);
   hill.start();
 
-  guide.say(`Same push, drawn as height. An electron has to climb this hill to get across
-    the seam. Watch it slide back.`);
+  guide.say(`Here is that same push, drawn as a hill. An electron has to climb this hill to
+    get across the depletion layer. Watch it slide back down.`);
   stage.focus(hill.el, { label: 'barrier', at: 'top' });
   await guide.next();
 
@@ -250,8 +254,8 @@ export async function step2(){
 
   await fadeIn([wireIn, wireOut, battG, lamp.g], 360);
 
-  guide.say(`A battery now sits across the junction, wired to push carriers toward the seam.
-    The lamp shows whether anything gets through.`);
+  guide.say(`Now a battery is wired across the junction so that it pushes the carriers
+    toward the depletion layer. The lamp shows whether any current gets through.`);
   stage.focus([wireIn, wireOut, battG, lamp.g], { label: 'battery and lamp', at: 'bottom' });
   await guide.next();
 
@@ -305,8 +309,8 @@ export async function step2(){
   slider.on(apply);
   apply(0);
 
-  guide.say(`<b>Your goal: raise the voltage until current flows.</b> Every step up takes
-    height off the hill.`);
+  guide.say(`<b>Your goal is to raise the voltage until current flows.</b> Each step up in
+    voltage lowers the hill.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
     const cancel = flow.hintAfter(16000, `Keep raising the voltage. The hill gets shorter with every step up.`);
@@ -343,8 +347,8 @@ export async function step2(){
   svg.append(ghost, measure);
   await fadeIn([ghost, measure], 340);
 
-  guide.say(`0.7 V is the height of that hill, measured in volts. Below it the electron slid
-    back every time.`);
+  guide.say(`The hill is 0.7 V tall. Below that voltage the electron slid back every time;
+    above it, current flows.`);
   stage.focus([ghost, measure], { label: 'hill height', at: 'right' });
   await guide.next();
 
@@ -356,8 +360,8 @@ export async function step2(){
   /* ============ SCENE F — flip it, and nothing helps ====================== */
 
   stage.clearFocus();
-  guide.say(`Turn the battery around and it pulls carriers away from the seam instead of
-    pushing them toward it.`);
+  guide.say(`If you turn the battery around, the carriers (electrons and holes) get pulled
+    away from the depletion layer instead of being pushed toward it.`);
   stage.focus(battG, { label: 'battery', at: 'top' });
   await guide.button('Flip the battery ↺');
 
@@ -367,8 +371,8 @@ export async function step2(){
   slider.set(0);
   apply(0);
 
-  guide.say(`<b>Your goal: turn the voltage all the way up and confirm nothing flows.</b>
-    Watch the strip and the hill as you go.`);
+  guide.say(`<b>Your goal is to turn the voltage all the way up and confirm that nothing
+    flows.</b> Watch the depletion layer and the hill as you go.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
     const cancel = flow.hintAfter(16000, `Drag the dial to the top of its range and look at the lamp.`);
@@ -379,13 +383,14 @@ export async function step2(){
     return slider.value;
   });
 
-  guide.say(`The strip got wider and the hill got taller. No voltage in this direction gets
-    an electron across.`);
+  guide.say(`The depletion layer got wider and the hill got taller. In this direction, no
+    voltage gets an electron across.`);
   stage.focus(hill.el, { label: 'taller barrier', at: 'top' });
   await guide.next();
 
   stage.clearFocus();
-  guide.aha(`You built a <b>diode</b>. It passes current one way and blocks the other.`,
+  guide.aha(`You have built a <b>diode</b>: a one-way street for current. It passes current
+    in one direction and blocks it in the other.`,
     `A voltage raises or lowers the barrier. That control is the basis of every switch in a chip.`);
   await guide.next();
 }
