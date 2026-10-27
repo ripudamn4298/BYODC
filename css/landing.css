@@ -259,3 +259,9 @@
 #lnav .acct-link{background:none;border:0;padding:4px 2px;font:inherit;color:var(--ink-soft);cursor:pointer;
   border-bottom:2px solid var(--hairline-strong)}
 #lnav .acct-link:hover{color:var(--ink);border-color:var(--ink)}
+/* the nav's Sign in, as a main button: accent colour, outline, hard shadow, press effect */
+#lnav .acct-signin{font-family:var(--font-pixel);font-size:19px;letter-spacing:3px;line-height:1;text-transform:uppercase;
+  border:0;border-radius:0;padding:7px 16px 6px;cursor:pointer;background:var(--btn-accent);color:var(--brand-ink);
+  box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink);transition:transform .08s ease-out, box-shadow .08s ease-out, background .2s}
+#lnav .acct-signin:hover{background:#e9846f;transform:translateY(-1px);box-shadow:0 0 0 2px var(--brand-ink), 0 4px 0 2px var(--brand-ink)}
+#lnav .acct-signin:active{transform:translateY(3px);box-shadow:0 0 0 2px var(--brand-ink)}

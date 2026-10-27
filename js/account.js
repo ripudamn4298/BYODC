@@ -70,7 +70,7 @@ export const account = {
       out.addEventListener('click', () => this.signOut());
       slot.append(who, out);
     } else {
-      const inn = el('button', { class: 'acct-link', type: 'button' }, 'SIGN IN');
+      const inn = el('button', { class: 'acct-signin', type: 'button' }, 'SIGN IN');   // the accent 3D button
       inn.addEventListener('click', () => this.goGoogle(1, 0));
       slot.append(inn);
     }
