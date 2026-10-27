@@ -21,7 +21,8 @@ import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { cornerTicks } from '../../engine/components.js';
+import { cornerTicks, slideInPanel } from '../../engine/components.js';
+import { handlerHTML, harvestHTML, placeHead } from './lab.js';
 import { mulberry32 } from '../../engine/fab.js';
 
 /* ---------- geometry, in the stage's 720×480 user units ---------- */
@@ -96,7 +97,7 @@ function askButton(label, value){
 }
 
 export async function step5(){
-  guide.title('STEP 5 / 5 · NANOVOLT TEST', 'Same chip, <em>three prices</em>');
+  guide.title('STEP 5 / 5', 'Why does the same chip <em>sell at three prices?</em>');
   guide.cards();
 
   const stage = newStage('14', 'Six packaged chips, a speed tester, and three bins');
@@ -147,8 +148,8 @@ export async function step5(){
 
   /* ======================= CARD 1 — where we are ======================= */
 
-  guide.say(`Six chips off one wafer, printed from the same mask. They do not all run at
-    the same speed. This step measures each one and sorts them.`);
+  guide.say(`These six packaged chips came off one wafer, printed from the same mask, and
+    they do not all run at the same speed. This step measures each one and sorts them.`);
   stage.focus(chipLayer, { label: 'six packaged chips', at: 'top' });
   await guide.next();
 
@@ -166,28 +167,45 @@ export async function step5(){
   frustum(DIE_A, 0);
   frustum(DIE_B, 5);
 
-  const dieBars = [];
-  const dieBox = (die, gw) => {
+  /* REVIEW_NOTES N-037: each panel is ONE transistor from that chip, seen from the side,
+     drawn the way Act 1 and Act 3 step 2 drew the NMOS: P-type body, N-type source and
+     drain, and the gate (metal on glass) between them. The gate's length, source side to
+     drain side, carries a dimension line, and an arrow under it is the electrons' path. */
+  const dieBars = [], dims = [], paths = [];
+  const dieBox = (die, L) => {
     const g = svgEl('g');
-    g.appendChild(svgEl('rect', { x: die.x, y: die.y, width: die.w, height: die.h, rx: 3, class: 'tile-bg' }));
-    g.appendChild(svgEl('path', {
-      d: `M${die.x + 12} ${die.y + 40} H${die.x + die.w - 12} M${die.x + 12} ${die.y + 112} H${die.x + die.w - 12}`,
-      class: 'wire',
-    }));
-    const bars = svgEl('g');
-    for (let i = 0; i < 6; i++){
-      bars.appendChild(svgEl('rect', {
-        x: die.x + 22 + i * 21 - gw / 2, y: die.y + 40, width: gw, height: 72,
-        fill: 'var(--ink)', opacity: 0.8,
-      }));
-    }
-    g.appendChild(bars);
+    const cx = die.x + die.w / 2;
+    const gx = cx - L / 2;
+    g.innerHTML = `
+      <rect x="${die.x}" y="${die.y}" width="${die.w}" height="${die.h}" rx="3" class="tile-bg"/>
+      <text x="${cx}" y="${die.y - 8}" class="lbl-faint" font-size="9">ONE TRANSISTOR, FROM THE SIDE</text>
+      <rect x="${die.x + 10}" y="${die.y + 72}" width="${die.w - 20}" height="66" rx="4" class="p-region"/>
+      <rect x="${die.x + 14}" y="${die.y + 72}" width="${gx - die.x - 16}" height="24" rx="3" class="n-region"/>
+      <rect x="${gx + L + 2}" y="${die.y + 72}" width="${die.x + die.w - 14 - gx - L - 2}" height="24" rx="3" class="n-region"/>
+      <text x="${(die.x + 14 + gx) / 2}" y="${die.y + 88}" class="lbl" font-size="9">SOURCE</text>
+      <text x="${(gx + L + die.x + die.w - 14) / 2}" y="${die.y + 88}" class="lbl" font-size="9">DRAIN</text>
+      <g class="g-gate">
+        <rect x="${gx}" y="${die.y + 50}" width="${L}" height="15" rx="1.5" class="gate-metal"/>
+        <rect x="${gx}" y="${die.y + 65}" width="${L}" height="7" class="oxide"/>
+      </g>
+      <g class="g-dim" stroke="var(--ink)" stroke-width="1">
+        <line x1="${gx}" y1="${die.y + 40}" x2="${gx + L}" y2="${die.y + 40}"/>
+        <line x1="${gx}" y1="${die.y + 35}" x2="${gx}" y2="${die.y + 46}"/>
+        <line x1="${gx + L}" y1="${die.y + 35}" x2="${gx + L}" y2="${die.y + 46}"/>
+        <text x="${cx}" y="${die.y + 30}" class="lbl" font-size="9" stroke="none">GATE LENGTH</text>
+      </g>
+      <g class="g-path">
+        <line x1="${gx - 8}" y1="${die.y + 100}" x2="${gx + L + 4}" y2="${die.y + 100}" stroke="var(--blue)" stroke-width="2"/>
+        <path d="M${gx + L + 4} ${die.y + 96} l7 4 l-7 4 z" fill="var(--blue)"/>
+      </g>`;
     zoomG.appendChild(g);
-    dieBars.push(bars);
+    dieBars.push(g.querySelector('.g-gate'));
+    dims.push(g.querySelector('.g-dim'));
+    paths.push(g.querySelector('.g-path'));
     return g;
   };
-  const dieA = dieBox(DIE_A, 4);
-  const dieB = dieBox(DIE_B, 9);
+  const dieA = dieBox(DIE_A, 30);
+  const dieB = dieBox(DIE_B, 62);
   zoomG.style.display = 'none';
 
   stage.clearFocus();
@@ -195,36 +213,48 @@ export async function step5(){
 
   /* ======================= CARD 2 — the same design, twice ======================= */
 
-  guide.say(`Here is the circuitry inside two of them, magnified. Six transistors each, in
-    the same places.`);
+  guide.say(`Here is one transistor from each of two of these chips, magnified and seen from
+    the side. Both were printed from the same part of the same mask.`);
   stage.focus([dieA, dieB], { label: 'the same design, twice', at: 'top' });
   await guide.next();
 
-  /* ======================= CARD 3 — define the gate bars ======================= */
+  /* Course restructure (2026-10-25): the two meanings of "gate" and the gate-length
+     definition moved up to step 2 (next to 3.2.7, where the word is first used). This step
+     points back to it. The two scale cards (REVIEW_NOTES N-040: make the scale felt, then
+     say why it varies) are merged into one. */
 
-  guide.say(`Each dark bar is one transistor gate. The mask asks for the same width every
-    time it prints one.`);
-  stage.focus(dieBars, { label: 'transistor gates', at: 'top' });
-  await guide.next();
+  /* ======================= CARD 3 — the narrow one ======================= */
 
-  /* ======================= CARD 4 — the narrow one ======================= */
-
-  guide.say(`The print lands a few atoms either side of what the mask asked for. This
-    chip's gates came out narrow, and a narrow gate switches faster.`);
-  stage.focus(dieA, { label: 'narrow gates', at: 'left' });
+  guide.say(`The gate length from step 2 is only about 15 to 20 nm, fewer than a hundred
+    silicon atoms. Even a polished wafer rises and dips by tens of nanometres, which puts some
+    fields slightly out of focus. This chip's gates printed a few atoms short, and a short gate
+    switches faster.`);
+  stage.focus(dieA, { label: 'short gates', at: 'left' });
   await guide.next();
 
   /* ======================= CARD 5 — the wide one ======================= */
 
-  guide.say(`This one came out wide. Same wafer, same mask, but its transistors take
-    longer to switch.`);
-  stage.focus(dieB, { label: 'wide gates', at: 'right' });
+  guide.say(`This one's gates came out long. It is from the same wafer and the same mask,
+    but its transistors take longer to switch.`);
+  stage.focus(dieB, { label: 'long gates', at: 'right' });
   await guide.next();
+
+  /* why a longer gate is slower: the Act 1 picture of a transistor filling the next plate */
+  guide.say(`Why is a longer gate slower? Each transistor's job is to charge or empty the next
+    gate's plate, as you saw in Act 1. In a longer gate, electrons have a longer path from
+    source to drain, so less current flows and the next plate fills more slowly. A longer gate
+    is also a bigger plate, so the transistor before it has more charge to fill. Both make
+    each switch take longer.`);
+  stage.focus([paths[1], dieBars[1]], { label: 'longer path, bigger plate', at: 'right' });
+  await guide.next();
+
+  /* Course restructure (2026-10-25): the process-node card ("3 nm" is a name, not a size)
+     moved to step 2, where it is split into two node cards and a Moore's-law card. */
 
   /* ======================= CARD 6 — the aim ======================= */
 
-  guide.say(`Sealed in their packages, all six look identical. <b>Your goal: measure how
-    fast each chip runs, then sort the six by what you measured.</b>`);
+  guide.say(`Sealed in their packages, all six look identical. <b>Your goal is to measure
+    how fast each chip runs, then sort the six by what you measured.</b>`);
   stage.focus(chipLayer, { label: 'six sealed chips', at: 'top' });
   await guide.next();
 
@@ -292,15 +322,18 @@ export async function step5(){
 
   /* ======================= CARD 8 — define the clock climb ======================= */
 
-  guide.say(`It runs the clock slowly at first, then raises it one notch at a time. Each
-    notch gives the chip less time to finish the sum.`);
+  /* Course restructure (2026-10-25): trimmed from 61 words. The last sentence repeats Act 2
+     step 4's own words for the clock, so the failure the tester finds is one already met. */
+  guide.say(`The tester starts the clock slowly and raises it one notch, a small fixed step, at
+    a time. Each notch shortens every beat, and as in Act 2, if a beat arrives before the sum
+    is finished, the register stores a wrong one.`);
   stage.focus(clockG, { label: 'clock speed', at: 'right' });
   await guide.next();
 
   /* ======================= CARD 9 — define pass and fail ======================= */
 
-  guide.say(`While the answer comes back as 12, the chip passes that notch. One wrong
-    answer and the notch fails.`);
+  guide.say(`While the answer comes back as 12, the chip passes that notch. If one answer
+    comes back wrong, the chip fails that notch.`);
   stage.focus(resultG, { label: 'pass or fail', at: 'right' });
   await guide.next();
 
@@ -313,8 +346,8 @@ export async function step5(){
   setClock(CLOCK_START);
   setResult('idle');
 
-  guide.say(`The first chip is in the socket. Raise the clock on it until it stops keeping
-    up.`);
+  guide.say(`The first chip is in the socket. Raise the clock until the chip can no longer
+    finish the sum in time.`);
   stage.focus(chips[0].g, { label: 'chip 1', at: 'left' });
   const seed = await askButton('Run the test ▸', SEED);
   const READ = ratings(seed);
@@ -347,8 +380,8 @@ export async function step5(){
   stamp(chips[0], top);
   if (!flow.instant) SFX.success();
 
-  guide.say(`So the tester backs off one notch and writes that number on the chip. Chip 1
-    is rated ${top.toFixed(1)} GHz: the last clock it got right.`);
+  guide.say(`So the tester backs off one notch and writes that speed on the chip. Chip 1
+    is rated ${top.toFixed(1)} GHz, the last clock speed at which it got the sum right.`);
   stage.focus(clockG, { label: 'rating', at: 'right' });
   await guide.next();
 
@@ -359,7 +392,8 @@ export async function step5(){
   setClock(CLOCK_START);
   setResult('idle');
 
-  guide.say(`Now the other five. Same sum, same climb up the clock, one number each.`);
+  guide.say(`Now the other five go through the same test: the same sum, the same climb up
+    the clock, and one rating each.`);
   stage.focus(chipLayer, { label: 'five left to test', at: 'top' });
   await guide.button('Test the other five ▸');
 
@@ -385,8 +419,9 @@ export async function step5(){
   /* ======================= CARD 14 — six numbers ======================= */
 
   const lo = Math.min(...READ), hi = Math.max(...READ);
-  guide.say(`Six chips, six numbers. The slowest got ${lo.toFixed(1)} GHz and the fastest
-    got ${hi.toFixed(1)}. Nothing differs but where they sat on the wafer.`);
+  guide.say(`Six chips, six ratings. The slowest is rated ${lo.toFixed(1)} GHz and the
+    fastest ${hi.toFixed(1)}. Nothing differs between them except where they sat on the
+    wafer.`);
   stage.focus(chipLayer, { label: 'six ratings', at: 'top' });
   await guide.next();
 
@@ -419,8 +454,8 @@ export async function step5(){
 
   /* ======================= CARD 15 — define a bin ======================= */
 
-  guide.say(`A bin is a grade. Nanovolt sells three of them, and the cuts between them sit
-    at 3.0 and 4.5 GHz.`);
+  guide.say(`A bin is a grade. This chip sells in three grades, and the lines between them
+    sit at 3.0 and 4.5 GHz.`);
   stage.focus(binG, { label: 'three bins', at: 'bottom', ring: false });
   await guide.next();
 
@@ -428,8 +463,8 @@ export async function step5(){
 
   stage.clearFocus();      // focus re-parents what it raises; this card needs live clicks
 
-  const card = guide.say(`<b>Your goal: put every chip in the bin its number falls in.</b>
-    Click a chip, then click the bin.
+  const card = guide.say(`<b>Your goal is to put every chip in the bin its rating falls
+    in.</b> Click a chip, then click the bin.
     <span class="bin-fb" style="display:block;margin-top:10px;color:var(--ink-soft)"></span>`);
   const fb = card.querySelector('.bin-fb');
   const feedback = html => { if (fb) fb.innerHTML = html; };
@@ -491,7 +526,7 @@ export async function step5(){
       bins.forEach(b => {
         b.rect.setAttribute('tabindex', '0');
         const fire = async () => {
-          if (!armed){ feedback(`Click a chip first. The number on it is its speed.`); return; }
+          if (!armed){ feedback(`Click a chip first. The number on it is its rating.`); return; }
           const c = armed;
           if (binFor(c.rating) === b.id){
             arm(null);
@@ -522,10 +557,143 @@ export async function step5(){
 
   await fadeIn([priceG], 340);
 
-  guide.aha(`Same wafer, same design, three price tags. The fast ones go to buyers who pay
-    a premium for every clock cycle. The slow ones still sell.`,
+  guide.aha(`One wafer and one design give three price tags. The fast ones go to buyers
+    who pay extra for speed, and the slow ones still sell.`,
     `Sorting chips by the speed they tested at is called <b>binning</b>.`);
   stage.focus(priceG, { label: 'three prices', at: 'bottom' });
   await guide.next();
   stage.clearFocus();
+
+  /* ================= cut-down chips =================
+     Course restructure (2026-10-25): switched-off cores used to be taught only in the lab
+     (the Ryzen 5950X / 5900X cards). They are theory now, two cards after the binning aha,
+     and the lab keeps the Ryzen only as the real example. The second card sets up Act 4
+     step 1's lab, which points back here for the H100's switched-off blocks.
+     Colour per DESIGN.md §1a: the speck is red (a defect), and a switched-off part is shown
+     by opacity and a dashed outline, not by a colour. */
+  const CUT = { x: 220, y: 116, w: 280, h: 196, cw: 56, ch: 70, gap: 8 };
+  const cutG = svgEl('g');
+  const coreTiles = [];
+  cutG.innerHTML = `
+    <text x="${CUT.x + CUT.w / 2}" y="${CUT.y - 14}" class="lbl-faint">ONE DIE WITH EIGHT CORES</text>
+    <rect x="${CUT.x}" y="${CUT.y}" width="${CUT.w}" height="${CUT.h}" rx="4" class="tile-bg"/>`;
+  for (let k = 0; k < 8; k++){
+    const cx = CUT.x + 16 + (k % 4) * (CUT.cw + CUT.gap);
+    const cy = CUT.y + 22 + Math.floor(k / 4) * (CUT.ch + 12);
+    const g = svgEl('g');
+    const r = svgEl('rect', { x: cx, y: cy, width: CUT.cw, height: CUT.ch, rx: 3, class: 'tile-bg' });
+    const t = svgEl('text', { x: cx + CUT.cw / 2, y: cy + CUT.ch / 2 + 3, class: 'tile-cap' });
+    t.textContent = 'CORE';
+    g.append(r, t);
+    cutG.appendChild(g);
+    coreTiles.push({ g, r, t, cx, cy });
+  }
+  const hit = coreTiles[5];
+  const speck = svgEl('circle', { cx: hit.cx + 40, cy: hit.cy + 18, r: 4.5, fill: 'var(--red)' });
+  speck.style.opacity = '0';
+  cutG.appendChild(speck);
+  const cutCap = svgEl('text', { x: CUT.x + CUT.w / 2, y: CUT.y + CUT.h + 26, class: 'lbl-strong' });
+  cutCap.textContent = 'SOLD AS A CHEAPER MODEL';
+  cutCap.style.opacity = '0';
+  cutG.appendChild(cutCap);
+  svg.appendChild(cutG);
+  cutG.style.display = 'none';
+
+  await fadeOut([binG, priceG, chipLayer, trayLine], 260);
+  await fadeIn([cutG], 340);
+
+  guide.say(`A speck does not always kill a die. If it lands inside one core, that core is
+    switched off and the die sells as a cheaper model with fewer cores. This is what people
+    mean when they say a chip is cut down.`);
+  await Anim.tween(380, p => { speck.style.opacity = String(p); });
+  await sleep(240);
+  hit.t.textContent = 'OFF';
+  hit.r.setAttribute('stroke-dasharray', '4 4');
+  await Anim.tween(420, p => {
+    hit.g.style.opacity = String(1 - 0.65 * p);
+    cutCap.style.opacity = String(p);
+  });
+  stage.focus(cutG, { label: 'a cut-down chip', at: 'bottom' });
+  await guide.next();
+
+  /* the H100: 144 blocks, 12 of them switched off. The 12 places are fixed (not drawn from
+     a random generator), so a replay draws the same die. */
+  stage.clearFocus();
+  const H = { x: 252, y: 118, cell: 18, n: 12 };
+  const OFF = new Set([3, 21, 29, 36, 59, 66, 74, 92, 100, 118, 121, 139]);   // row * 12 + col
+  const h100G = svgEl('g');
+  let blocks = `
+    <text x="${H.x + H.n * H.cell / 2}" y="${H.y - 16}" class="lbl-faint">THE H100'S DIE: 144 BLOCKS</text>
+    <rect x="${H.x - 10}" y="${H.y - 8}" width="${H.n * H.cell + 17}" height="${H.n * H.cell + 17}" rx="4" class="tile-bg"/>`;
+  for (let k = 0; k < H.n * H.n; k++){
+    const x = H.x + (k % H.n) * H.cell, y = H.y + Math.floor(k / H.n) * H.cell;
+    blocks += OFF.has(k)
+      ? `<rect x="${x}" y="${y}" width="15" height="15" rx="1.5" class="tile-bg" stroke-dasharray="2.5 2.5" opacity=".5"/>`
+      : `<rect x="${x}" y="${y}" width="15" height="15" rx="1.5" class="tile-bg"/>`;
+  }
+  blocks += `<text x="${H.x + H.n * H.cell / 2}" y="${H.y + H.n * H.cell + 34}" class="lbl-strong">132 SWITCHED ON, 12 OFF</text>`;
+  h100G.innerHTML = blocks;
+  svg.appendChild(h100G);
+  h100G.style.display = 'none';
+  await fadeOut([cutG], 260);
+  await fadeIn([h100G], 340);
+
+  guide.say(`The GPU you build in Act 4 is sold this way. The H100's die has 144 blocks that do
+    its processing, and at most 132 of them are switched on.`);
+  stage.focus(h100G, { label: 'H100 die', at: 'bottom' });
+  await guide.next();
+  stage.clearFocus();
+
+  /* ================= In the Lab (DESIGN.md §6d rule 8) =================
+     Binning as it is done for real: a test handler moving one chip from tray to socket to
+     the FAST tray, then one die design (AMD's Zen 3 core die) sold as four Ryzen 5000
+     products with cores switched off.
+     Course restructure (2026-10-25): the handler and socket cards are merged into one, and
+     the Ryzen cards point back to the cut-down theory card instead of teaching it again. */
+  const hd = handlerHTML();
+  const lab = slideInPanel(svg, hd.html, { lab: true });
+  lab.focus(['handler', 'socket']);
+  /* the head and the chip it carries belong to the handler, so they dim with it */
+  const mover = svgEl('g', { 'data-k': 'handler' });
+  const headG = svgEl('g');
+  headG.innerHTML = hd.head;
+  const carried = svgEl('g');
+  carried.innerHTML = `<rect x="-8" y="-8" width="16" height="16" rx="1.5" fill="#262822" stroke="#45483e" stroke-width=".8"/>
+    <circle cx="-4.6" cy="-4.6" r="1.3" fill="#55594d"/>`;
+  mover.append(carried, headG);
+  lab.g.appendChild(mover);
+  const place = (x, y) => {
+    carried.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+    placeHead(headG, x, y);
+  };
+  place(...hd.route[0]);
+  await lab.show();
+  guide.lab(`In a factory, the testing you just did is done by a machine called a
+    <b>handler</b>. It presses each chip into a test socket, down onto a spring-loaded pin under
+    each solder ball, then drops it into the tray for its grade.`, { intro: true });
+  /* one chip along the route: up, across, into the socket, then on to the FAST tray */
+  const R = hd.route, legs = R.slice(1).map((p, i) => Math.hypot(p[0] - R[i][0], p[1] - R[i][1]));
+  const total = legs.reduce((a, b) => a + b, 0);
+  await Anim.tween(2600, q => {
+    let d = q * total, i = 0;
+    while (i < legs.length - 1 && d > legs[i]){ d -= legs[i]; i++; }
+    const t = Math.min(1, d / legs[i]);
+    place(R[i][0] + (R[i + 1][0] - R[i][0]) * t, R[i][1] + (R[i + 1][1] - R[i][1]) * t);
+  });
+  place(...R[R.length - 1]);
+  await guide.next();
+
+  const dies = slideInPanel(svg, harvestHTML(), { lab: true });
+  dies.focus('die');
+  await lab.swapTo(dies);      // N-053: no flash of the stage between panels
+  guide.lab(`AMD's Ryzen 5000 desktop processors are a real example of the cut-down chips
+    from earlier in this step. All four are built from one design of die that holds eight
+    cores.`);
+  await guide.next();
+
+  dies.focus(['p5950', 'p5900', 'p5800', 'p5600', 'legend']);
+  guide.lab(`Two full dies make the 16-core Ryzen 9 5950X, launched at $799. Two cut-down
+    dies, each with two cores switched off, make the 12-core 5900X, at $549.`);
+  await guide.next();
+  await dies.hide();
 }

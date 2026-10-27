@@ -23,7 +23,81 @@ import { guide } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
 import { CurrentFlow } from '../engine/pathflow.js';
-import { makeLamp, makeBattery, makeSlider, makeChip, makePlacer, cornerTicks } from '../engine/components.js';
+import { makeLamp, makeBattery, makeSlider, makeChip, makePlacer, cornerTicks, slideInPanel } from '../engine/components.js';
+import { iso, PAL, SHEEN, to92 } from '../engine/reallife.js';
+import { circuitNMOS, setLabState } from '../engine/labcircuits.js';
+
+/* ---------------- how it looks in real life (HANDOFF_NEXT.md §1, approved for 1.4) --------
+   Three columns on one slide-in panel: the NMOS as a part you can buy (a 2N7000 in its
+   small TO-92 case, drawn at 6 px per mm), the FinFET, and gate-all-around nanosheets.
+   The two chip transistors are drawn in 3D with the gate see-through, plus a cut across
+   the gate underneath, so three sides against four is plain.
+   Leg order is from the datasheet, flat face towards you: 2N7000 S G D.
+   Course restructure (2026-10-25): the IRF540N (TO-220) is cut. It is a motor part the
+   learner never uses again; the 2N7000 now sits alone, centred in its column. */
+function realLifeHTML(){
+  const parts = `<g data-k="to92">${to92({ cx: 120, base: 290, lines: ['2N', '7000'], pins: ['S', 'G', 'D'], caption: '2N7000' })}</g>`;
+
+  /* the FinFET: two fins, the gate across them */
+  const F = iso(1.5, 337, 168);
+  const fin = (y, x0, x1, pal) => F.box(x0, y, 0, x1 - x0, 6, 26, pal);
+  let ff = F.box(0, 0, -12, 100, 64, 12, PAL.p);
+  ff += fin(14, 0, 38, PAL.n) + fin(40, 0, 38, PAL.n);
+  ff += fin(14, 38, 62, PAL.p) + fin(40, 38, 62, PAL.p);
+  ff += F.box(38, -4, 0, 24, 72, 36, PAL.gate, { opacity: .62 });
+  ff += fin(14, 62, 100, PAL.n) + fin(40, 62, 100, PAL.n);
+  const ffLab = (pt, dx, dy, txt) => {
+    const [x, y] = F.P(...pt);
+    return `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + dx).toFixed(1)}" y2="${(y + dy).toFixed(1)}" stroke="var(--ink-soft)" stroke-width=".8"/>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8" fill="var(--ink)"/>
+      <text x="${(x + dx + (dx < 0 ? -3 : 3)).toFixed(1)}" y="${(y + dy + 3).toFixed(1)}" class="lbl" font-size="8.5" text-anchor="${dx < 0 ? 'end' : 'start'}" style="fill:var(--ink)">${txt}</text>`;
+  };
+  ff += ffLab([10, 43, 26], -26, -18, 'SOURCE') + ffLab([92, 17, 26], 16, -16, 'DRAIN')
+    + ffLab([50, -4, 36], 0, -22, 'GATE').replace('text-anchor="start"', 'text-anchor="middle"')
+    + ffLab([80, 46, 14], 14, 22, 'FIN');
+  /* cut across the gate: fins standing on the silicon, gate over three sides */
+  const fx = 360, fy = 372;
+  const ffCut = `
+    <rect x="${fx - 52}" y="${fy}" width="104" height="12" class="p-region"/>
+    <rect x="${fx - 46}" y="${fy - 40}" width="92" height="40" rx="2" class="gate-metal"/>
+    ${[-17, 17].map(o => `<rect x="${fx + o - 7}" y="${fy - 29}" width="14" height="29" fill="none" stroke="var(--amber)" stroke-width="2.2"/>
+      <rect x="${fx + o - 5}" y="${fy - 27}" width="10" height="27" fill="#f4e4d6" stroke="var(--red)" stroke-width="1"/>`).join('')}
+    <text x="${fx}" y="${fy + 28}" class="lbl-faint" font-size="8">CUT ACROSS THE GATE: THREE SIDES</text>`;
+
+  /* gate-all-around: three flat sheets between a source and a drain, the gate around them */
+  const G = iso(1.5, 563, 170);
+  let ga = G.box(0, 0, -12, 100, 44, 12, PAL.p);
+  ga += G.box(0, 6, 0, 34, 32, 34, PAL.n);
+  [5, 14, 23].forEach(z => { ga += G.box(34, 8, z, 32, 28, 5, PAL.p, { sw: 1.3 }); });
+  ga += G.box(34, 2, 0, 32, 40, 36, PAL.gate, { opacity: .34 });
+  ga += G.box(66, 6, 0, 34, 32, 34, PAL.n);
+  const gaLab = (pt, dx, dy, txt, anchor) => {
+    const [x, y] = G.P(...pt);
+    return `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + dx).toFixed(1)}" y2="${(y + dy).toFixed(1)}" stroke="var(--ink-soft)" stroke-width=".8"/>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8" fill="var(--ink)"/>
+      <text x="${(x + dx + (anchor === 'end' ? -3 : anchor === 'start' ? 3 : 0)).toFixed(1)}" y="${(y + dy + (dy < 0 ? -4 : 10)).toFixed(1)}" class="lbl" font-size="8.5" text-anchor="${anchor}" style="fill:var(--ink)">${txt}</text>`;
+  };
+  ga += gaLab([6, 38, 30], -22, -14, 'SOURCE', 'end') + gaLab([94, 6, 34], 0, -20, 'DRAIN', 'middle')
+    + gaLab([50, 2, 36], 0, -26, 'GATE', 'middle') + gaLab([66, 36, 16], 18, 18, 'SHEETS', 'start');
+  const gx = 600, gy = 372;
+  const gaCut = `
+    <rect x="${gx - 52}" y="${gy}" width="104" height="12" class="p-region"/>
+    <rect x="${gx - 40}" y="${gy - 42}" width="80" height="42" rx="2" class="gate-metal"/>
+    ${[0, 1, 2].map(i => `<rect x="${gx - 25}" y="${gy - 13 - i * 12}" width="50" height="7" fill="#f4e4d6" stroke="var(--amber)" stroke-width="2"/>`).join('')}
+    <text x="${gx}" y="${gy + 28}" class="lbl-faint" font-size="8">CUT ACROSS THE GATE: ALL FOUR SIDES</text>`;
+
+  return `
+    <defs>${SHEEN}</defs>
+    <text x="120" y="66" class="lbl" style="fill:var(--ink)">A PART YOU CAN BUY</text>
+    <text x="360" y="66" class="lbl" style="fill:var(--ink)">IN A CHIP: FINFET</text>
+    <text x="600" y="66" class="lbl" style="fill:var(--ink)">NEWEST CHIPS: GATE-ALL-AROUND</text>
+    <line x1="240" y1="54" x2="240" y2="410" stroke="var(--hairline)" stroke-dasharray="3 4"/>
+    <line x1="480" y1="54" x2="480" y2="410" stroke="var(--hairline)" stroke-dasharray="3 4"/>
+    ${parts}
+    <g data-k="finfet">${ff}${ffCut}</g>
+    <g data-k="gaa">${ga}${gaCut}</g>
+    <text x="360" y="448" class="lbl-faint">THE NMOS, AS IT LOOKS IN REAL LIFE (THE CHIP TRANSISTORS ARE FAR SMALLER THAN THE PARTS)</text>`;
+}
 
 /* ---------------- geometry (720 × 480 stage user units) ---------------- */
 const SUB      = { x: 140, y: 230, w: 440, h: 150 };   // p-type block
@@ -70,7 +144,7 @@ function ensureCollarHatch(svg){
 }
 
 export async function step4(){
-  guide.title('STEP 4 / 5 · NANOVOLT MICRO', 'Can a switch stay on <em>without spending any current?</em>');
+  guide.title('STEP 4 / 5', 'Can a transistor stay on <em>without spending any current?</em>');
   guide.cards();
 
   const stage = newStage('04', 'A MOSFET cross-section: two N regions in P, glass over the gap, metal gate on top');
@@ -96,14 +170,11 @@ export async function step4(){
     <text x="317" y="150" class="lbl-strong" style="fill:var(--amber)">10 µA IN, ALWAYS</text>`;
   svg.appendChild(bjtCost);
 
-  guide.say(`Here is last step's transistor, switched on. Keeping it on costs a constant
-    current.`);
-  stage.focus(bjt, { label: 'from last step', at: 'bottom' });
-  await guide.next();
-
-  guide.say(`About 10 µA keeps flowing into the base for as long as the switch stays on. If
-    you put a billion of these on one chip, the heat would melt it.`);
-  stage.focus(bjtCost, { label: 'base current', at: 'left' });
+  // Course restructure (2026-10-25): the old cards 1.4.1 and 1.4.2 are merged. Both
+  // restated the 1.3 premise and its numbers box; one card is enough to recall them.
+  guide.say(`Here is last step's transistor, switched on. To stay on, it needs about 10 µA
+    flowing into its base the whole time, and a chip holds billions of transistors.`);
+  stage.focus([bjt, bjtCost], { label: 'base current', at: 'bottom' });
   await guide.next();
 
   /* the bench: the frame the device gets built inside */
@@ -113,8 +184,8 @@ export async function step4(){
   frame.style.opacity = '0';
   await fadeIn([frame], 300);
 
-  guide.say(`So instead, we will control the switch with a voltage, so that nothing has to
-    keep flowing. <b>Your goal is to build this new switch one layer at a time, then find
+  guide.say(`So instead, we will control the transistor with a voltage, so that nothing has to
+    keep flowing. <b>Your goal is to build this new transistor one layer at a time, then find
     the voltage that turns it on.</b>`);
   stage.focus(frame, { ring: true });
   await guide.next();
@@ -252,7 +323,7 @@ export async function step4(){
       first, and the metal sits on top of it.`),
   });
 
-  guide.say(`Two tiles left: a thin sheet of glass and a metal pad. One of them goes
+  guide.say(`Two tiles are left: a thin sheet of glass and a metal pad. One of them goes
     straight onto the silicon, over the gap. Drag it in.`);
   // no focus: this card is a decision, and both tiles have to stay bright and draggable
   await flow.ask(async replay => {
@@ -327,17 +398,14 @@ export async function step4(){
     svg.appendChild(g);
     return { g, edge };
   }
+  // Course restructure (2026-10-25): the old card 1.4.9 (the two depletion layers) is
+  // folded into the "blocked" card below. The collars are built here, so they keep their
+  // place under the labels and wires, but stay hidden until the current is blocked.
   const collarSrc = makeCollar(WELL_SRC, 'right');
   const collarDrn = makeCollar(WELL_DRN, 'left');
-  await fadeIn([collarSrc.g, collarDrn.g], 380);
-
-  guide.say(`The hatched bands are depletion layers, the same barriers you built in step 2.
-    Because there are two junctions here, there are two of them.`);
-  stage.focus([collarSrc.g, collarDrn.g], { label: 'two junctions', at: 'bottom', ring: false });
-  await guide.next();
+  [collarSrc.g, collarDrn.g].forEach(g => { g.style.opacity = '0'; });
 
   /* --- C2. source and drain get their names --- */
-  stage.clearFocus();
   const names = svgEl('g');
   const nmS = svgEl('text', { x: 206, y: 302, class: 'lbl-strong' }); nmS.textContent = 'SOURCE';
   const nmD = svgEl('text', { x: 514, y: 302, class: 'lbl-strong' }); nmD.textContent = 'DRAIN';
@@ -387,10 +455,13 @@ export async function step4(){
   stuck.setAttribute('transform', `translate(${stop.x},${stop.y}) rotate(180) scale(.6,1)`);
   chipFlow.set('current: <b>blocked</b>');
   chipFlow.cls('state-off', true);
+  await fadeIn([collarSrc.g, collarDrn.g], 380);
 
-  guide.say(`The current is blocked, for the reason you already know: there are two
-    junctions, and one of them always faces the wrong way.`);
-  stage.focus([collarDrn.g, stuck], { label: 'blocked here', at: 'right', ring: false });
+  // Course restructure (2026-10-25): this card now also carries the old 1.4.9.
+  guide.say(`The current is blocked. The hatched bands are depletion layers, the same
+    barriers you built in step 2. There are two junctions, and one of them always faces
+    the wrong way.`);
+  stage.focus([collarSrc.g, collarDrn.g, stuck], { label: 'two junctions', at: 'bottom', ring: false });
   await guide.next();
 
   /* ============ SCENE D — metal, glass, silicon is a capacitor ============ */
@@ -438,7 +509,7 @@ export async function step4(){
 
   const chipV  = makeChip(controls, 'gate: <b>0.00 V</b>');
   const chipCh = makeChip(controls, 'channel: <b>none</b>');
-  const chipS  = makeChip(controls, 'switch: <b>OFF</b>', 'state-off');
+  const chipS  = makeChip(controls, 'transistor: <b>OFF</b>', 'state-off');
   const slider = makeSlider(controls, { label: 'gate voltage', min: 0, max: 3, step: .05, value: 0, fmt: v => v.toFixed(2) + ' V' });
   slider.input.disabled = true;      // the three build cards drive it; then it is the player's
 
@@ -480,7 +551,7 @@ export async function step4(){
 
     // the chip reports what is actually drawn: no dots is "none", not "forming"
     chipCh.set(`channel: <b>${bridged ? (od < .5 ? 'thin' : 'thick') : nIn === 0 ? 'none' : 'forming'}</b>`);
-    chipS.set(`switch: <b>${!bridged ? 'OFF' : od > .5 ? 'ON' : 'ON (weak)'}</b>`);
+    chipS.set(`transistor: <b>${!bridged ? 'OFF' : od > .5 ? 'ON' : 'ON (weak)'}</b>`);
     chipS.cls('state-on', bridged); chipS.cls('state-off', !bridged);
     chipFlow.set(`current: <b>${bridged ? 'flowing' : 'blocked'}</b>`);
     chipFlow.cls('state-on', bridged); chipFlow.cls('state-off', !bridged);
@@ -555,19 +626,20 @@ export async function step4(){
 
   /* ============ SCENE G — which one is cheaper to hold on ============ */
 
-  guide.say(`Your transistor from last step and this new switch can both stay on all day.
+  guide.say(`Your transistor from last step and this new transistor can both stay on all day.
     Which one is cheaper to hold on?`);
   const ans = await guide.choose([
     { label: 'The new one, held on by a gate voltage', value: 'gate', hint: 'you hold a voltage on the metal pad' },
     { label: 'The transistor, held on by base current', value: 'bjt', hint: 'you keep a current running into the base' },
   ]);
   if (ans === 'gate'){
-    guide.aha(`Right. Holding a voltage on the gate costs no ongoing current, because the
+    // Course restructure (2026-10-25): the aha's second line ("why a billion of these fit
+    // on a chip") is deleted. Step 1.5 reopens that problem straight away, so it was false here.
+    guide.aha(`You were right. Holding a voltage on the gate costs no ongoing current, because the
       glass never lets charge through. The NPN transistor has to keep consuming base current
-        the entire time it is on.`,
-      `That one difference is why a billion of these fit on a chip and a billion transistors do not.`);
+        the entire time it is on.`);
   } else {
-    guide.note(`Other way around. The NPN transistor keeps consuming base current while it
+    guide.note(`It is the other way around. The NPN transistor keeps consuming base current while it
       is on.
       This one only holds a voltage on the gate, and the glass stops any current getting in.`);
   }
@@ -590,4 +662,63 @@ export async function step4(){
   stage.focus(chLayer, { label: 'n-channel', at: 'bottom', ring: false });
   await guide.next();
   stage.clearFocus();
+
+  /* ============ SCENE I — how it looks in real life (HANDOFF_NEXT.md §1) ============ */
+
+  const real = slideInPanel(svg, realLifeHTML(), { lab: true });
+  real.focus('to92');
+  await real.show();
+
+  guide.lab(`Here is the same kind of NMOS you just built, sold as a part you can buy. This one
+    is a 2N7000, about 5 mm across. Its three legs are the source, the gate and the drain.`, { intro: true });
+  await guide.next();
+
+  // Course restructure (2026-10-25): the IRF540N card is cut, and the part is gone from
+  // the drawing.
+
+  real.focus('finfet');
+  guide.lab(`Inside a processor, the transistors are far smaller and shaped differently. The
+    channel is a thin upright wall of silicon called a <b>fin</b>, and the gate wraps over its
+    top and both sides.`);
+  await guide.next();
+
+  // Course restructure (2026-10-25): rewritten to name leakage properly.
+  guide.lab(`A transistor that is off still lets a tiny current through. This is called
+    <b>leakage</b>. With the gate on three sides, its field closes the whole channel, so a fin
+    leaks less.`);
+  await guide.next();
+
+  real.focus('gaa');
+  guide.lab(`The newest chips go one step further. The channel is a stack of thin flat sheets,
+    and the gate surrounds each sheet on all four sides. This is called
+    <b>gate-all-around</b>.`);
+  await guide.next();
+
+  guide.lab(`Samsung first made chips this way in 2022, and TSMC and Intel followed in 2025.
+    Each sheet is a few nanometres thick, but it is still your NMOS: a source, a drain and a
+    gate.`);
+  real.focus(null);
+  await guide.next();
+
+  // Course restructure (2026-10-25): the transistor count, with the same chip and number as
+  // the 1.3 numbers box. The A17 Pro is built with fins, not sheets, so the focus goes back
+  // to the FinFET.
+  real.focus('finfet');
+  guide.lab(`Apple's A17 Pro, the chip in a 2023 iPhone, holds 19 billion transistors. Each
+    one is a fin like this, with a source, a drain and a gate, as in your NMOS.`);
+  await guide.next();
+
+  const board = slideInPanel(svg, circuitNMOS(), { lab: true });
+  setLabState(board, true);
+  await real.swapTo(board);      // N-053: no flash of the stage between panels
+  guide.lab(`Here is your NMOS test on a breadboard. The LED and its resistor sit between the +
+    rail and the drain, and the source goes to ground. The gate wire is on the + rail, so the
+    LED is on.`);
+  await guide.next();
+
+  setLabState(board, false);
+  guide.lab(`Move the gate wire to ground, and the LED goes out. In both positions no current
+    flows into the gate: it only holds a voltage, as yours did.`);
+  await guide.next();
+  await board.hide();
 }

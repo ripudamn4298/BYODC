@@ -121,6 +121,12 @@ operation. A beginner cannot tell that "drinks" means *consumes continuously*.
 |---|---|
 | Your transistor drinks control current. That is fine for hundreds and impossible for billions. | Your transistor consumes control current. That is acceptable for hundreds and impossible for billions. |
 | It leans on the left barrier only. | This voltage acts on the left barrier only. |
+| One NMOS on its own leaks. | When the switch is on, current flows from the supply, through the switch, to ground, and keeps flowing. |
+| The wire tapped from the middle of the column is the output. It runs to a lamp. | A wire comes out of the middle of the column and ends at the circle marked OUT. |
+
+Watch especially for verbs of motion or plumbing used loosely: *runs*, *tapped*, *leaks*,
+*feeds*, *drinks*, *spills*. Each one makes the reader ask "what runs where?" Say what is
+physically connected to what, and what flows.
 
 ### MC · Mechanism Compression
 **What it looks like.** A whole mechanism, or a whole backstory, squeezed into one
@@ -155,6 +161,51 @@ it means.
 | before | after |
 |---|---|
 | This is silicon, refined from sand. | This is a zoomed-in silicon crystal lattice, refined from sand. |
+
+### FS · Fragment Sentences
+**What it looks like.** A label and a colon standing in for a sentence. "80 billion switches
+built the step 3 way, all held on: 560,000 watts." "1 amp: 0.7 watts." It reads like a
+spreadsheet row or a slide bullet, not like English.
+
+**Why it hurts.** A fragment leaves the reader to rebuild the sentence: what does what, under
+what condition, with what result. The relation between the parts (if, so, because) is exactly
+what a learner needs, and a fragment drops it. It also sounds clipped and machine-made.
+
+**The fix.** Never write a fragment. Every line is a full sentence with a subject and a verb,
+in plain, well-formed English, even inside a list, a ladder or a caption of more than a couple
+of words. Say the condition and the result in words.
+
+| before | after |
+|---|---|
+| 80 billion switches built the step 3 way, all held on: 560,000 watts | If 80 billion switches were built the step 3 way and all were held on, they would draw 560,000 watts. |
+| 1 amp: 0.7 watts. 10 amps: 7 watts. | At 1 amp, the diode turns 0.7 watts into heat. At 10 amps, it turns 7 watts into heat. |
+
+### SB · Step-by-step Build (point, name, explain)
+**What it looks like.** A sentence that names a thing and says something about it before the
+reader has found it on screen, often with a borrowed word that has not been introduced. "The
+wire tapped from the middle of the column is the output. In a chip it does not run to a
+lamp." Which wire? Tapped how? What does not run to which lamp?
+
+**Why it hurts.** The reader is handed a conclusion with no picture to hang it on. Words like
+*run*, *tapped* and *lamp* arrive out of nowhere, so the reader has to reverse-engineer the
+setup from the claim. A learner builds understanding in order; this writing arrives in the
+wrong order.
+
+**The fix.** Build the intuition one step at a time, in the order the reader needs it:
+1. **Point**: say what the reader can see and where it is ("a wire comes out of the middle and
+   ends at the circle marked OUT").
+2. **Name**: say what it is ("this is the output of the CMOS pair you are building").
+3. **Explain**: say what it does or means, and only then add the caveat or the real-world
+   version ("we draw it as a lamp so you can see its value; in a real chip, the output of
+   one pair is the input of the next").
+
+Simple vocabulary, one step per sentence, no borrowed metaphor words. Each sentence should
+only use things the reader has already been shown.
+
+| before | after |
+|---|---|
+| The wire tapped from the middle of the column is the output. In a chip it does not run to a lamp. It runs to the input of the next CMOS pair. | A wire comes out of the middle of the column and ends at the circle marked OUT. This is the output of the CMOS pair you are building. The circle lights up when the output is high and goes dark when it is low. We draw the output as a lamp so you can see its value, but in a real chip the output of one CMOS pair is the input of the next one. |
+| One NMOS on its own leaks. While its gate is high, current runs from the supply straight to ground and keeps running. | Here is a single NMOS switch, placed between the supply and ground. When its gate is high, the switch is on, and current flows from the supply, through the switch, to ground. The current keeps flowing for as long as the switch stays on. |
 
 ---
 

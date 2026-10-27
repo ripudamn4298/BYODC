@@ -14,7 +14,8 @@ import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeSeg, makeChip } from '../../engine/components.js';
+import { makeSeg, makeChip, slideInPanel } from '../../engine/components.js';
+import { labMatmul } from './lab.js';
 import { makeBitRow, makeDotColumns, makeFAToken } from '../../engine/mathengine.js';
 
 async function fadeIn(nodes, dur = 300){
@@ -32,7 +33,7 @@ async function fadeOut(nodes, dur = 260){
 }
 
 export async function step2(){
-  guide.title('STEP 2 / 6 · NANOVOLT GRAPHICS', 'How a chip <em>multiplies</em>');
+  guide.title('STEP 2 / 6', 'How do the lanes in a GPU <em>perform multiplication?</em>');
   guide.cards();
 
   const stage = newStage('16', 'Multiplying 7 by 7 with AND gates and a pile of place-value columns');
@@ -63,9 +64,9 @@ export async function step2(){
   const numbers = [rowA.el, rowB.el, times, eqA, eqB];
 
   /* ---- CARD 1 · the preface: a multiply whose answer the player already owns ---- */
-  guide.say(`Step back. Before we build a multiplier, look at how multiplication itself
-    works. We will do <b>7 × 7</b>. You already know it is 49, so you can check the machine
-    at every stage.`);
+  guide.say(`Before we build a multiplier, look at how multiplication itself works. We will
+    do <b>7 × 7</b>. You already know it is 49, so you can check the machine at every
+    stage.`);
   stage.focus(numbers, { label: '7 × 7, in binary', at: 'left' });
   await guide.next();
 
@@ -83,8 +84,8 @@ export async function step2(){
   /* ---- CARD 3 · the answer ---- */
   guide.note(gate === 'and'
     ? `Right. A one-bit multiplier is an <b>AND</b> gate, which you have had since Act 2.`
-    : `Not that one. The four cases are 1 × 1 = 1, 1 × 0 = 0, 0 × 1 = 0, 0 × 0 = 0. Output 1
-       only when both inputs are 1, which is the <b>AND</b> gate.`);
+    : `Not that one. The four cases are 1 × 1 = 1, 1 × 0 = 0, 0 × 1 = 0, 0 × 0 = 0. The
+       output is 1 only when both inputs are 1, which is the <b>AND</b> gate.`);
   stage.focus([rowA.cells[2].r, rowB.cells[2].r], { label: 'and gate', at: 'right' });
   await guide.next();
 
@@ -163,35 +164,72 @@ export async function step2(){
   });
 
   /* ---- CARD 5 · why each row is shifted ---- */
-  guide.say(`Each row is a <b>partial product</b>. Each one sits a place further left than
-    the row above, because that bit is worth twice as much.`);
+  guide.say(`Each row is a <b>partial product</b> (the top number times one bit of the
+    bottom number). Each row sits one place further left than the row above, because the bit
+    that made it is worth twice as much.`);
   stage.focus(ppRows, { label: 'partial products', at: 'right' });
   await guide.next();
 
   /* ============ the pile: sort every 1 into its place-value column ================= */
 
+  /* REVIEW_NOTES N-081: the rows stay, and the dot board sits right under them, one dot
+     column under each place-value column of 1s (row cells for weight 2^e are centred at
+     x = 414 − 40e, so the board uses the same 40 pitch and x = 174). The 1s drop down,
+     one column at a time, so the learner sees which 1s became which dots. */
   stage.clearFocus();
-  await fadeOut(ppRows, 260);
-  ppRows.forEach(g => g.remove());
 
   // 7 columns (weights 1 to 64) so carries have room: 49 reaches the 16s, 64 the 64s.
-  // multiply-only heights [1,2,3,2,1,0,0] → 1 + 4 + 12 + 16 + 16 = 49. Every dot is a real 1.
-  const board = makeDotColumns(svg, { x: 210, y: 400, heights: [1, 2, 3, 2, 1, 0, 0], pitch: 46 });
+  const board = makeDotColumns(svg, { x: 174, y: 400, heights: [0, 0, 0, 0, 0, 0, 0], pitch: 40 });
   const pileValue = () => board.cols.reduce((s, c) => s + board.heightOf(c.i) * (2 ** c.i), 0);
   board.el.style.opacity = '0';
   await fadeIn([board.el], 300);
+
+  /* ---- CARD 6 · the 1s become dots, and the board is read, on one card ----
+     Course restructure (2026-10-25): the old cards 6a ("drawn as dots") and 6 ("each column
+     of 1s is now the column of dots") are merged into this one. The card goes up first and
+     the dot-board animation plays under it; the focus lands once the dots have settled. */
+  guide.say(`Next, the same 1s are drawn as dots, each in its place-value column. A column
+    three dots tall means three 1s to add in that place.`);
+
+  // every 1 in the rows, by place value e: row k's cell i has weight 2^(k + 2 − i)
+  const onesAt = e => {
+    const out = [];
+    for (let k = 0; k < 3; k++) for (let i = 0; i < 3; i++){
+      if (k + 2 - i === e) out.push({ x: 414 - 40 * e, y: ppTop + k * ppPitch + size / 2 });
+    }
+    return out;
+  };
+  for (let e = 0; e <= 4; e++){
+    const ones = onesAt(e);
+    const col = board.cols[e];
+    const frame = svgEl('rect', { x: col.cx - 17, y: Math.min(...ones.map(o => o.y)) - 19, width: 34,
+      height: 400 + 14 - (Math.min(...ones.map(o => o.y)) - 19), rx: 6,
+      fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.2, 'stroke-dasharray': '4 3' });
+    svg.appendChild(frame);
+    const moving = ones.map(o => {
+      board.drop(e);
+      const d = col.dots[col.dots.length - 1];
+      const to = { x: +d.getAttribute('cx'), y: +d.getAttribute('cy') };
+      d.setAttribute('cx', o.x); d.setAttribute('cy', o.y);
+      return { d, from: o, to };
+    });
+    await Anim.tween(520, q => moving.forEach(m => {
+      m.d.setAttribute('cx', (m.from.x + (m.to.x - m.from.x) * q).toFixed(1));
+      m.d.setAttribute('cy', (m.from.y + (m.to.y - m.from.y) * q).toFixed(1));
+    }));
+    if (!flow.instant){ SFX.blip(); await sleep(140); }
+    frame.remove();
+  }
   const chipPile = makeChip(controls, `PILE VALUE: <b>${pileValue()}</b>`, 'warm');
 
-  /* ---- CARD 6 · read the board before using it ---- */
-  guide.say(`Every 1 drops into a column by its place value. A column three dots tall
-    means three 1s to add in that place.`);
-  stage.focus(board.el, { label: 'one column per place value' });
+  stage.focus([...ppRows, board.el], { label: 'one column per place value', at: 'right', ring: false });
   await guide.next();
+  ppRows.forEach(g => { g.style.transition = 'opacity .4s'; g.style.opacity = '.35'; });
 
   /* ---- CARD 7 · the checkpoint: the pile counts back to 49 ---- */
   guide.aha(`Count it: one 1 in the 1s, two in the 2s, three in the 4s, two in the 8s, one
     in the 16s. That is 1 + 4 + 12 + 16 + 16 = <b>49</b>.`,
-    `The same 7 × 7 you started with. The pile is the multiply. All that is left is adding it up.`);
+    `That is the same 7 × 7 you started with. The pile holds the whole multiply, and all that is left is adding it up.`);
   stage.focus(board.el, { label: 'pile value 49' });
   await guide.next();
 
@@ -230,7 +268,7 @@ export async function step2(){
 
   /* ---- CARD 10 · drop its bits into the same columns ---- */
   guide.say(`Fifteen is <b>1111</b>, so it puts one 1 into each of the first four columns.
-    Same board, same place values.`);
+    It lands on the same board, in the same place-value columns.`);
   stage.focus(board.cols.slice(0, 4).map(c => c.colG), { label: 'the accumulator lands here' });
 
   await guide.button('Drop the 15 into the pile ▸');
@@ -243,7 +281,8 @@ export async function step2(){
 
   /* ---- CARD 11 · the pile reads 64 ---- */
   guide.say(`The pile now reads <b>64</b>, which is 49 + 15. That is one whole
-    multiply-accumulate, waiting to be added up.`);
+    multiply-accumulate (a multiply, then an add onto the running total), waiting to be
+    added up.`);
   stage.focus(board.el, { label: 'pile value 64' });
   await guide.next();
 
@@ -297,7 +336,7 @@ export async function step2(){
       return replay;
     }
     const taps = [];
-    const cancelHint = flow.hintAfter(15000, `Any column with three dots or more. Tap it, and three become two with one carried left.`);
+    const cancelHint = flow.hintAfter(15000, `Tap any column with three dots or more. Three dots become two, and one carries into the column on the left.`);
     let crushed = 0, busy = false;
     refreshHot();
     await new Promise(resolve => {
@@ -325,7 +364,7 @@ export async function step2(){
   /* ============ hand the last two rows to the Act 2 ripple adder ================== */
 
   stage.clearFocus();
-  await fadeOut([accRow.el, andGrid], 240);
+  await fadeOut([accRow.el, andGrid, ...ppRows], 240);
 
   const boxX = 200, boxY = 172, boxW = 300, boxH = 148;
   const boxG = svgEl('g');
@@ -352,8 +391,8 @@ export async function step2(){
   await fadeIn([boxG], 300);
 
   /* ---- CARD 15 · the handoff ---- */
-  guide.say(`No column holds more than two now, and adding two rows is the <b>ripple
-    adder</b> you built in Act 2. Hand the pile to it.`);
+  guide.say(`No column holds more than two now, so the pile is just two rows. Adding two
+    rows is the job of the <b>ripple adder</b> from Act 2, so hand the pile to it.`);
   stage.focus(boxG, { label: 'from act 2', at: 'right' });
 
   await guide.button('Add the last two rows ▸');
@@ -370,6 +409,137 @@ export async function step2(){
   stage.focus(outRow.el, { label: '1000000 = 64', at: 'bottom' });
   await guide.next();
 
+  /* ---- CARD 16b · name the whole machine, now that it is finished ----
+     REVIEW_NOTES N-082: the three parts, drawn small, side by side in one outline, so the
+     name lands on a picture of what it is made of: 7 and 7 into the AND grid, its 1s into
+     the pile (where the accumulator's 15 joins them), the pile into the ripple adder, 64 out. */
+  stage.clearFocus();
+  const ticks = [...svg.querySelectorAll('text')].filter(t => t.textContent === '✓');
+  await fadeOut([...numbers, ...ticks, board.el, boxG], 280);
+  const mac = svgEl('g');
+  const arrowR = (x1, y, x2) => `<line x1="${x1}" y1="${y}" x2="${x2 - 6}" y2="${y}" stroke="var(--ink)" stroke-width="1.6"/>
+    <path d="M${x2 - 8} ${y - 5} L${x2} ${y} L${x2 - 8} ${y + 5}" fill="none" stroke="var(--ink)" stroke-width="1.6"/>`;
+  const part = (cx, name, line1, line2) => `<text x="${cx}" y="286" class="lbl" style="fill:var(--ink)">${name}</text>
+    <text x="${cx}" y="301" class="lbl-faint" font-size="8">${line1}</text>
+    ${line2 ? `<text x="${cx}" y="313" class="lbl-faint" font-size="8">${line2}</text>` : ''}`;
+  let grid = '';
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++){
+    grid += `<rect x="${137 + c * 28}" y="${180 + r * 28}" width="22" height="22" rx="3" class="bit-cell"/>
+      <text x="${148 + c * 28}" y="${195 + r * 28}" class="lbl-faint">&amp;</text>`;
+  }
+  let pile = '';
+  [1, 2, 3, 2, 1].forEach((h, i) => {
+    const x = 396 - i * 18;
+    for (let k = 0; k < h; k++) pile += `<circle cx="${x}" cy="${250 - k * 13}" r="4.5" class="dotbit"/>`;
+    pile += `<line x1="${x - 6}" y1="257" x2="${x + 6}" y2="257" class="dotcol-base"/>`;
+  });
+  const parts = [
+    `<text x="78" y="200" class="lbl-strong">7</text><text x="78" y="230" class="lbl-strong">7</text>${arrowR(90, 222, 132)}`,
+    `${grid}${part(178, 'AND GRID', 'MULTIPLIES EVERY', 'PAIR OF BITS')}`,
+    `${arrowR(232, 222, 318)}`,
+    `${pile}${part(360, 'THE PILE', 'THE 1s, SORTED', 'BY PLACE VALUE')}
+     <text x="360" y="352" class="lbl-faint" font-size="8">ACCUMULATOR: 15</text>
+     <line x1="360" y1="340" x2="360" y2="322" stroke="var(--ink)" stroke-width="1.4"/>
+     <path d="M355 327 L360 320 L365 327" fill="none" stroke="var(--ink)" stroke-width="1.4"/>`,
+    `${arrowR(404, 222, 474)}`,
+    `<rect x="480" y="196" width="112" height="52" rx="5" class="sys-cell-bg"/>
+     <line x1="494" y1="222" x2="578" y2="222" class="wire"/>
+     ${part(536, 'RIPPLE ADDER', 'ADDS THE LAST', 'TWO ROWS')}`,
+    `${arrowR(592, 222, 640)}<text x="666" y="227" class="lbl-strong">64</text>`,
+  ];
+  mac.innerHTML = `<rect x="108" y="146" width="512" height="218" rx="10" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="6 4"/>
+    <text x="364" y="136" class="lbl" style="fill:var(--ink)">ONE MAC UNIT (MULTIPLY-ACCUMULATE UNIT)</text>`;
+  svg.appendChild(mac);
+  const partGs = parts.map(html => { const g = svgEl('g'); g.innerHTML = html; g.style.opacity = '0'; mac.appendChild(g); return g; });
+  mac.style.opacity = '0';
+  await fadeIn([mac], 260);
+  for (const g of partGs){ await fadeIn([g], 220); }
+
+  guide.say(`The AND grid, the pile and the ripple adder together are one
+    <b>multiply-accumulate unit</b>, called a <b>MAC unit</b> for short. It does the multiply
+    and the add that every lane needs.`);
+  stage.focus(mac, { ring: false });
+  await guide.next();
+
+  /* ---- CARD 16c · REVIEW_NOTES N-084: the MAC unit goes into every lane ----
+     The sixteen lanes from step 1 come back, each showing its adder (+). One by one the +
+     is swapped for MAC, so the learner sees where the MAC unit is used from here on. */
+  stage.clearFocus();
+  await fadeOut([mac], 260);
+  const lanesG = svgEl('g');
+  const LG = { x: 232, y: 106, cell: 58, gap: 8 };
+  const laneCells = [];
+  for (let i = 0; i < 16; i++){
+    const x = LG.x + (i % 4) * (LG.cell + LG.gap), y = LG.y + Math.floor(i / 4) * (LG.cell + LG.gap);
+    const g = svgEl('g');
+    g.innerHTML = `<rect x="${x}" y="${y}" width="${LG.cell}" height="${LG.cell}" rx="4" class="lane"/>
+      <text class="ln-add" x="${x + LG.cell / 2}" y="${y + LG.cell / 2 + 8}" style="font-family:var(--font-display);font-size:24px;text-anchor:middle;fill:var(--ink-soft)">+</text>
+      <g class="ln-mac" opacity="0"><rect x="${x + 9}" y="${y + 17}" width="${LG.cell - 18}" height="24" rx="4" fill="var(--ink)"/>
+      <text x="${x + LG.cell / 2}" y="${y + 33}" class="lbl" font-size="9" style="fill:var(--paper-high);letter-spacing:.08em">MAC</text></g>`;
+    lanesG.appendChild(g);
+    laneCells.push(g);
+  }
+  const lanesCap = svgEl('text', { x: LG.x + 2 * LG.cell + 1.5 * LG.gap, y: LG.y - 18, class: 'lbl-faint' });
+  lanesCap.textContent = 'YOUR SIXTEEN LANES FROM STEP 1';
+  lanesG.appendChild(lanesCap);
+  svg.appendChild(lanesG);
+  lanesG.style.opacity = '0';
+  await fadeIn([lanesG], 300);
+  await Anim.tween(1600, q => laneCells.forEach((g, i) => {
+    const k = Math.min(1, Math.max(0, (q * 1600 - i * 70) / 300));
+    g.querySelector('.ln-add').style.opacity = (1 - k).toFixed(2);
+    g.querySelector('.ln-mac').setAttribute('opacity', k.toFixed(2));
+  }), q => q);
+
+  /* REVIEW_NOTES N-085 and the Act 4 restructure (2026-10-24): this square IS what "lane"
+     means from here on; the same picture (js/art/icons.js laneIcon) comes back wherever
+     lanes do.
+     Course restructure (2026-10-25): the "each lane now holds a MAC unit" card and the lane
+     definition card are merged into this one, and the definition now counts what a lane
+     holds: two numbers to multiply and its running total. */
+  guide.say(`Each of your sixteen lanes from step 1 now holds a MAC unit. From now on, a
+    <b>lane</b> means one MAC unit with two numbers to multiply and its running total, doing
+    one multiply-add every beat.`);
+  stage.focus(laneCells[0], { label: 'one lane', at: 'left', ring: false });
+  await guide.next();
+
+  /* REVIEW_NOTES N-087: zoom from one lane into its MAC unit, and land on the AND grid, so
+     the next scene (the grid at 16 bits) continues from what is on screen */
+  stage.clearFocus();
+  const z = laneCells[0];
+  const zc = { x: LG.x + LG.cell / 2, y: LG.y + LG.cell / 2 };
+  await Anim.tween(700, q => {
+    laneCells.forEach((g, i) => { if (i) g.style.opacity = (1 - q).toFixed(2); });
+    lanesCap.style.opacity = (1 - q).toFixed(2);
+    const sc = 1 + 5 * q, tx = (360 - zc.x) * q, ty = (240 - zc.y) * q;
+    z.setAttribute('transform', `translate(${(zc.x + tx).toFixed(1)} ${(zc.y + ty).toFixed(1)}) scale(${sc.toFixed(3)}) translate(${-zc.x} ${-zc.y})`);
+  });
+  const inside = svgEl('g');
+  let g3 = '';
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++){
+    g3 += `<rect x="${212 + c * 28}" y="${190 + r * 28}" width="22" height="22" rx="3" class="bit-cell"/>
+      <text x="${223 + c * 28}" y="${205 + r * 28}" class="lbl-faint">&amp;</text>`;
+  }
+  let pileDots = '';
+  [1, 2, 3, 2, 1].forEach((h, i) => { for (let k = 0; k < h; k++) pileDots += `<circle cx="${404 - i * 14}" cy="${252 - k * 12}" r="3.8" class="dotbit"/>`; });
+  inside.innerHTML = `<rect x="186" y="96" width="348" height="300" rx="12" fill="var(--paper-high)" stroke="var(--ink)" stroke-width="1.4"/>
+    <text x="360" y="126" class="lbl" style="fill:var(--ink)">ONE LANE, ZOOMED IN: ITS MAC UNIT</text>
+    <g class="zm-and">${g3}<text x="254" y="300" class="lbl" style="fill:var(--ink)">AND GRID</text>
+      <text x="254" y="315" class="lbl-faint" font-size="8">3 × 3, FOR 3-BIT NUMBERS</text></g>
+    <g class="zm-rest" style="opacity:.3">
+      <line x1="300" y1="232" x2="336" y2="232" stroke="var(--ink)" stroke-width="1.4"/>
+      ${pileDots}<text x="376" y="300" class="lbl" style="fill:var(--ink)">PILE</text>
+      <line x1="414" y1="232" x2="440" y2="232" stroke="var(--ink)" stroke-width="1.4"/>
+      <rect x="444" y="208" width="76" height="48" rx="5" class="sys-cell-bg"/>
+      <text x="482" y="300" class="lbl" style="fill:var(--ink)">ADDER</text></g>`;
+  svg.appendChild(inside);
+  inside.style.opacity = '0';
+  await Anim.tween(380, q => { inside.style.opacity = q.toFixed(2); z.style.opacity = (1 - q).toFixed(2); });
+  guide.say(`Zoom into one lane. Inside is its MAC unit, and the first part of that is the AND
+    grid you built: 3 by 3, because 7 is a 3-bit number.`);
+  stage.focus(inside.querySelector('.zm-and'), { label: 'the AND grid', at: 'left', ring: false });
+  await guide.next();
+
   /* ============ the precision square ============================================== */
 
   stage.clearFocus();
@@ -381,13 +551,14 @@ export async function step2(){
   const gridG = svgEl('g');
   svg2.append(footFrame, gridG);
   const footLbl = svgEl('text', { x: foot.x + foot.size / 2, y: foot.y - 12, class: 'lbl' });
-  footLbl.textContent = 'ONE TILE OF SILICON';
+  footLbl.textContent = 'ONE PATCH OF SILICON';   // Course restructure (2026-10-25): was ONE TILE OF SILICON
   svg2.appendChild(footLbl);
 
-  const perTile = makeChip(controls2, `multipliers per tile: <b>1×</b>`);
+  // Course restructure (2026-10-25): the chip says "patch" too, to match the label above
+  const perTile = makeChip(controls2, `multipliers per patch: <b>1×</b>`);
 
   // The grid is drawn at its true size: a p-bit multiplier is p AND gates across and p
-  // down, so its side is proportional to p and a 16-bit grid fills the tile exactly.
+  // down, so its side is proportional to p and a 16-bit grid fills the patch exactly.
   // Halving p therefore quarters the drawn area, which is the claim the card makes.
   // The dots walk to their new spots (DESIGN_MAKEOVER.md §2 rule 5) and Anim.tween
   // collapses to the end state on replay.
@@ -420,7 +591,7 @@ export async function step2(){
   }
 
   const perMap = { 16: '1×', 8: '4×', 4: '16×' };
-  function setPrecision(p){ perTile.set(`multipliers per tile: <b>${perMap[p]}</b>`); seg.set(p); return drawSquare(p); }
+  function setPrecision(p){ perTile.set(`multipliers per patch: <b>${perMap[p]}</b>`); seg.set(p); return drawSquare(p); }
 
   const seg = makeSeg(controls2, [
     { id: 'p16', label: '16-bit', value: 16 },
@@ -428,44 +599,72 @@ export async function step2(){
     { id: 'p4', label: '4-bit', value: 4 },
   ], p => { SFX.click(); setPrecision(p); });
 
+  // N-087: start from the 3 by 3 grid the learner just zoomed into, then grow it to 16 bits
+  await drawSquare(3);
+  if (!flow.instant) await sleep(500);
   await setPrecision(16);
 
-  /* ---- CARD 17 · read the square ---- */
-  guide.say(`Same grid, wider numbers. Two 16-bit numbers need 16 AND gates across and 16
-    down. That is 256 gates, and it fills the tile.`);
+  /* ---- CARD 17 · read the square ----
+     Course restructure (2026-10-25): "the tile (one fixed patch of silicon)" became "the
+     patch of silicon", as step 1 says it, so it does not clash with step 4's matrix tiles. */
+  guide.say(`Real chips multiply wider numbers. Two 16-bit numbers need 16 AND gates across
+    and 16 down. That is 256 gates, and it fills the patch of silicon.`);
   stage2.focus([footFrame, gridG], { label: '16 × 16 and gates', at: 'right' });
   await guide.next();
 
-  /* ---- CARD 18 · predict before you switch ---- */
-  guide.say(`A chip has a fixed area to spend. Halve the width to 8 bits: how much smaller
-    does one multiplier get?`);
-  stage2.focus([footFrame, gridG], { label: 'one 16-bit multiplier', at: 'right' });
-
-  const shrink = await guide.choose([
-    { label: '2× smaller', value: '2x', hint: 'only one side shrank?' },
-    { label: '4× smaller', value: '4x', hint: 'both sides of the grid halve' },
-    { label: 'no smaller', value: 'none', hint: 'fewer bits means fewer ANDs' },
-  ]);
-
-  /* ---- CARD 19 · the answer, with the square to try ---- */
-  guide.note(shrink === '4x'
-    ? `Right. Both sides of the grid halve at once. Switch to 8-bit and then 4-bit and
-       watch the square.`
-    : `Halving the width halves <em>both</em> sides of the grid, and half times half is a
-       quarter. Switch to 8-bit and watch the square.`);
-  stage2.focus([footFrame, gridG], { label: 'try 8-bit and 4-bit', at: 'right' });
-  await guide.next();
-
-  /* ---- CARD 20 · the payoff, on the 4-bit square ----
-     Settling on 4-bit here also pins the end state: whatever the player clicked on the
-     segmented control (which is free exploration, not a recorded answer), the step
-     finishes on the same square live and on replay. */
+  /* ---- CARD 18 · the payoff, watched (Act 4 restructure, 2026-10-25: the old predict-and-
+     try quiz became this one watch card). The square halves to 8 bits, then to 4, on its own,
+     and the step ends on the 4-bit square live and on replay; the segmented control stays
+     for free exploration and records nothing. */
   stage2.clearFocus();
+  await setPrecision(8);
+  if (!flow.instant) await sleep(700);
   await setPrecision(4);
 
-  guide.aha(`Halve the bits and both sides of the grid halve, so the engine gets four times
-    smaller. That is why AI chips moved to 8-bit and then 4-bit maths.`,
-    `Real chips also carry a floating-point exponent, which blunts the law a little. It stays close to a square law, and it is still the deciding factor.`);
+  guide.aha(`Halve the width (the number of bits in each number) and both sides of the grid
+    halve, so the multiplier gets four times smaller. That is why AI chips moved to 8-bit
+    and then 4-bit maths.`,
+    `Real chips also carry a floating-point exponent (a scale factor stored beside each number), which blunts this rule a little. Area still grows close to the square of the width, and that is still the deciding factor.`);
   stage2.focus(gridG, { label: '4 × 4 and gates', at: 'right' });
   await guide.next();
+
+  /* Course restructure (2026-10-25): a light-bulb card with the spec-sheet names for the
+     three widths, so "50 petaflops of FP4" in the news reads as this square */
+  guide.say(`Spec sheets write 16-bit, 8-bit and 4-bit numbers as <b>FP16</b>, <b>FP8</b> and
+    <b>FP4</b>. FP stands for floating point, the format that keeps that scale factor beside
+    each number.`);
+  stage2.focus(gridG, { label: 'fp4: 4-bit numbers', at: 'right' });
+  await guide.next();
+
+  /* ============ IN THE LAB — the multiply-accumulate in real code and hardware ========
+     A matrix multiply in PyTorch, what one number of its answer means, and one V100
+     Tensor Core step (4 × 4 grids, 64 multiply-accumulates a clock). Sources in lab.js. */
+  stage2.clearFocus();
+  const lab = slideInPanel(svg2, labMatmul(), { lab: true });
+  lab.focus('code');
+  await lab.show();
+
+  guide.lab(`The multiply-accumulate you built is the operation AI code runs most. In PyTorch,
+    the line <b>c = a @ b</b> multiplies two <b>matrices</b> (grids of numbers), here each
+    4,096 numbers on a side.`, { intro: true });
+  await guide.next();
+
+  lab.focus('loop');
+  guide.lab(`Each number in c is a running total of 4,096 multiplies, each added onto the
+    total, which is your accumulator. c holds about 16.8 million numbers, so that one line
+    asks for about 69 billion multiply-accumulates.`);
+  await guide.next();
+
+  /* Course restructure (2026-10-25): the rate unit the news uses, on the same panel focus */
+  guide.lab(`Spec sheets count one multiply-accumulate as two operations, and give the rate in
+    <b>FLOPS</b> (floating-point operations a second). A teraflop is a trillion a second, and
+    a petaflop is a thousand trillion.`);
+  await guide.next();
+
+  lab.focus('tc');
+  guide.lab(`A <b>Tensor Core</b> is a block of MAC units that multiplies two small matrices
+    in one go: in NVIDIA's V100 (2017), two 4 by 4 matrices, 64 multiply-accumulates every
+    clock beat. Remember the name, because in step 4 you build a block like this yourself.`);
+  await guide.next();
+  await lab.hide();
 }

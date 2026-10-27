@@ -1,4 +1,6 @@
-// ACT 1 · STEP 3 — "A small current controls a big one".
+// ACT 1 · STEP 3 — "How can a small current switch a large one?".
+// Course restructure (2026-10-25): retitled from "What is wrong with using copper wires?",
+// which re-asked what step 1.2 had already answered.
 // The transistor half of the old step 2, rebuilt to the micro-learning contract in
 // DESIGN_MAKEOVER.md §2 / §4: one card at a time (guide.cards), every card focuses and
 // names the one thing it is about, and the step opens on the single junction the player
@@ -18,8 +20,10 @@ import { SFX } from '../engine/sfx.js';
 import { guide } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
-import { CurrentFlow } from '../engine/pathflow.js';
-import { makeLamp, makeBattery, makeSlider, makePlacer } from '../engine/components.js';
+import { CurrentFlow, PathFlow } from '../engine/pathflow.js';
+import { makeLamp, makeBattery, makeSlider, makePlacer, slideInPanel } from '../engine/components.js';
+import { SHEEN, to92 } from '../engine/reallife.js';   // Course restructure (2026-10-25): to18 no longer drawn
+import { circuitNPN, setLabState } from '../engine/labcircuits.js';
 import { makeDepletionBands, makeOvershootDemo } from '../engine/junction.js';
 
 /* ---- geometry, in the stage's 720x480 user units ----
@@ -53,8 +57,22 @@ function arrow(parent, x1, y1, x2, y2, stroke){
   return g;
 }
 
+/* ---------- how it looks in real life (HANDOFF_NEXT.md §1) ----------
+   The NPN transistor as a part, at 10 px per mm: a BC547 in a TO-92 case (flat face
+   towards you, legs C B E, from the datasheet).
+   Course restructure (2026-10-25): the 2N2222A in its TO-18 metal can is removed with its
+   card, and the BC547 now sits centred on the panel. */
+function realLifeHTML(){
+  return `<defs>${SHEEN}</defs>
+    <g data-k="bc547">${to92({ cx: 360, base: 250, mm: 10, lines: ['BC', '547'], pins: ['C', 'B', 'E'], spread: 24, len: 80, caption: 'BC547' })}</g>
+    <text x="360" y="140" class="lbl" style="fill:var(--ink)">IN A PLASTIC CASE</text>
+    <text x="360" y="420" class="lbl-faint">C = COLLECTOR · B = BASE · E = EMITTER</text>
+    <text x="360" y="448" class="lbl-faint">THE NPN TRANSISTOR, AS IT LOOKS IN REAL LIFE (DRAWN AT 10 TIMES LIFE SIZE)</text>`;
+}
+
 export async function step3(){
-  guide.title('STEP 3 / 5 · NANOVOLT SEMICONDUCTORS', 'What is wrong with <em>using copper wires?</em>');
+  // Course restructure (2026-10-25): new title, matching the premise at the end of step 1.2.
+  guide.title('STEP 3 / 5', 'How can a small current <em>switch a large one?</em>');
   guide.cards();
 
   const stage = newStage('03', 'Two junctions back to back: emitter, base and collector, with a base dial');
@@ -77,20 +95,12 @@ export async function step3(){
   makeDepletionBands(jg, { cx: 360, y: 170, h: 130, wNeg: 32, wPos: 32, labels: false });
   jg.appendChild(svgEl('line', { x1: 360, y1: 170, x2: 360, y2: 300, class: 'junction' }));
 
-  /* ---------- why this device matters, before the mechanism (F1) ----------
-     Three story boxes that sell what the transistor made possible, so the step is not
-     "here is the mechanism" but "here is the part that changed everything". */
-  guide.story(`A copper wire is great: it conducts. But it is dumb. It lets electricity
-    flow anywhere, any time.`);
-  await guide.next();
-
-  guide.story(`Your diode was the first step toward control: a one-way street. Impressive,
-    but still a passive pipe.`);
-  await guide.next();
-
-  guide.story(`Semiconductors changed the world because they let us command electricity on
-    the fly. Today you will build an NPN transistor and use a tiny signal to switch a
-    massive current on, off, or up. A wire could never do that.`);
+  /* Course restructure (2026-10-25): the copper-wire card, the "passive pipe" card and the
+     "semiconductors changed the world" story box are cut. They restated the premise that
+     ends step 1.2 and were theatrical. One plain card replaces them. None of the three drew
+     anything on the stage, so no drawing goes with them. */
+  guide.say(`Your diode opens only when the current through it pushes hard enough. A switch
+    needs a separate wire that turns a large current on and off.`);
   await guide.next();
 
   guide.say(`This is the junction you built last step: N against P, with a depletion layer
@@ -185,14 +195,14 @@ export async function step3(){
     if (s.value && nameFor[s.key].style.display === 'none') fadeIn([nameFor[s.key]], 240);
   });
 
-  guide.say(`Left to right: emitter, base, collector. Drag each block into a slot, or tap a
+  guide.say(`From left to right, the blocks are the emitter, the base and the collector. Drag each block into a slot, or tap a
     block and then a slot.`);
 
   const placer = makePlacer({
     svg, tiles, slots,
     validate: v => v[0] === 'E' && v[1] === 'B' && v[2] === 'C',
     onPlace: showNames,
-    onWrong: () => guide.note(`Not quite. The emitter goes on the left, the thin base in the
+    onWrong: () => guide.note(`That order is not right. The emitter goes on the left, the thin base in the
       middle, and the wide collector on the right.`),
   });
 
@@ -336,6 +346,14 @@ export async function step3(){
 
   stage.clearFocus();
   applyBias(4);
+  // REVIEW_NOTES N-004: these cards talk about electrons, so show electrons crossing into
+  // the base, not current chevrons. The chevrons come back with the base dial (card 14),
+  // where the copy turns to current. Same row and dot as the hundred-electron demo.
+  mainFlow.setSpeed(0); baseFlow.setSpeed(0);
+  const eRoute = svgEl('path', { d: `M132 244 H${cx(BAS) + 6}`, fill: 'none', stroke: 'none' });
+  svg.appendChild(eRoute);
+  const eFlow = new PathFlow(eRoute, { n: 6, r: 4, layer: flowLayer, cls: 'carrier-e' });
+  eFlow.setSpeed(46);
   await sleep(360);
 
   guide.say(`This voltage acts on the left barrier only. When that barrier narrows,
@@ -353,6 +371,7 @@ export async function step3(){
     { label: 'Out through the base wire', value: 'base', hint: 'the wire is right there' },
     { label: 'On into the collector', value: 'coll', hint: 'they are already moving that way' },
   ]);
+  eFlow.destroy();      // the demo below draws its own electrons on this row
 
   /* ================= CARD 12 — release a hundred and count them =================== */
 
@@ -402,7 +421,7 @@ export async function step3(){
 
   /* ================= CARD 13 — why the base is thin =============================== */
 
-  guide.say(`${guess === 'coll' ? 'Right.' : 'Not what you picked.'} 99 of the 100 reached
+  guide.say(`${guess === 'coll' ? 'You were right.' : 'That is not what you picked.'} 99 of the 100 reached
     the collector. The base is so thin that an electron is barely inside it before the
     collector pulls it across.`);
   stage.focus(bRect, { label: 'thin base', at: 'top' });
@@ -417,6 +436,7 @@ export async function step3(){
     fmt: v => v.toFixed(1) + ' µA',
   });
   dial.on(applyBias);
+  applyBias(dial.value);   // the current chevrons return here, with the talk of current
 
   guide.say(`Now we swap the fixed battery for a dial, which sets how much current you push
     into the base.`);
@@ -427,7 +447,7 @@ export async function step3(){
 
   stage.clearFocus();
   await fadeIn([baseC.g, mainC.g]);
-  guide.say(`Two readouts now: the current you put into the base, and the current running
+  guide.say(`There are two readouts now: the current you put into the base, and the current running
     through the device from collector to emitter.`);
   stage.focus([baseC.g, mainC.g], { label: 'in and out', at: 'top' });
   await guide.next();
@@ -464,7 +484,7 @@ export async function step3(){
 
   /* ================= CARD 18 — the ratio ========================================== */
 
-  guide.aha(`<b>10 µA in, 1,000 µA out.</b> The small base current keeps the emitter-side
+  guide.aha(`<b>You put 10 µA in, and 1,000 µA came out.</b> The small base current keeps the emitter-side
     barrier lowered, so the device passes a hundred times more current than you put in.`,
     `Flick the dial and it is a switch. Move it smoothly and it is an amplifier.`);
   stage.focus([baseC.g, mainC.g], { label: '1 in, 100 out', at: 'top' });
@@ -473,9 +493,17 @@ export async function step3(){
   /* ================= CARD 19 — the name, once the thing exists ==================== */
 
   stage.clearFocus();
-  guide.say(`N, a thin P, then N. That is what the name says: this is an
+  guide.say(`It is an N block, a thin P block, then another N block. That is what the name says: this is an
     <b>NPN transistor</b>.`);
   stage.focus(dev, { label: 'npn transistor', at: 'bottom' });
+  await guide.next();
+
+  /* Course restructure (2026-10-25): light-bulb card, "transistor count". Plain card, no
+     eyebrow (COURSE_RESTRUCTURE_PROPOSAL.md §6). */
+  guide.say(`A transistor is a switch with no moving parts: a small base current turns the
+    current from collector to emitter on or off. This is what people mean when they talk
+    about a chip's transistor count: a count of switches like this one.`);
+  stage.focus(dev, { label: 'one switch', at: 'bottom' });
   await guide.next();
 
   /* ================= CARD 20 — the two directions, reconciled ===================== */
@@ -491,4 +519,30 @@ export async function step3(){
   stage.focus(eArrow, { label: 'electrons', at: 'right' });
   await guide.next();
   stage.clearFocus();
+
+  /* how it looks in real life (HANDOFF_NEXT.md §1) */
+  const real = slideInPanel(svg, realLifeHTML(), { lab: true });
+  real.focus('bc547');
+  await real.show();
+  // Course restructure (2026-10-25): the 2N2222 card and the "both multiply" card are cut;
+  // the line about computers built from separate transistors is folded in here.
+  guide.lab(`Here is the NPN transistor you just built, sold as a part: a BC547. With its flat
+    face towards you, its legs are the collector, the base and the emitter, from left to
+    right. Before chips, whole computers were built from thousands of separate transistors
+    like this one.`, { intro: true });
+  await guide.next();
+
+  const board = slideInPanel(svg, circuitNPN(), { lab: true });
+  setLabState(board, false);
+  await real.swapTo(board);      // N-053: no flash of the stage between panels
+  guide.lab(`Here is your transistor test on a breadboard. The LED and its resistor sit between
+    the + rail and the collector, and the emitter goes to ground. The base wire is on ground,
+    so the LED is off.`);
+  await guide.next();
+
+  setLabState(board, true);
+  guide.lab(`Move the base wire to the + rail. A tiny current, about 0.04 mA, flows through the
+    100 kΩ resistor into the base, and it switches on several milliamps through the LED.`);
+  await guide.next();
+  await board.hide();
 }

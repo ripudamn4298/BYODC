@@ -1,6 +1,7 @@
 // BYODC engine — shared drawn components (paper style) + controls + placer
 import { el, svgEl, svgPt, clamp } from './util.js';
 import { SFX } from './sfx.js';
+import { Anim } from './anim.js';
 
 /* lamp: ink circle, amber core + rays when lit (no glow — crisp) */
 export function makeLamp(svg, x, y, { r = 13, label = '' } = {}){
@@ -203,4 +204,113 @@ export function makePlacer({ svg, tiles, slots, validate, onWrong, onPlace }){
     });
   });
   return { done, autoPlace };
+}
+
+/* ---------- raised, floating tiles (REVIEW_NOTES N-043, N-044, N-046) ----------
+   makeRaisedTiles(svg, tiles, opts) restyles placer tiles in place:
+     style 'key'  — a mechanical keycap: the tile's own rect becomes a tall shaded base, a
+                    smaller inset top face carries everything else, a highlight on its front edge
+     style 'lift' — for tiles that are drawings of real parts: no keycap, just the float,
+                    the ground shadow and the press
+   Both float gently (out of step with each other), sit over a soft ground shadow, sink while
+   held, and pause for reduced motion (css: .tile3d). The tile's own <g> stays the thing the
+   placer moves; all of this happens on an inner group. */
+export function makeRaisedTiles(svg, tiles, { style = 'key', capSize = null } = {}){
+  if (style === 'key' && !svg.querySelector('#keySide')){
+    const defs = svgEl('defs');
+    defs.innerHTML = `
+      <linearGradient id="keySide" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#efe7d2"/><stop offset=".55" stop-color="#d5cab0"/>
+        <stop offset="1" stop-color="#a99d7f"/>
+      </linearGradient>
+      <linearGradient id="keyTop" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fffdf7"/><stop offset=".6" stop-color="#f3ecda"/>
+        <stop offset="1" stop-color="#e6dcc4"/>
+      </linearGradient>`;
+    svg.appendChild(defs);
+  }
+  tiles.forEach((t, i) => {
+    const inner = svgEl('g', { class: 'float-inner' });
+    const kids = [...t.g.childNodes];
+    if (style === 'key'){
+      const base = kids.find(n => n.tagName === 'rect');
+      base.setAttribute('height', t.h + 10);
+      base.setAttribute('rx', 9);
+      base.style.fill = 'url(#keySide)';
+      base.style.stroke = 'rgba(29,33,23,.45)';
+      inner.appendChild(base);
+      inner.appendChild(svgEl('rect', { x: 7, y: 3, width: t.w - 14, height: t.h - 7, rx: 7,
+        fill: 'url(#keyTop)', stroke: 'rgba(29,33,23,.22)', 'stroke-width': 1 }));
+      inner.appendChild(svgEl('line', { x1: 13, y1: 4.4, x2: t.w - 13, y2: 4.4,
+        stroke: '#fff', 'stroke-width': 1.6, 'stroke-linecap': 'round', opacity: .9 }));
+      kids.filter(n => n !== base).forEach(n => inner.appendChild(n));
+      if (capSize) inner.querySelectorAll('.tile-cap').forEach(c => { c.style.fontSize = capSize; c.style.letterSpacing = '0'; });
+    } else {
+      kids.forEach(n => inner.appendChild(n));
+      t.g.appendChild(inner);
+    }
+    // a drawn part may carry a caption below its box, so a lifted tile's shadow goes under the
+    // whole drawing; a keycap's goes under its base
+    let ground = t.h + 22;
+    if (style !== 'key'){
+      ground = t.h + 14;
+      try { const bb = inner.getBBox(); if (bb.height) ground = bb.y + bb.height + 10; } catch { /* not laid out yet */ }
+    }
+    const shadow = svgEl('ellipse', { class: 'float-shadow', cx: t.w / 2, cy: ground,
+      rx: Math.max(10, t.w / 2 - 2), ry: 5.5, fill: 'rgba(29,33,23,.2)' });
+    t.g.append(shadow, inner);
+    t.g.classList.add('tile3d');
+    t.g.addEventListener('pointerdown', () => t.g.classList.add('pressing'));
+    const release = () => t.g.classList.remove('pressing');
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => t.g.addEventListener(ev, release));
+    const delay = `${(-i * 0.55).toFixed(2)}s`;
+    inner.style.animationDelay = delay;
+    shadow.style.animationDelay = delay;
+  });
+}
+
+/* ---------- a picture that slides in over the stage (REVIEW_NOTES N-045, N-049) ----------
+   slideInPanel(svg, html) adds a paper panel the size of the stage, hidden off to the right.
+   show() slides it in over whatever the stage is showing; hide() slides it out to the left
+   and removes it, so the stage underneath carries on as it was. Both ride Anim.tween, so a
+   replay lands them instantly. The card text goes in guide.say between the two; focus(key)
+   dims every part tagged data-k except the one the card is about. */
+export function slideInPanel(svg, html, { w = 720, h = 480, lab = false, numbers = false } = {}){
+  const g = svgEl('g', { class: 'slide-panel' });
+  /* lab: an "In the Lab" panel, on the lab paper with its tag in the top-left corner.
+     numbers: the art beside a step's real-numbers box (N-053), tagged like that dark box */
+  const tag = lab ? `<rect x="16" y="14" width="92" height="22" rx="11" fill="var(--lab-ink)"/>
+    <text x="62" y="29" class="lbl" style="fill:var(--lab-paper);font-size:9.5px;letter-spacing:.2em">IN THE LAB</text>`
+    : numbers ? `<rect x="16" y="14" width="146" height="22" rx="11" fill="var(--dark)"/>
+    <text x="89" y="29" class="lbl" style="fill:var(--amber);font-size:9.5px;letter-spacing:.2em">THE REAL NUMBERS</text>` : '';
+  g.innerHTML = `<rect x="-20" y="-20" width="${w + 40}" height="${h + 40}" fill="${lab ? 'var(--lab-paper)' : 'var(--paper-high)'}"/>${tag}${html}`;
+  g.setAttribute('transform', `translate(${w} 0)`);
+  svg.appendChild(g);
+  return {
+    g,
+    async show(){
+      await Anim.tween(650, q => g.setAttribute('transform', `translate(${(w * (1 - q) * (1 - q)).toFixed(1)} 0)`));
+      g.setAttribute('transform', 'translate(0 0)');
+    },
+    async hide(){
+      await Anim.tween(520, q => g.setAttribute('transform', `translate(${(-w * q * q).toFixed(1)} 0)`));
+      g.remove();
+    },
+    /* REVIEW_NOTES N-053: from this panel straight to another one. The next panel slides in
+       over this one and only then is this one removed, so the stage underneath never shows
+       between the two. Create `next` after this panel, so it is drawn on top. */
+    async swapTo(next){
+      await next.show();
+      g.remove();
+    },
+    /* the panel's own version of stage.focus: parts tagged data-k="…" stay bright when their
+       key is named (one key or a list), the other tagged parts dim; focus(null) lights all */
+    focus(key){
+      const keys = [].concat(key ?? []);
+      g.querySelectorAll('[data-k]').forEach(n => {
+        n.style.transition = 'opacity .3s';
+        n.style.opacity = (!keys.length || keys.includes(n.dataset.k)) ? '1' : '.2';
+      });
+    },
+  };
 }

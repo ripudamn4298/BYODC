@@ -3,7 +3,7 @@
 // ACT3_MAKEOVER.md §3: one card at a time (guide.cards), wafer and die each defined on
 // their own card with the label landing at that moment, dust shown killing one die before
 // the whole map is coloured, and the area trade-off drawn at the same scale as the wafer
-// rather than asserted in prose. The two-wafer structure and its $70 / $75 targets are
+// rather than asserted in prose. The two-wafer structure and its $255 / $273 targets are
 // unchanged: the player has to re-read the number under twice the dust.
 //
 // Determinism: both defect maps come from mulberry32 seeded with a value recorded through
@@ -15,12 +15,13 @@ import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeSeg, cornerTicks } from '../../engine/components.js';
+import { makeSeg, cornerTicks, slideInPanel } from '../../engine/components.js';
+import { proberHTML, waferMapHTML } from './lab.js';
 import { makeWaferMap } from '../../engine/fab.js';
 
-const WAFER_COST = 5500;      // fixed $ per wafer, for the $/good-die readout
-const TARGET_A = 70;          // clean wafer, 12 specks
-const TARGET_B = 75;          // dirty wafer, 24 specks
+const WAFER_COST = 20000;     // fixed $ per wafer: the newest process, 2024 (COST_MODEL.md)
+const TARGET_A = 255;         // clean wafer, 12 specks (was $70 on a $5,500 wafer; same pass line)
+const TARGET_B = 273;         // dirty wafer, 24 specks (was $75 on a $5,500 wafer; same pass line)
 
 // Edges of 25 / 35 / 50 stage units on a 165-unit-radius wafer. 25 and 50 are an exact
 // 2x, so "twice the edge, four times the area" is literally what is drawn. Whole dies per
@@ -43,7 +44,7 @@ async function fadeIn(nodes, dur = 320){
 }
 
 export async function step3(){
-  guide.title('STEP 3 / 5 · NANOVOLT FAB 3', 'How big to cut <em>each chip</em>');
+  guide.title('STEP 3 / 5', 'Cost, Size <em>and Yield</em>');
   guide.cards();
 
   const stage = newStage('12', 'A wafer cut into dies, with dust killing some of them');
@@ -220,14 +221,29 @@ export async function step3(){
 
   /* ============================== CARDS ============================== */
 
-  guide.say(`Now the printed disc gets cut into chips, and you choose how big to cut them.
-    Dust landed on it while it printed, and dust kills chips.`);
+  guide.say(`Now the printed wafer gets cut into pieces, and you choose how big each piece
+    is. Dust landed on the wafer while it printed, and a piece with dust on it does not
+    work.`);
   stage.focus(disc, { ring: true });
   await guide.next();
 
-  guide.say(`The disc is a <b>wafer</b>, 300 mm across. The pattern you printed with light
-    covers all of it.`);
+  // Course restructure (2026-10-25): the game's dies are larger than one field allows (3.4)
+  guide.say(`This is the wafer from step 1, 300 mm across. The pattern you printed with
+    light covers all of it. The dies here are drawn larger than real ones, so you can see them.`);
   stage.focus(disc, { label: 'wafer', at: 'top' });
+  await guide.next();
+
+  /* REVIEW_NOTES N-034: the mask does not print the whole wafer in one flash. */
+  // Course restructure (2026-10-25): the 60-word field card is split in two, so "field"
+  // is named on a card of its own. Step 3.4 reuses it for the reticle limit.
+  guide.say(`The mask does not cover the whole wafer at once. It holds the pattern for one
+    small rectangle of the wafer, and that rectangle is called a <b>field</b>.`);
+  stage.focus(disc, { label: 'printed one field at a time', at: 'top' });
+  await guide.next();
+
+  guide.say(`The machine flashes one field, moves the wafer a little and flashes the next,
+    about a hundred times. So the same pattern is repeated all over the wafer.`);
+  stage.focus(disc, { label: 'the same pattern, repeated', at: 'top' });
   await guide.next();
 
   /* --- the grid, then one die --- */
@@ -240,8 +256,10 @@ export async function step3(){
     .filter(d => d.state !== 'edge')
     .sort((a, b) => Math.hypot(a.x - WX, a.y - WY) - Math.hypot(b.x - WX, b.y - WY))[0];
 
-  guide.say(`Cut the wafer into a grid. Each square is one chip, and one chip is called a
-    <b>die</b>.`);
+  // Course restructure (2026-10-25): trimmed from 62 words.
+  guide.say(`Mark the wafer into a grid, along the lines it will be cut on. Each square is
+    one <b>die</b> (plural: dies), one copy of the printed pattern. In step 4 each die is
+    packaged into a chip.`);
   stage.focus(centreDie().rect, { label: 'one die', at: 'top' });
   await guide.next();
 
@@ -252,7 +270,8 @@ export async function step3(){
   const cut0 = counts();
 
   guide.say(`The wafer is round and the grid is not. ${wafer.dies.length - cut0.whole} of
-    these ${wafer.dies.length} squares hang over the edge, so they are scrap.`);
+    these ${wafer.dies.length} squares hang over the edge, so they are scrap (thrown
+    away).`);
   stage.focus(topEdge.rect, { label: 'edge scrap', at: 'top' });
   await guide.next();
 
@@ -261,7 +280,7 @@ export async function step3(){
   await fadeIn([rWhole.g], 300);
 
   guide.say(`That leaves ${cut0.whole} whole dies at this size. The count follows whatever
-    size you cut.`);
+    die size you choose.`);
   // the row carries its own mono label, so the ring goes round the number alone
   stage.focus(rWhole.v, { label: 'whole dies', at: 'top' });
   await guide.next();
@@ -274,8 +293,8 @@ export async function step3(){
     refresh();
     if (!replaying) await fadeIn([defectLayer], 380);
     defectLayer.style.opacity = '1';
-    guide.say(`The air in a fab is filtered and dust still gets through. Twelve specks
-      landed on this wafer, and each one is bigger than the transistors under it.`);
+    guide.say(`The air in a fab is filtered, but dust still gets through. Twelve specks of
+      dust landed on this wafer, and each one is bigger than the transistors under it.`);
     stage.focus(defectLayer, { label: 'dust', at: 'top', ring: false });
   }, () => killingSeed(12));
 
@@ -304,16 +323,25 @@ export async function step3(){
   const cut1 = refresh();
   await fadeIn([rDead.g, rGood.g], 320);
 
-  guide.say(`Every other speck does the same. This wafer lost ${cut1.dead} dies, and
-    ${cut1.good} came through.`);
+  guide.say(`Every other speck does the same, so this wafer lost ${cut1.dead} dies and
+    ${cut1.good} are good. Those ${cut1.good} out of ${cut1.whole} are its <b>yield</b> (the
+    share of dies that work).`);
   stage.focus(dieLayer, { label: 'dead in red, good in blue', at: 'top', ring: false });
+  await guide.next();
+
+  // Course restructure (2026-10-25): the wafer prices come out of brackets onto a card of
+  // their own. $20,000 is the newest-process wafer the SPENT counter uses (COST_MODEL.md).
+  stage.clearFocus();
+  guide.say(`One wafer on the newest process cost about $${WAFER_COST.toLocaleString()} in 2024,
+    the same wafer your SPENT counter paid for.`);
+  stage.focus(wafer.g, { label: `one wafer, $${WAFER_COST.toLocaleString()}`, at: 'top' });
   await guide.next();
 
   stage.clearFocus();
   await fadeIn([costG], 320);
 
-  guide.say(`One wafer costs $${WAFER_COST.toLocaleString()} however you cut it. Divide
-    that by the dies that work and you get the price of each good one.`);
+  guide.say(`The wafer costs the same whatever size you cut it into. If you divide its price
+    by the number of good dies, you get the cost of each good die.`);
   stage.focus(costV, { label: 'cost per good die', at: 'top' });
   await guide.next();
 
@@ -324,14 +352,14 @@ export async function step3(){
   target = TARGET_A;
   refresh();
 
-  guide.say(`The three buttons under the stage recut the wafer. <b>Your goal: get the cost
-    under $${TARGET_A} per good die.</b> Try each size and read the number.`);
+  guide.say(`The three buttons under the stage change the die size. <b>Your goal is to get
+    the cost under $${TARGET_A} per good die.</b> Try each size and read the number.`);
 
   const pick1 = await flow.ask(async replay => {
     if (replay !== undefined){ setSize(replay); seg.set(replay); return replay; }
     const cancel = hintLater(15000,
-      `<b>Still after $${TARGET_A} per good die.</b> Small dies pack more copies onto the
-       wafer, and each one is a smaller target for a speck.`);
+      `<b>The target is still $${TARGET_A} per good die.</b> Small dies pack more copies
+       onto the wafer, and each one is a smaller target for a speck.`);
     onSegPick = cancel;
     await waitFor(() => { const c = refresh(); return c.good > 0 && c.cost <= TARGET_A; });
     cancel();
@@ -372,19 +400,16 @@ export async function step3(){
   geo.appendChild(speck);
   [vLine, hLine, smCnt, lgCnt, speck].forEach(n => { n.style.opacity = '0'; });
   await fadeIn([smSq, lgSq, smLbl, lgLbl], 340);
-
-  guide.say(`Here are the small and the large die, drawn at the size the wafer cuts them.
-    The large one's edge is twice as long.`);
-  // the captions ride along in every geo focus, or the scrim hides the names
-  stage.focus([smSq, lgSq, smLbl, lgLbl], { label: 'twice the edge', at: 'top' });
-  await guide.next();
-
-  stage.clearFocus();
   await fadeIn([vLine, hLine], 300);
 
-  guide.say(`Twice the edge is four times the area. Four small dies fit inside one large
-    one.`);
-  stage.focus([lgSq, vLine, hLine, lgLbl], { label: 'four times the area', at: 'top' });
+  // Course restructure (2026-10-25): "twice the edge" and "four times the area" merged
+  // into one card.
+  guide.say(`Here are the small and the large die, drawn at the same scale as the wafer.
+    The large one's edge is twice as long, so its area is four times as big, and four small
+    dies fit inside it.`);
+  // the captions ride along in every geo focus, or the scrim hides the names
+  stage.focus([smSq, lgSq, vLine, hLine, smLbl, lgLbl],
+    { label: 'twice the edge, four times the area', at: 'top' });
   await guide.next();
 
   stage.clearFocus();
@@ -402,8 +427,9 @@ export async function step3(){
   lgCnt.textContent = `${all1.lg.whole} PER WAFER`;
   await fadeIn([smCnt, lgCnt], 300);
 
-  guide.say(`Fewer of them fit, too. This wafer holds ${all1.sm.whole} whole small dies and
-    ${all1.lg.whole} large ones, because a big square wastes more of the round edge.`);
+  guide.say(`Fewer large dies fit, too. This wafer holds ${all1.sm.whole} whole small dies
+    but only ${all1.lg.whole} large ones, because a big square wastes more of the round
+    edge.`);
   stage.focus([smLbl, lgLbl, smCnt, lgCnt], { label: 'whole dies per wafer', at: 'bottom' });
   await guide.next();
 
@@ -419,14 +445,14 @@ export async function step3(){
     wafer.tile(curSize.s, curSize.s);
     paint();
     refresh();
-    guide.say(`A second wafer, cut back to medium so you start level. This one caught 24
-      specks, twice the dust of the first.`);
+    guide.say(`Here is a second wafer, set back to medium so you start from the same
+      place. This one caught 24 specks, twice the dust of the first.`);
     stage.focus(defectLayer, { label: '24 specks', at: 'top', ring: false });
   }, () => killingSeed(24));
 
   stage.clearFocus();
-  guide.say(`Twice the dust on the same design. Before you touch the sizes: does small
-    still come out cheapest?`);
+  guide.say(`There is twice the dust on the same design. Before you touch the sizes,
+    predict: does small still come out cheapest?`);
   const predict = await guide.choose([
     { label: 'Yes, small still wins', value: 'sm' },
     { label: 'No, medium wins now', value: 'md' },
@@ -436,15 +462,17 @@ export async function step3(){
   refresh();
   segEnabled(true);
   guide.say(predict === 'sm'
-    ? `Same answer, and the number settles it. <b>Get this wafer under $${TARGET_B} per
-       good die.</b>`
-    : `Worth checking. <b>Get this wafer under $${TARGET_B} per good die.</b>`);
+    ? `You said small again, and the number will settle it. <b>Your goal is to get this
+       wafer under $${TARGET_B} per good die.</b>`
+    : `Worth checking against the number. <b>Your goal is to get this wafer under
+       $${TARGET_B} per good die.</b>`);
 
   const pick2 = await flow.ask(async replay => {
     if (replay !== undefined){ setSize(replay); seg.set(replay); return replay; }
     const cancel = hintLater(15000,
-      `<b>Still after $${TARGET_B} per good die.</b> With this much dust the large cut
-       loses about half its dies. Small is the only one with enough survivors.`);
+      `<b>The target is still $${TARGET_B} per good die.</b> With this much dust the large
+       size loses about half its dies, and small is the only size with enough good dies
+       left.`);
     onSegPick = cancel;
     await waitFor(() => { const c = refresh(); return c.good > 0 && c.cost <= TARGET_B; });
     cancel();
@@ -472,16 +500,70 @@ export async function step3(){
   panel.appendChild(compare);
   await fadeIn([compare], 320);
 
-  guide.say(`${named(pick2)} again, at ${money(all2[pick2].cost)}. The other two cuts of
-    this same wafer are on the right.`);
-  stage.focus(compare, { label: 'this wafer, cut three ways', at: 'top' });
+  guide.say(`${named(pick2)} again, at ${money(all2[pick2].cost)}. The other two sizes for
+    this same wafer are priced on the right.`);
+  stage.focus(compare, { label: 'this wafer, three sizes', at: 'top' });
   await guide.next();
 
   stage.clearFocus();
   guide.aha(`This is why chips are small. A speck kills one die whatever its size, so the
     bigger you cut, the more silicon each speck takes with it.`,
     `A large die costs many times more than its area suggests: fewer fit on the wafer, and
-     fewer of those live. The ones that do live are not identical either, and they will not
+     fewer of those work. The ones that work are not identical either, and they will not
      all sell for the same price.`);
   await guide.next();
+
+  // Course restructure (2026-10-25): light-bulb card for "poor yields".
+  stage.clearFocus();
+  guide.say(`When you read that a new process has poor yields, it means too many dies on each
+    wafer come out dead.`);
+  stage.focus(dieLayer, { label: 'dead dies in red', at: 'top', ring: false });
+  await guide.next();
+
+  /* ================= In the Lab (DESIGN.md §6d rule 8) =================
+     How a fab finds the dead dies it cannot see: a wafer prober and its probe card, the
+     wafer map it produces (filled in die by die), and the hand-driven probe station a
+     university device lab has. */
+  stage.clearFocus();
+  const prober = slideInPanel(svg, proberHTML(), { lab: true });
+  prober.focus('prober');
+  await prober.show();
+  guide.lab(`In this step you could see where each speck landed. A fab cannot see them, so it
+    tests every die while the wafer is still whole, on a machine called a <b>wafer
+    prober</b>.`, { intro: true });
+  await guide.next();
+
+  prober.focus('needles');
+  guide.lab(`The prober lowers a <b>probe card</b> onto one die. Fine metal needles, one for each
+    pad on the die, touch it and run a short test. Then the wafer moves under them to the next
+    die.`);
+  await guide.next();
+
+  const mapPanel = waferMapHTML();
+  const lab = slideInPanel(svg, mapPanel.html, { lab: true });
+  lab.focus('map');
+  await prober.swapTo(lab);      // N-053: no flash of the stage between panels
+  /* the map fills in die by die, in the order the prober steps across the wafer */
+  const dieRects = [...lab.g.querySelectorAll('[data-die]')];
+  const whole = mapPanel.dies.filter(d => d.state !== 'edge');
+  let shown = 0;
+  await Anim.tween(1400, q => {
+    const upto = Math.round(q * whole.length);
+    for (; shown < upto; shown++){
+      const d = whole[shown];
+      dieRects[d.id].setAttribute('class', 'die ' + d.state);
+    }
+  });
+  whole.forEach(d => dieRects[d.id].setAttribute('class', 'die ' + d.state));
+  guide.lab(`The results make a <b>wafer map</b>, like the one you coloured: good dies in blue,
+    failed dies in red. Only the good dies go on to be packaged. Older lines also marked each
+    failed die with a drop of ink.`);
+  await guide.next();
+
+  lab.focus('manual');
+  guide.lab(`A university lab has a simpler <b>probe station</b>: a microscope and three needles on
+    screw-driven arms. Students land the needles on one transistor's source, gate and drain,
+    and measure the current through it.`);
+  await guide.next();
+  await lab.hide();
 }

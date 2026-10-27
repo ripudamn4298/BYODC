@@ -1,40 +1,41 @@
-// ACT 4 · STEP 1 — "Eight adders at once".
-// Rebuilt to the micro-learning contract in DESIGN_MAKEOVER.md §2 / §5: one card at a
-// time (guide.cards), every card focuses and names the one thing it is about, "lane" is
-// derived from the player's own Act 2 datapath before the word is ever used, and both
-// structural jumps (one adder → eight, eight → one lane → sixteen) are watched, not cut to.
-import { sleep, waitFor, el, svgEl } from '../../engine/util.js';
+// ACT 4 · STEP 1 — "CPU vs GPU"
+// Reworked 2026-10-25 (Ripu's Act 4 plan, after the Branch Education GPU video). The step
+// starts from the CPU the player built in Act 2 and lets the GPU appear out of a real job,
+// so the two are told apart by what they are built from, never by a card that compares
+// them:
+//   0. (course restructure 2026-10-25) the hand-in from Act 3: your packaged chip, its die
+//      empty; by the end of the act it is a GPU
+//   A. your Act 2 machine is a CPU; a real CPU core adds one big part, the control unit
+//   B. a game job: move all 16 corners of a shape 3 steps right; the CPU does it one corner
+//      per beat (16 cycles), and the shape bends while it works
+//   C. one patch of silicon filled two ways: two CPU cores, or one scheduler and 16
+//      lanes; the lane is defined on its own card
+//   D. one instruction, +3, to all sixteen lanes: every corner moves in one beat; GPU named
+//   In the Lab: the H100 die (switched-off SMs point back to Act 3 step 5), then one SM,
+//   whose groups each have a scheduler like the learner's, then (course restructure
+//   2026-10-25) the CUDA core: a lane, and the spec-sheet count 132 × 128 = 16,896.
+// Determinism: every move rides Anim.tween or sleep and every interaction goes through
+// guide.next / guide.button, so a replay lands on the same end state.
+import { sleep, svgEl } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeLaneGrid } from '../../engine/lanes.js';
+import { slideInPanel } from '../../engine/components.js';
+import { labGpuDie } from './lab.js';
 
-const A = [3, 7, 2, 8, 4, 6, 1, 5];
-const B = [4, 1, 6, 3, 5, 2, 8, 2];
-const SUM = A.map((a, i) => a + B[i]);
+/* ---- the game picture: a 16-cornered star, every corner moved 3 steps (30 units) right ---- */
+const SHAPE = { cx: 170, cy: 186, r1: 74, r2: 38 };
+const STEP_PX = 10, MOVE = 3;                       // one step = 10 units
+const CORNERS = Array.from({ length: 16 }, (_, i) => {
+  const a = -Math.PI / 2 + i * Math.PI / 8, r = i % 2 ? SHAPE.r2 : SHAPE.r1;
+  return { x: SHAPE.cx + r * Math.cos(a), y: SHAPE.cy + r * Math.sin(a) };
+});
 
-const COL_X = 96, COL_W = 58, COL_STEP = 66;      // eight columns, 96 → 616
-const ROW = { a: 64, b: 102, add: 158, sum: 236 };
-const colBox = i => ({ x: COL_X + i * COL_STEP, y: ROW.add, w: COL_W, h: 44 });
-
-/* short arrow: a line plus a drawn head, so the stage needs no <defs> */
-function arrow(parent, x1, y1, x2, y2){
+function box(parent, x, y, w, h, label, caption, cls = 'tile-bg'){
   const g = svgEl('g');
-  g.appendChild(svgEl('line', { x1, y1, x2, y2, class: 'wire' }));
-  const a = Math.atan2(y2 - y1, x2 - x1), h = 7;
-  g.appendChild(svgEl('path', {
-    d: `M${x2} ${y2} L${x2 - h * Math.cos(a - .42)} ${y2 - h * Math.sin(a - .42)} L${x2 - h * Math.cos(a + .42)} ${y2 - h * Math.sin(a + .42)} Z`,
-    fill: 'var(--ink)',
-  }));
-  parent.appendChild(g);
-  return g;
-}
-
-function box(parent, x, y, w, h, label, caption){
-  const g = svgEl('g');
-  g.appendChild(svgEl('rect', { x, y, width: w, height: h, rx: 5, class: 'tile-bg' }));
+  g.appendChild(svgEl('rect', { x, y, width: w, height: h, rx: 5, class: cls }));
   const t = svgEl('text', { x: x + w / 2, y: y + h / 2 + (caption ? -2 : 5), class: 'gate-lbl' });
   t.textContent = label;
   g.appendChild(t);
@@ -46,333 +47,238 @@ function box(parent, x, y, w, h, label, caption){
   parent.appendChild(g);
   return g;
 }
-
-async function fadeOut(nodes, dur = 300){
+async function fade(nodes, to, dur = 300){
   const list = nodes.filter(Boolean);
   if (!list.length) return;
-  await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(1 - p); }));
-  list.forEach(n => { n.style.display = 'none'; });
-}
-async function fadeIn(nodes, dur = 300){
-  const list = nodes.filter(Boolean);
-  if (!list.length) return;
-  list.forEach(n => { n.style.opacity = '0'; });
-  await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(p); }));
+  const from = list.map(n => +(n.style.opacity || (to ? 0 : 1)));
+  if (to) list.forEach(n => { n.style.display = ''; });
+  await Anim.tween(dur, p => list.forEach((n, i) => { n.style.opacity = String(from[i] + (to - from[i]) * p); }));
+  if (!to) list.forEach(n => { n.style.display = 'none'; });
 }
 
 export async function step1(){
-  guide.title('STEP 1 / 6 · NANOVOLT GRAPHICS', 'Eight adders <em>at once</em>');
+  guide.title('STEP 1 / 6', '<em>CPU</em> vs <em>GPU</em>');
   guide.cards();
 
-  const stage = newStage('15', 'One adder, then eight, then sixteen lanes');
-  const { svg, controls } = stage;
+  // Course restructure (2026-10-25): "one beat" -> "one cycle", the word this step now uses.
+  const stage = newStage('15', 'Your CPU moves a shape one corner at a time; sixteen lanes move it in one cycle');
+  const { svg } = stage;
 
-  /* ============ SCENE A — start from the machine the player already built ========== */
-
-  const actTwo = svgEl('g');
-  svg.appendChild(actTwo);
-  box(actTwo, 60, 160, 104, 54, 'REGISTER', 'holds a number');
-  box(actTwo, 214, 160, 104, 54, 'ADDER', 'adds');
-  const loop = svgEl('g');
-  loop.innerHTML = `
-    <path d="M164 187 H214" class="wire"/>
-    <path d="M318 187 H360 V330 H26 V187 H60" class="wire"/>
-    <path d="M112 250 V214" class="wire dim" stroke-dasharray="4 4"/>`;
-  actTwo.appendChild(loop);
-  const clockBox = box(actTwo, 62, 250, 100, 34, 'CLOCK');
-
-  guide.say(`This is the machine you built in Act 2. A <b>register</b> holds a number, an
-    <b>adder</b> adds to it, and the answer goes back to the register.`);
-  stage.focus(actTwo, { label: 'your act 2 machine', at: 'right' });
-  await guide.next();
-
-  guide.say(`The clock keeps time. <b>One cycle is one beat:</b> every part moves once,
-    then waits for the next beat.`);
-  stage.focus(clockBox, { label: 'clock', at: 'bottom' });
-  await guide.next();
-
-  stage.clearFocus();
-  const arrowG = arrow(svg, 392, 245, 452, 245);
-  const oneAdder = box(svg, 480, 215, 130, 60, 'ADDER', 'one sum per cycle');
-  await fadeIn([arrowG, oneAdder], 340);
-
-  guide.say(`Keep only the part that does the arithmetic. One adder, one sum per cycle.
-    This is the piece we are going to copy.`);
-  stage.focus(oneAdder, { label: 'one adder', at: 'top' });
-  await guide.next();
-
-  /* ============ SCENE B — the job, then one adder against eight ==================== */
-
-  /* The Act 2 machine goes, and the surviving adder travels down into the first
-     column — it has to leave 480,215 before the lists are drawn, because the
-     answer row runs straight through that spot. */
-  stage.clearFocus();
-  await fadeOut([actTwo, arrowG]);
-
-  const adders = [];
-  const adderG = svgEl('g');
-  svg.appendChild(adderG);
-  const mkAdder = i => {
-    const b = colBox(i);
-    const g = svgEl('g');
-    const r = svgEl('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 4, class: 'tile-bg' });
-    const t = svgEl('text', { x: b.x + b.w / 2, y: b.y + 29, class: 'gate-lbl' });
-    t.textContent = '+';
-    g.append(r, t);
-    adderG.appendChild(g);
-    const a = { g, r, i };
-    adders[i] = a;
-    return a;
-  };
-
-  const a0 = mkAdder(0);
-  a0.g.style.opacity = '0';
-  await Promise.all([
-    stage.packInto([oneAdder], colBox(0), { scale: 0.45, dur: 520 }),
-    Anim.tween(520, p => { a0.g.style.opacity = String(Math.max(0, (p - .55) / .45)); }),
-  ]);
-  a0.g.style.opacity = '1';
-
-  const job = svgEl('g');
-  svg.appendChild(job);
-  const rowLabel = (y, s) => {
-    const t = svgEl('text', { x: COL_X - 12, y: y + 21, class: 'lbl-strong', 'text-anchor': 'end' });
-    t.textContent = s;
-    job.appendChild(t);
-  };
-  rowLabel(ROW.a, 'LIST A'); rowLabel(ROW.b, 'LIST B'); rowLabel(ROW.sum, 'A + B');
-  const sumCells = [];
-  for (let i = 0; i < 8; i++){
-    const x = COL_X + i * COL_STEP;
-    const cell = (y, txt, cls) => {
-      const r = svgEl('rect', { x, y, width: COL_W, height: 30, rx: 3, class: cls });
-      const t = svgEl('text', { x: x + COL_W / 2, y: y + 21, class: 'bit-t' });
-      t.textContent = txt;
-      job.append(r, t);
-      return { r, t };
-    };
-    cell(ROW.a, A[i], 'bit-cell');
-    cell(ROW.b, B[i], 'bit-cell');
-    sumCells.push(cell(ROW.sum, '', 'slot'));
-  }
-  const fillSum = i => {
-    const c = sumCells[i];
-    if (!c) return;
-    c.t.textContent = SUM[i];
-    c.r.setAttribute('class', 'bit-cell hi');
-    c.t.classList.add('hi');
-  };
-  const clearSums = () => sumCells.forEach(c => {
-    c.t.textContent = ''; c.t.classList.remove('hi'); c.r.setAttribute('class', 'slot');
-  });
-
-  await fadeIn([job], 340);
-
-  guide.say(`Here is the job. Two lists of eight numbers, added pair by pair.`);
-  // no ring here: the adder already sits between the input rows and the answer
-  // row, and a box drawn round the job would enclose it while it is dimmed
-  stage.focus(job, { label: '8 pairs to add', at: 'bottom', ring: false });
-  await guide.next();
-
-  guide.say(`Predict before you run it. How many cycles does <b>one</b> adder need for all
-    eight pairs, and how many do <b>eight</b> adders need?`);
-  stage.clearFocus();
-  const guess = await guide.choose([
-    { label: '8 cycles, then 1 cycle', value: 'right', hint: 'one adder does one pair per cycle' },
-    { label: '8 cycles, then 8 cycles', value: 'both8' },
-    { label: '1 cycle, then 1 cycle', value: 'both1' },
-  ]);
-  guide.note(guess === 'right'
-    ? `Right. Run it and watch.`
-    : `One adder does one pair per cycle, so eight pairs take eight cycles. Eight adders
-       each take one pair at the same moment, so the row lands in one cycle.`);
-  await guide.next();
-
-  const counter = svgEl('text', { x: 360, y: 300, class: 'lbl-strong' });
-  counter.textContent = 'CYCLES USED: 0';
-  svg.appendChild(counter);
-  const tally = svgEl('g');
-  svg.appendChild(tally);
-  const tallyLine = (y, s) => {
-    const t = svgEl('text', { x: 360, y, class: 'lbl' });
-    t.textContent = s; t.style.opacity = '0';
-    tally.appendChild(t);
-    return t;
-  };
-  const tallySerial = tallyLine(348, 'ONE ADDER · 8 CYCLES');
-  const tallyPar = tallyLine(372, 'EIGHT ADDERS · 1 CYCLE');
-
-  guide.say(`You have one adder. Each press runs one cycle: it adds the pair above it,
-    then moves to the next column.`);
-
-  const oneBtn = el('button', { class: 'btn primary', 'data-label': 'add-next-pair' }, 'ADD NEXT PAIR');
-  const allBtn = el('button', { class: 'btn primary', 'data-label': 'all-eight-at-once' }, 'ALL EIGHT AT ONCE');
-  allBtn.disabled = true;
-  controls.append(oneBtn, allBtn);
-
-  const stampRest = () => {
-    for (let i = 1; i < 8; i++) if (!adders[i]) mkAdder(i);
-  };
-  const settleRace = () => {
-    stampRest();
-    a0.g.setAttribute('transform', 'translate(0 0)');
-    clearSums();
-    for (let i = 0; i < 8; i++){ fillSum(i); adders[i].r.classList.add('on'); }
-    counter.textContent = 'CYCLES USED: 1';
-    tallySerial.style.opacity = '1'; tallyPar.style.opacity = '1';
-    [oneBtn, allBtn].forEach(b => { b.disabled = true; b.classList.add('used'); });
-  };
-
-  await flow.ask(async replay => {
-    if (replay !== undefined){ settleRace(); return replay; }
-    let n = 0, serialDone = false, parallelDone = false, busy = false;
-
-    oneBtn.addEventListener('click', async () => {
-      if (n >= 8 || busy) return;
-      busy = true;
-      SFX.click();
-      if (n > 0){
-        await Anim.tween(180, p => {
-          a0.g.setAttribute('transform', `translate(${((n - 1) + p) * COL_STEP} 0)`);
-        });
-      }
-      a0.r.classList.add('on');
-      fillSum(n);
-      n++;
-      counter.textContent = `CYCLES USED: ${n}`;
-      busy = false;
-      if (n >= 8){
-        serialDone = true;
-        tallySerial.style.opacity = '1';
-        oneBtn.disabled = true; oneBtn.classList.add('used');
-        allBtn.disabled = false;
-        guide.say(`Eight cycles for eight pairs. Now stamp seven more copies of the same
-          adder and give each one its own pair.`);
-      }
-    });
-
-    allBtn.addEventListener('click', async () => {
-      if (parallelDone || !serialDone) return;
-      SFX.click();
-      allBtn.disabled = true; allBtn.classList.add('used');
-      clearSums();
-      counter.textContent = 'CYCLES USED: 0';
-      a0.r.classList.remove('on');
-      // the one adder returns home, then six siblings print in beside it
-      await Anim.tween(240, p => {
-        a0.g.setAttribute('transform', `translate(${7 * (1 - p) * COL_STEP} 0)`);
-      });
-      stampRest();
-      const fresh = adders.slice(1).map(a => a.g);
-      await fadeIn(fresh, 320);
-      await sleep(140);
-      adders.forEach(a => a.r.classList.add('on'));
-      for (let i = 0; i < 8; i++) fillSum(i);
-      counter.textContent = 'CYCLES USED: 1';
-      tallyPar.style.opacity = '1';
-      SFX.success();
-      parallelDone = true;
-    });
-
-    await waitFor(() => serialDone && parallelDone, { hold: 320 });
-    return true;
-  });
-
-  guide.say(`Eight cycles, then one. The same work, done by copies instead of by one part
-    working faster.`);
-  stage.focus(tally, { ring: true });
-  await guide.next();
-
-  /* ============ SCENE C — eight adders become one lane, then sixteen =============== */
-
-  stage.clearFocus();
-  controls.innerHTML = '';        // the race buttons are spent; clear the bench
-  await fadeOut([job, counter, tally], 260);
-  await stage.packInto(adders.map(a => a.g), { x: 327, y: 207, w: 66, h: 66 });
-
-  const laneTile = svgEl('g');
-  laneTile.append(
-    svgEl('rect', { x: 327, y: 207, width: 66, height: 66, rx: 4, class: 'lane' }),
-    svgEl('circle', { cx: 382, cy: 218, r: 4, class: 'lane-lamp' }),
-  );
-  const lanePlus = svgEl('text', { x: 360, y: 246, class: 'gate-lbl' });
-  lanePlus.textContent = '+';
-  laneTile.appendChild(lanePlus);
-  svg.appendChild(laneTile);
-  await fadeIn([laneTile], 300);
-
-  guide.say(`Pack one adder together with the numbers it works on and you get a
-    <b>lane</b>. A lane is your adder, copied, holding its own pair.`);
-  stage.focus(laneTile, { label: 'lane = one adder + its own numbers', at: 'bottom' });
-  await guide.next();
-
-  /* the lane travels to the first grid slot, the other fifteen print in behind it */
-  stage.clearFocus();
-  const GX = 216, GY = 120, CELL = 66, GAP = 8, GW = 4 * CELL + 3 * GAP;
-  const grid = makeLaneGrid(svg, { x: GX, y: GY, cols: 4, rows: 4, cell: CELL, gap: GAP });
-  grid.lanes.forEach(l => [l.rect, l.lamp, l.val].forEach(n => { n.style.opacity = '0'; }));
-
-  await Anim.tween(420, p => {
-    laneTile.setAttribute('transform', `translate(${(GX - 327) * p} ${(GY - 207) * p})`);
-  });
-  laneTile.style.display = 'none';
-  const show = i => [grid.lanes[i].rect, grid.lanes[i].lamp, grid.lanes[i].val]
-    .forEach(n => { n.style.opacity = '1'; });
-  show(0);
-  for (let i = 1; i < 16; i++){
-    show(i);
-    if (!flow.instant){ SFX.click(); await sleep(48); }
-  }
-
-  guide.say(`Sixteen lanes on one chip. They fit because a lane cannot choose its own job.
-    It only ever does what it is told.`);
-  stage.focus(grid.g, { label: '16 lanes', at: 'bottom' });
-  await guide.next();
-
-  stage.clearFocus();
-  const rail = svgEl('g');
+  /* ============ 0 — the hand-in from Act 3: your packaged chip, its die still empty ====== */
+  // Course restructure (2026-10-25): a new opening card. Act 3 ends on "what should an AI
+  // chip fill it with?", so the act opens on that chip, its die drawn empty.
   const chip = svgEl('g');
-  chip.appendChild(svgEl('rect', { x: GX, y: 74, width: 74, height: 26, rx: 4, class: 'tile-bg on' }));
-  const chipT = svgEl('text', { x: GX + 37, y: 92, class: 'gate-lbl' });
-  chipT.textContent = 'ADD';
-  chip.appendChild(chipT);
-  rail.appendChild(svgEl('path', { d: `M${GX} 108 H${GX + GW}`, class: 'wire dim' }));
-  rail.appendChild(chip);
-  svg.appendChild(rail);
-  await fadeIn([rail], 300);
-
-  guide.say(`One order travels along this rail and reaches every lane at the same moment.`);
-  stage.focus(rail, { label: 'one instruction, sent to all 16', at: 'top' });
-
-  const OPS_A = [3, 7, 2, 8, 4, 6, 1, 5, 9, 2, 7, 3, 6, 4, 8, 1];
-  const OPS_B = [4, 1, 6, 3, 5, 2, 8, 2, 1, 7, 4, 9, 2, 6, 3, 5];
-  const SUMS = OPS_A.map((a, i) => a + OPS_B[i]);
-
-  await guide.button('Send ADD to all sixteen ▸');
+  let pins = '';
+  for (let i = 0; i < 9; i++){
+    const o = 266 + i * 23;
+    pins += `<rect x="${o}" y="88" width="10" height="12" rx="1" class="tile-bg"/>
+      <rect x="${o}" y="380" width="10" height="12" rx="1" class="tile-bg"/>
+      <rect x="232" y="${o - 106}" width="12" height="10" rx="1" class="tile-bg"/>
+      <rect x="476" y="${o - 106}" width="12" height="10" rx="1" class="tile-bg"/>`;
+  }
+  chip.innerHTML = `${pins}
+    <rect x="244" y="100" width="232" height="280" rx="8" fill="var(--paper-high)" stroke="var(--ink)" stroke-width="1.4"/>
+    <rect x="290" y="150" width="140" height="170" rx="3" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="5 4"/>
+    <text x="360" y="232" class="lbl" style="fill:var(--ink)">THE DIE</text>
+    <text x="360" y="248" class="lbl-faint">empty</text>
+    <text x="360" y="72" class="lbl" style="fill:var(--ink)">YOUR CHIP FROM ACT 3</text>`;
+  svg.appendChild(chip);
+  guide.say(`In Act 3 you printed and packaged a chip. In this act you decide what to build on
+    its die, and by the end of the act it is a GPU.`);
+  stage.focus(chip, { label: 'what goes on the die?', at: 'right', ring: false });
+  await guide.next();
   stage.clearFocus();
+  await fade([chip], 0, 280);
 
-  if (flow.instant){
-    grid.flashAll(true);
-    SUMS.forEach((v, i) => grid.setValue(i, v));
-    chip.setAttribute('transform', `translate(${GW - 74} 0)`);
-  } else {
-    for (let c = 0; c < 4; c++){
-      chip.style.transition = 'transform 120ms';
-      chip.setAttribute('transform', `translate(${c * (CELL + GAP)} 0)`);
-      for (let r = 0; r < 4; r++){
-        const i = r * 4 + c;
-        grid.setActive(i, true);
-        grid.setValue(i, SUMS[i]);
-      }
-      SFX.blip();
-      await sleep(110);
-    }
-    chip.setAttribute('transform', `translate(${GW - 74} 0)`);
-    SFX.success();
+  /* ============ A — your Act 2 machine is a CPU, and a real CPU core has a control ===== */
+
+  const cpu = svgEl('g');
+  svg.appendChild(cpu);
+  cpu.style.opacity = '0';
+  box(cpu, 70, 236, 104, 54, 'REGISTER', 'holds a number');
+  const add = box(cpu, 224, 236, 104, 54, 'ADDER', 'adds');
+  const loop = svgEl('g');
+  loop.innerHTML = `<path d="M174 263 H224" class="wire"/>
+    <path d="M328 263 H364 V318 H36 V263 H70" class="wire"/>`;
+  cpu.appendChild(loop);
+  box(cpu, 136, 326, 126, 32, 'CLOCK');
+  await fade([cpu], 1, 320);
+
+  guide.say(`This is the machine you built in Act 2: a register, an adder and a clock in one
+    loop. Running that loop billions of times a second makes it a <b>CPU</b>.`);
+  stage.focus(cpu, { label: 'your act 2 machine', at: 'right' });
+  await guide.next();
+
+  stage.clearFocus();
+  const control = box(cpu, 70, 96, 258, 112, 'CONTROL UNIT', 'decides what to do next');
+  const ctlWire = svgEl('path', { d: 'M199 208 V236', class: 'wire' });
+  cpu.appendChild(ctlWire);
+  control.style.opacity = '0'; ctlWire.style.opacity = '0';
+  await fade([control, ctlWire], 1, 340);
+  guide.say(`A real CPU core has one more part, the biggest of all: the <b>control unit</b>. It
+    reads each instruction of a program and decides what to do next, which is why one CPU can
+    run any program.`);
+  stage.focus(control, { label: 'control unit', at: 'right' });
+  await guide.next();
+
+  /* ============ B — a game job, done by the CPU one corner per beat ==================== */
+
+  stage.clearFocus();
+  // the CPU core moves to the right half, small, and the game's picture opens on the left
+  await Anim.tween(560, p => {
+    const s = 1 - .42 * p, tx = 404 * p, ty = -36 * p;
+    cpu.setAttribute('transform', `translate(${tx.toFixed(1)} ${ty.toFixed(1)}) scale(${s.toFixed(3)})`);
+  });
+  const cpuCap = svgEl('text', { x: 520, y: 192, class: 'lbl' });
+  cpuCap.textContent = 'ONE CPU CORE';
+  svg.appendChild(cpuCap);
+
+  const screen = svgEl('g');
+  screen.innerHTML = `<rect x="36" y="78" width="300" height="214" rx="6" fill="var(--paper-high)" stroke="var(--ink)" stroke-width="1.2"/>
+    <text x="186" y="70" class="lbl">THE GAME'S PICTURE</text>`;
+  svg.appendChild(screen);
+  const outline = svgEl('polygon', { fill: 'rgba(29,33,23,.06)', stroke: 'var(--ink)', 'stroke-width': 1.4, 'stroke-linejoin': 'round' });
+  const ghost = svgEl('polygon', { fill: 'none', stroke: 'var(--ink-faint)', 'stroke-width': 1, 'stroke-dasharray': '3 3' });
+  screen.append(ghost, outline);
+  const pos = CORNERS.map(c => ({ ...c }));
+  const dots = CORNERS.map(() => { const d = svgEl('circle', { r: 4, fill: 'var(--ink)' }); screen.appendChild(d); return d; });
+  const draw = () => {
+    outline.setAttribute('points', pos.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '));
+    dots.forEach((d, i) => { d.setAttribute('cx', pos[i].x.toFixed(1)); d.setAttribute('cy', pos[i].y.toFixed(1)); });
+  };
+  ghost.setAttribute('points', CORNERS.map(p => `${(p.x + MOVE * STEP_PX).toFixed(1)},${p.y.toFixed(1)}`).join(' '));
+  draw();
+  ghost.style.opacity = '0';
+  screen.style.opacity = '0';
+  await fade([screen], 1, 360);
+  await fade([ghost], 1, 260);
+
+  guide.say(`Here is a job from a game. This shape has 16 corners, and every corner has to
+    move 3 steps to the right, to the dashed outline. That is the same sum, <b>+3</b>, done
+    sixteen times.`);
+  stage.focus(screen, { label: '16 corners, each +3', at: 'bottom', ring: false });
+  await guide.next();
+
+  /* the CPU run: one corner per beat, a counter, and the shape bent while it works */
+  stage.clearFocus();
+  const counter = svgEl('text', { x: 186, y: 322, class: 'lbl-strong' });
+  counter.textContent = 'CPU: 0 CYCLES';
+  svg.appendChild(counter);
+  // Course restructure (2026-10-25): the step used "beat" and "cycle" for the same thing;
+  // this card ties them once (as Act 2 step 4 did), and the step says "cycle" from here.
+  guide.say(`Give the job to your CPU. Its control unit sends <b>+3</b> to the adder once per
+    cycle, one corner at a time. As in Act 2, one cycle is one beat of the clock.`);
+  stage.focus([cpu, screen], { label: 'one corner per cycle', at: 'top', ring: false });
+  await guide.button('Run it on the CPU ▸');
+  stage.clearFocus();
+  const addRect = add.querySelector('rect');
+  for (let i = 0; i < 16; i++){
+    addRect.classList.add('on');
+    const x0 = pos[i].x;
+    await Anim.tween(150, p => { pos[i].x = x0 + MOVE * STEP_PX * p; draw(); });
+    counter.textContent = `CPU: ${i + 1} CYCLE${i ? 'S' : ''}`;
+    if (!flow.instant){ SFX.blip(); await sleep(40); }
+    addRect.classList.remove('on');
   }
 
-  guide.aha(`Sixteen answers in one cycle. One order, sixteen lanes, sixteen different
-    pairs of numbers.`,
-    `That is the whole trick of a GPU. The rest of this act makes each lane better at the one sum it does.`);
+  guide.say(`Sixteen corners took the CPU sixteen cycles, one for each corner. A whole game
+    picture has millions of corners.`);
+  stage.focus(counter, { label: '16 cycles', at: 'bottom' });
   await guide.next();
+
+  /* ============ C — the same patch of silicon, filled two ways ========================= */
+
+  stage.clearFocus();
+  await fade([cpu, cpuCap], 0, 260);
+  // the shape goes back, ready for the second run
+  CORNERS.forEach((c, i) => { pos[i].x = c.x; });
+  draw();
+  counter.textContent = '';
+
+  const PA = { x: 372, y: 104, w: 146, h: 176 }, PB = { x: 540, y: 104, w: 146, h: 176 };
+  const patches = svgEl('g');
+  const coreBlock = y => `<rect x="${PA.x + 8}" y="${y}" width="${PA.w - 16}" height="54" rx="4" class="tile-bg"/>
+    <text x="${PA.x + PA.w / 2}" y="${y + 31}" class="lbl" font-size="8.5" style="fill:var(--ink)">CONTROL UNIT</text>
+    <rect x="${PA.x + PA.w / 2 - 17}" y="${y + 58}" width="34" height="18" rx="3" class="tile-bg"/>
+    <text x="${PA.x + PA.w / 2}" y="${y + 71}" class="lbl" font-size="10" style="fill:var(--ink)">+</text>`;
+  let lanes = '';
+  for (let i = 0; i < 16; i++){
+    const x = PB.x + 9 + (i % 4) * 33, y = PB.y + 52 + Math.floor(i / 4) * 30;
+    lanes += `<g class="ln"><rect x="${x}" y="${y}" width="28" height="25" rx="3" class="lane"/>
+      <text x="${x + 14}" y="${y + 17}" class="lbl" font-size="11" style="fill:var(--ink-soft)">+</text></g>`;
+  }
+  patches.innerHTML = `<text x="529" y="90" class="lbl" style="fill:var(--ink)">ONE PATCH OF SILICON, FILLED TWO WAYS</text>
+    <g class="pa"><rect x="${PA.x}" y="${PA.y}" width="${PA.w}" height="${PA.h}" rx="6" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="5 4"/>
+      ${coreBlock(PA.y + 8)}${coreBlock(PA.y + 92)}
+      <text x="${PA.x + PA.w / 2}" y="${PA.y + PA.h + 18}" class="lbl" style="fill:var(--ink)">2 CPU CORES</text></g>
+    <g class="pb"><rect x="${PB.x}" y="${PB.y}" width="${PB.w}" height="${PB.h}" rx="6" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="5 4"/>
+      <rect x="${PB.x + 8}" y="${PB.y + 8}" width="${PB.w - 16}" height="26" rx="4" class="tile-bg"/>
+      <text x="${PB.x + PB.w / 2}" y="${PB.y + 25}" class="lbl" font-size="8" style="fill:var(--ink)">ONE SCHEDULER</text>
+      <path d="M${PB.x + PB.w / 2} ${PB.y + 34} V${PB.y + 44} M${PB.x + 10} ${PB.y + 44} H${PB.x + PB.w - 10}" class="wire"/>
+      ${lanes}
+      <text x="${PB.x + PB.w / 2}" y="${PB.y + PB.h + 18}" class="lbl" style="fill:var(--ink)">16 LANES</text></g>`;
+  svg.appendChild(patches);
+  patches.style.opacity = '0';
+  await fade([patches], 1, 380);
+
+  guide.say(`Here is one patch of silicon, filled two ways. On the left are two whole CPU
+    cores, each with its own control unit. On the right are sixteen small adders and one
+    <b>scheduler</b>: a simpler control that sends the same instruction to all of them.`);
+  stage.focus(patches, { label: 'same area', at: 'bottom', ring: false });
+  await guide.next();
+
+  // Course restructure (2026-10-25): the card above already says the scheduler sends one
+  // instruction to all of them, so this card no longer repeats it.
+  guide.say(`Each of those small adders, holding its own number, is a <b>lane</b>. A lane has
+    no control unit of its own.`);
+  stage.focus(patches.querySelector('.pb'), { label: 'lane = one adder + its own number', at: 'bottom', ring: false });
+  await guide.next();
+
+  /* ============ D — one instruction, sixteen lanes, one cycle ========================= */
+
+  stage.clearFocus();
+  guide.say(`Now give the same job to the sixteen lanes. Each lane holds one corner, and the
+    scheduler sends <b>+3</b> to all of them at once.`);
+  stage.focus([patches.querySelector('.pb'), screen], { label: 'one corner per lane', at: 'top', ring: false });
+  await guide.button('Send +3 to all sixteen lanes ▸');
+  stage.clearFocus();
+  patches.querySelectorAll('.pb .ln rect').forEach(r => r.classList.add('on'));
+  await Anim.tween(420, p => { CORNERS.forEach((c, i) => { pos[i].x = c.x + MOVE * STEP_PX * p; }); draw(); });
+  counter.textContent = 'LANES: 1 CYCLE  ·  CPU: 16 CYCLES';
+  if (!flow.instant) SFX.success();
+
+  guide.aha(`All sixteen corners moved in one cycle, where the CPU needed sixteen.`,
+    `A chip built this way, from many lanes that share one scheduler, is a <b>GPU</b> (graphics
+     processing unit). It was first built for exactly this job: moving and colouring the
+     points of a game's picture.`);
+  stage.focus([counter, screen], { ring: false });
+  await guide.next();
+
+  /* ============ IN THE LAB — a real GPU, and where its schedulers sit ============ */
+  stage.clearFocus();
+  const lab = slideInPanel(svg, labGpuDie(), { lab: true });
+  lab.focus(['die', 'off']);
+  await lab.show();
+
+  guide.lab(`This is the die of NVIDIA's H100 GPU. Each small square on it is an <b>SM</b>
+    (streaming multiprocessor): a group of 128 lanes like yours. Of its 144 SMs, the 12
+    dashed ones are switched off, like the faulty cores in Act 3 step 5.`, { intro: true });
+  await guide.next();
+
+  lab.focus('sm');
+  lab.g.querySelector('.a4-q0').classList.add('a4-lit');
+  guide.lab(`Inside one SM are four groups of 32 lanes. Each group has its own scheduler, like
+    the one you just used: it sends one instruction to all 32 lanes at once. Ignore the boxes
+    marked REGISTER FILE for now: you will learn what they are in step 3.`);
+  await guide.next();
+
+  // Course restructure (2026-10-25): a new lab card, on the same panel, that names the lane
+  // as NVIDIA's CUDA core and ties the H100's spec-sheet count to the die and the SM above
+  // (132 SMs switched on × 128 lanes = 16,896). The card above's "4.3.3" became "step 3".
+  lab.focus(['die', 'sm']);
+  lab.g.querySelectorAll('.a4-q1, .a4-q2, .a4-q3').forEach(q => q.classList.add('a4-lit'));
+  guide.lab(`NVIDIA calls each lane a <b>CUDA core</b>. When a spec sheet lists the H100's
+    16,896 CUDA cores, it means 132 SMs of 128 lanes, like the ones you just saw.`);
+  await guide.next();
+  await lab.hide();
 }

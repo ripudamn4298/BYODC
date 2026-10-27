@@ -1,4 +1,4 @@
-// ACT 5 · STEP 1 — "Eight GPUs to a rack".
+// ACT 5 · STEP 1 — "What is a rack, and how much power does it draw?" (was "Eight GPUs to a rack").
 // Rebuilt to the micro-learning contract in DESIGN_MAKEOVER.md §2 and the script in
 // ACT5_MAKEOVER.md §3: one card at a time (guide.cards), each card focuses and names the
 // one thing it is about, and the step opens on the GPU package the player assembled at the
@@ -27,7 +27,8 @@ import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makePlacer } from '../../engine/components.js';
+import { slideInPanel } from '../../engine/components.js';
+import { rackLab, serverTopLab } from './lab.js';
 
 /* ---------- fixed numbers ---------- */
 const NODE_KW = 7;
@@ -78,7 +79,7 @@ async function fadeOut(nodes, dur = 260){
   list.forEach(n => { n.style.display = 'none'; });
 }
 
-/* The package from the end of Act 4: substrate, two memory towers, the compute die with
+/* The package from the end of Act 4: substrate, two memory towers, the GPU die with
    its sixteen lanes, and the lid. Drawn in stage coordinates so nothing that measures it
    later has to reason about a parent transform. */
 function drawPackage(parent, ox, oy){
@@ -95,7 +96,7 @@ function drawPackage(parent, ox, oy){
     }
   };
   stack(24); stack(228);
-  R(96, 22, 108, 74, 4, 'tile-bg');                                  // the compute die
+  R(96, 22, 108, 74, 4, 'tile-bg');                                  // the GPU die
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++){
     g.appendChild(svgEl('rect', {
       x: ox + 104 + c * 24, y: oy + 30 + r * 16, width: 18, height: 11, rx: 1.5,
@@ -123,7 +124,7 @@ function drawGpuCard(parent){
 }
 
 export async function step1(){
-  guide.title('STEP 1 / 5 · NANOVOLT CLOUD', 'Eight GPUs <em>to a rack</em>');
+  guide.title('STEP 1 / 5', 'What is a rack, and <em>how much power does it draw?</em>');
   guide.cards();
 
   const stage = newStage('21', 'One GPU into a sled, eight sleds into a rack');
@@ -136,8 +137,11 @@ export async function step1(){
   svg.appendChild(gpuG);
   drawPackage(gpuG, PKG.x, PKG.y);
 
-  guide.say(`This is the GPU you finished in Act 4. One of them trains a small model.
-    Here you stack them: eight GPUs to a box, eight boxes to a frame.`);
+  /* Course restructure (2026-10-25): picks up Act 4's last point, that one H100 (80 GB)
+     cannot hold GPT-3's 350 GB of weights. */
+  guide.say(`This is the GPU you finished in Act 4. One GPU cannot even hold GPT-3, so you
+    need many of them. In this step, eight go into one box, and eight boxes go into one
+    standing frame.`);
   stage.focus(gpuG, { label: 'the gpu you built', at: 'bottom' });
   await guide.next();
 
@@ -169,7 +173,7 @@ export async function step1(){
   stage.focus(trayG, { label: 'sled', at: 'bottom' });
   await guide.next();
 
-  /* ================= CARD 3 — the interconnect spine ============================== */
+  /* ================= CARD 3 — the interconnect ==================================== */
 
   stage.clearFocus();
   const spineG = svgEl('g');
@@ -180,16 +184,19 @@ export async function step1(){
   spineG.style.opacity = '0';
   await fadeIn([spineG], 300);
 
-  guide.say(`Down the middle runs the interconnect spine, a copper backbone. The eight
-    GPUs talk over it, and their messages never leave the box.`);
-  stage.focus(spineG, { label: 'interconnect spine', at: 'bottom' });
+  /* Course restructure (2026-10-25): "interconnect spine" is now just "interconnect", because
+     step 3 uses "spine" for a switch. */
+  guide.say(`Down the middle runs the interconnect (a set of copper connections that joins the
+    eight GPUs). The GPUs send data to each other over it, and that data never leaves the
+    box.`);
+  stage.focus(spineG, { label: 'interconnect', at: 'bottom' });
   await guide.next();
 
-  /* ================= CARD 4 — fill the eight slots ================================ */
+  /* ================= CARD 4 — fill the eight slots, and name the node ============== */
 
   stage.clearFocus();
 
-  /* the stub each GPU taps the spine with. Drawn only once its slot is filled, so the
+  /* the stub each GPU taps the interconnect with. Drawn only once its slot is filled, so the
      empty tray stays clean and the player watches each card connect. */
   const stubs = [];
   const stubG = svgEl('g');
@@ -251,52 +258,37 @@ export async function step1(){
   }
   await fadeIn([slotG, tally], 240);
 
-  const placer = makePlacer({
-    svg, tiles, slots,
-    validate: v => v.every(x => x === 'GPU'),
-    onPlace: () => {
-      const n = slots.filter(s => s.value).length;
-      tally.textContent = `GPUS ON THE SLED: ${n} / 8`;
-      slots.forEach((s, i) => { stubs[i].style.opacity = s.value ? '1' : '0'; });
-    },
-  });
-
-  /* Chrome paints an amber :focus-visible ring on a clicked SVG target, which reads as a
-     sixth meaning for amber. Drop it on pointer-driven clicks; keyboard focus still shows. */
-  const focusables = [...tiles.map(t => t.g), ...slots.map(s => s.rect)];
-  focusables.forEach(n => n.addEventListener('click', e => { if (e.detail) n.blur(); }));
-  const dropTabstops = () => focusables.forEach(n => { n.removeAttribute('tabindex'); n.blur(); });
-
-  guide.say(`Eight copies of that GPU, and eight slots waiting for them.
-    <b>Drag a GPU into every slot on the sled.</b>`);
-
-  await flow.ask(async replay => {
-    if (replay !== undefined){
-      placer.autoPlace();
-      tally.textContent = 'GPUS ON THE SLED: 8 / 8';
-      stubs.forEach(s => { s.style.opacity = '1'; });
-      dropTabstops();
-      return replay;
-    }
-    await placer.done;
-    dropTabstops();
-    if (!flow.instant) SFX.success();
-    return true;
-  });
-
-  /* ================= CARD 5 — that box is a node ================================== */
+  /* REVIEW_NOTES N-089: no drag task. The eight GPUs slide into their slots one after
+     another, each tapping the interconnect as it lands, while the tally counts up. Anim.tween, so
+     a replay lands every card in its slot at once. */
+  /* Course restructure (2026-10-25): the old "that box is a node" card merges in here. The
+     GPUs slide in under this text, then the finished node takes the focus. */
+  guide.say(`Eight copies of your GPU slide onto the sled, and a short link joins each one to
+    the interconnect. This finished box is called a node, and from here on we count in
+    nodes.`);
+  for (let i = 0; i < BAYS; i++){
+    const t = tiles[i], sl = slots[i];
+    const from = { x: t.home.x, y: t.home.y };
+    await Anim.tween(340, q => {
+      t.g.style.transform = `translate(${(from.x + (sl.x - from.x) * q).toFixed(1)}px,${(from.y + (sl.y - from.y) * q).toFixed(1)}px)`;
+    });
+    t.tx = sl.x; t.ty = sl.y;
+    sl.value = 'GPU'; sl.tile = t;
+    stubs[i].style.opacity = '1';
+    tally.textContent = `GPUS ON THE SLED: ${i + 1} / 8`;
+    if (!flow.instant) SFX.click();
+  }
+  slotG.style.display = 'none';
+  if (!flow.instant) SFX.success();
 
   await fadeOut([tally], 220);
   /* the cards join the tray so the finished node can travel as one piece. nodeG carries no
      transform yet, so re-parenting them changes nothing on screen. */
   tiles.forEach(t => nodeG.appendChild(t.g));
-
-  guide.say(`Eight GPUs on one sled, all on one spine. The finished box is a node, and
-    racks are counted in nodes.`);
   stage.focus(nodeG, { label: 'node', at: 'top' });
   await guide.next();
 
-  /* ================= CARD 6 — what a node draws =================================== */
+  /* ================= CARD 5 — what a node draws =================================== */
 
   stage.clearFocus();
 
@@ -329,12 +321,15 @@ export async function step1(){
   powerG.style.opacity = '0';
   await fadeIn([powerG], 300);
 
-  guide.say(`One node draws about 7 kW, and it draws it all day. The average American home
-    draws 1.2 kW across a year, so one box draws what six homes do.`);
+  /* Course restructure (2026-10-25): Act 4's 700 W meets the node's 7 kW. 8 × 700 W =
+     5.6 kW for the GPUs; CPUs, memory, network cards and fans take it to about 7 kW.
+     7 ÷ 1.2 kW per home ≈ 5.8, so six homes. */
+  guide.say(`One node draws about 7 kW, all day: eight of your 700 W GPUs, plus the parts
+    around them. That is what six average American homes draw.`);
   stage.focus(powerG, { label: 'power draw', at: 'bottom' });
   await guide.next();
 
-  /* ================= CARD 7 — the rack ============================================ */
+  /* ================= CARD 6 — the rack ============================================ */
 
   stage.clearFocus();
 
@@ -386,7 +381,7 @@ export async function step1(){
   stage.focus(rackG, { label: 'rack', at: 'left' });
   await guide.next();
 
-  /* ================= CARD 8 — fill the frame ====================================== */
+  /* ================= CARD 7 — fill the frame ====================================== */
 
   stage.clearFocus();
 
@@ -425,8 +420,8 @@ export async function step1(){
   makeSlab(BAYS - 1);
   setRack(1);
 
-  guide.say(`Your node is in the bottom bay.
-    <b>Copy it up the frame until all eight bays are full.</b>`);
+  guide.say(`Your node is in the bottom bay (the space one sled takes in the rack). <b>Copy
+    it up the rack until all eight bays are full.</b>`);
 
   const addBtn = el('button', { class: 'btn primary', 'data-label': 'add-a-node' }, 'Add a node ▸');
   controls.appendChild(addBtn);
@@ -464,11 +459,48 @@ export async function step1(){
     return true;
   });
 
-  /* ================= CARD 9 — what the frame draws ================================ */
+  /* ================= CARD 8 — what the frame draws ================================ */
 
-  guide.aha(`Eight nodes at 7 kW each. One filled rack draws 56 kW and it never drops.
-    That is about forty-seven homes, from one frame.`,
+  guide.aha(`Eight nodes at 7 kW each. One filled rack draws 56 kW, and it never drops. That
+    is about forty-seven homes, from one rack.`,
     `That is one rack: 8 nodes, 64 GPUs.`);
   stage.focus(powerG, { label: 'rack power', at: 'bottom' });
   await guide.next();
+
+  /* ================= IN THE LAB — a real cluster rack, and one server opened ======= */
+
+  stage.clearFocus();
+  const rack = slideInPanel(svg, rackLab(), { lab: true });
+  rack.focus('front');
+  await rack.show();
+
+  guide.lab(`You filled a rack with eight nodes. Here is a rack in a university computing
+    cluster, seen from the front: a steel cabinet about 2 metres tall, with servers bolted in
+    one above another.`, { intro: true });
+  await guide.next();
+
+  /* Course restructure (2026-10-25): the rack-units and PDU cards are cut. The power step
+     defines PDUs. The drawing in lab.js is left as it is; this step no longer focuses its
+     'units' and 'rear' parts. */
+
+  const server = slideInPanel(svg, serverTopLab(), { lab: true });
+  await rack.swapTo(server);      // N-053: no flash of the stage between panels
+  guide.lab(`Here is one of those servers with its lid off. The eight GPUs sit under metal
+    heat sinks, and the chips beside them link the GPUs, as the interconnect on your sled
+    did.`);   // Course restructure (2026-10-25): "spine" renamed
+  await guide.next();
+
+  /* Act 4 restructure plan (2026-10-25): three kinds of chip, each named by its job */
+  server.focus(['cpu', 'gpu']);
+  guide.lab(`Each kind of chip in it has its own job. The two CPUs run the machine and hand out
+    the work. The eight GPUs do the maths, as the one you built in Act 4 did.`);
+  await guide.next();
+
+  server.focus('net');
+  guide.lab(`Some network cards carry a third kind of chip, a <b>DPU</b> (data processing unit):
+    a small processor of its own that moves data on and off the network, so the CPUs do not
+    have to. NVIDIA's DGX B200 server has two of them, for its storage and management
+    traffic.`);
+  await guide.next();
+  await server.hide();
 }

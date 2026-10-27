@@ -4,8 +4,8 @@
 // the one thing it is about, the chosen element gets a labelled specimen card before any
 // doping happens, the carrier is named on its own card with it highlighted, and the
 // conventional-current beat is split into cards instead of one paragraph.
-// Physics per DESIGN.md §4: bond electrons in pairs, holes as vacancy rings, no
-// cross-doping (melt it down and grow a fresh crystal instead), electron flow first and
+// Physics per DESIGN.md §4: bond electrons in pairs, holes as vacancy rings, one dopant
+// per crystal (the second element gets a fresh crystal), electron flow first and
 // conventional-current chevrons from the end of this step onward.
 import { svgEl, sleep } from '../engine/util.js';
 import { Anim } from '../engine/anim.js';
@@ -16,7 +16,8 @@ import { newStage } from '../engine/stage.js';
 import { Field } from '../engine/field.js';
 import { PathFlow, CurrentFlow } from '../engine/pathflow.js';
 import { buildLattice, wiggleBonds, dopeN, dopeP, setHoleBias, destroyLattice } from '../engine/lattice.js';
-import { makeLamp, makeBattery } from '../engine/components.js';
+import { makeLamp, makeBattery, slideInPanel } from '../engine/components.js';
+import { circuitBasic } from '../engine/labcircuits.js';
 
 const HERO = 7;            // atom (row 1, col 2) — interior, so all four bonds are real
 
@@ -50,8 +51,90 @@ async function fadeIn(nodes, dur = 320){
   list.forEach(n => { n.style.opacity = ''; });
 }
 
+/* ---------- how it looks in real life (HANDOFF_NEXT.md §1) ----------
+   The doped silicon the player made, as it is bought and used: a polished 300 mm wafer, seen
+   at a slant so its mirror finish reads, and a solar cell from above with its silver
+   contact lines, beside the panel it comes from. The cell is drawn near-black rather than
+   blue, because blue means electrons and N-type on this stage (DESIGN.md §1a). */
+function realLifeHTML(){
+  const W = { cx: 186, cy: 236, rx: 140, ry: 64 };
+  const wafer = `<g data-k="wafer">
+    <ellipse cx="${W.cx}" cy="${W.cy + 4}" rx="${W.rx}" ry="${W.ry}" fill="#9c9f99"/>
+    <ellipse cx="${W.cx}" cy="${W.cy}" rx="${W.rx}" ry="${W.ry}" fill="url(#rlWafer)" stroke="#7d807a" stroke-width="1"/>
+    <path d="M${W.cx - 90} ${W.cy - 30} Q${W.cx - 20} ${W.cy - 52} ${W.cx + 60} ${W.cy - 40}" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" opacity=".35"/>
+    <path d="M${W.cx - 40} ${W.cy + 34} Q${W.cx + 30} ${W.cy + 30} ${W.cx + 100} ${W.cy + 8}" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".25"/>
+    <path d="M${W.cx - 5} ${W.cy + W.ry - .5} l5 -5 l5 5" fill="#f2ecdc" stroke="#7d807a" stroke-width="1"/>
+    <path d="M${W.cx - W.rx} ${W.cy - W.ry - 22} V${W.cy - W.ry - 14} M${W.cx + W.rx} ${W.cy - W.ry - 22} V${W.cy - W.ry - 14} M${W.cx - W.rx} ${W.cy - W.ry - 18} H${W.cx + W.rx}" fill="none" stroke="var(--ink-soft)" stroke-width="1"/>
+    <text x="${W.cx}" y="${W.cy - W.ry - 26}" class="lbl" style="fill:var(--ink)">300 MM</text>
+    <text x="${W.cx + 24}" y="${W.cy + W.ry + 24}" class="lbl-faint" font-size="8" text-anchor="start">NOTCH</text>
+    <line x1="${W.cx + 2}" y1="${W.cy + W.ry + 2}" x2="${W.cx + 20}" y2="${W.cy + W.ry + 20}" stroke="var(--ink-soft)" stroke-width=".8"/>
+    <text x="${W.cx}" y="${W.cy + W.ry + 64}" class="lbl-faint">A POLISHED SILICON WAFER, LESS THAN 1 MM THICK</text></g>`;
+  /* the cell: a pseudo-square (a square with its corners clipped, because it is cut from a
+     round ingot), thin vertical fingers, and five busbars across them */
+  const C = { x: 384, y: 132, s: 196, cut: 26 };
+  const cellPath = `M${C.x + C.cut} ${C.y} H${C.x + C.s - C.cut} L${C.x + C.s} ${C.y + C.cut} V${C.y + C.s - C.cut} L${C.x + C.s - C.cut} ${C.y + C.s} H${C.x + C.cut} L${C.x} ${C.y + C.s - C.cut} V${C.y + C.cut} Z`;
+  let fingers = '';
+  for (let x = C.x + 4; x < C.x + C.s - 2; x += 5) fingers += `M${x} ${C.y + 2} V${C.y + C.s - 2} `;
+  let bus = '';
+  for (let i = 0; i < 5; i++){ const y = C.y + C.s * (i + .5) / 5; bus += `<rect x="${C.x + 2}" y="${y - 1.4}" width="${C.s - 4}" height="2.8" fill="#d9dad4"/>`; }
+  let panel = '';
+  const P = { x: 618, y: 140, c: 11, cols: 6, rows: 10 };
+  for (let i = 0; i < P.cols; i++) for (let j = 0; j < P.rows; j++)
+    panel += `<rect x="${P.x + i * (P.c + 1)}" y="${P.y + j * (P.c + 1)}" width="${P.c}" height="${P.c}" rx="1" fill="#262c3a"/>`;
+  const solar = `<g data-k="solar">
+    <defs><clipPath id="rlCell"><path d="${cellPath}"/></clipPath></defs>
+    <path d="${cellPath}" fill="#262c3a" stroke="#4a5060" stroke-width="1"/>
+    <g clip-path="url(#rlCell)"><path d="${fingers}" stroke="#c9cbc6" stroke-width=".6" opacity=".55"/>${bus}</g>
+    <rect x="${P.x - 4}" y="${P.y - 4}" width="${P.cols * (P.c + 1) + 7}" height="${P.rows * (P.c + 1) + 7}" rx="2" fill="none" stroke="#9c9f99" stroke-width="2"/>
+    ${panel}
+    <rect x="${P.x - 1}" y="${P.y - 1}" width="${P.c + 2}" height="${P.c + 2}" fill="none" stroke="var(--ink)" stroke-width="1.4"/>
+    <path d="M${P.x - 2} ${P.y + 6} Q${P.x - 20} ${P.y + 10} ${C.x + C.s + 4} ${C.y + 30}" fill="none" stroke="var(--ink-soft)" stroke-width=".9" stroke-dasharray="3 3"/>
+    <text x="${P.x + 36}" y="${P.y + P.rows * (P.c + 1) + 20}" class="lbl-faint" font-size="8">A PANEL</text>
+    <text x="${C.x + C.s / 2}" y="${C.y + C.s + 26}" class="lbl-faint">ONE SOLAR CELL, ABOUT 18 CM ACROSS</text></g>`;
+  return `
+    <defs><linearGradient id="rlWafer" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d9dcd8"/><stop offset=".35" stop-color="#aeb3b0"/>
+      <stop offset=".55" stop-color="#e4e6e2"/><stop offset="1" stop-color="#8f9490"/>
+    </linearGradient></defs>
+    <text x="186" y="70" class="lbl" style="fill:var(--ink)">HOW A CHIPMAKER BUYS IT</text>
+    <text x="520" y="70" class="lbl" style="fill:var(--ink)">IN A SOLAR PANEL</text>
+    <line x1="360" y1="54" x2="360" y2="400" stroke="var(--hairline)" stroke-dasharray="3 4"/>
+    ${wafer}${solar}
+    <text x="360" y="448" class="lbl-faint">DOPED SILICON, AS IT LOOKS IN REAL LIFE</text>`;
+}
+
+async function realLife(svg){
+  const real = slideInPanel(svg, realLifeHTML(), { lab: true });
+  real.focus('wafer');
+  await real.show();
+  guide.lab(`This is the silicon you have been doping, as a chipmaker buys it: a polished disc
+    called a <b>wafer</b>, 300 mm across and less than 1 mm thick. It comes lightly doped,
+    most often P-type, with boron.`, { intro: true });
+  await guide.next();
+
+  real.focus('solar');
+  // Course restructure (2026-10-25): the pointer to step 2 is gone; step 2 never returns to solar
+  guide.lab(`Solar panels are made of the same doped silicon. Each cell is a square about 18 cm
+    across, doped one type all through, with a thin layer of the other type on top.`);
+  await guide.next();
+
+  /* the test circuit on a breadboard, where ground is named */
+  const board = slideInPanel(svg, circuitBasic(), { lab: true });
+  await real.swapTo(board);      // N-053: no flash of the stage between panels
+  guide.lab(`In a lab, your battery-and-lamp test is built on a <b>breadboard</b>. The bench
+    supply's + lead goes to the rail marked +, and its 0 V lead goes to the − rail, called
+    <b>ground</b>.`);
+  await guide.next();
+
+  guide.lab(`Ground is the 0 V that every other voltage is measured from. Current leaves the +
+    rail, passes through a resistor, which keeps it small, and a small light called an LED,
+    then returns to ground.`);
+  await guide.next();
+  await board.hide();
+}
+
 export async function step1(){
-  guide.title('STEP 1 / 5 · NANOVOLT SEMICONDUCTORS', 'How do you make sand <em>conduct electricity?</em>');
+  guide.title('STEP 1 / 5', 'How do you make sand <em>conduct electricity?</em>');
   guide.cards();
 
   let pass = 0;               // 0 = first crystal, 1 = the retry with the other element
@@ -84,19 +167,23 @@ export async function step1(){
     });
 
     if (pass === 0){
-      /* ---------- who you are, and why you are starting at sand ----------
-         The act used to open on the silicon lattice with "NANOVOLT SEMICONDUCTORS" in the
-         eyebrow and no explanation of who that was. These two cards introduce the company
-         and the reason for building from the bottom, so the venture cards that follow every
-         step land as your company rather than a name that arrived out of nowhere. They run
-         on pass 0 only: the retry after melting the crystal down does not replay the story.
-         No focus on either one, deliberately. Nothing on the stage has been named yet. */
-      guide.story(`You run Nanovolt: nine people, a rented unit in Penang, and a plan to
-        build your own data centre.`);
+      /* ---------- what you are building, and why you are starting at sand ----------
+         The Nanovolt company story is gone (REVIEW_NOTES N-005): these two cards now say
+         only what the course builds and why it starts at the bottom. They run on pass 0
+         only: the retry after melting the crystal down does not replay them. No focus on
+         either one, deliberately. Nothing on the stage has been named yet. */
+      guide.story(`Your goal is to build your own data centre: a building full of computers,
+        the kind that trains AI models.`);
       await guide.next();
 
       guide.story(`You could buy the machines when the day comes. You would rather know what
         is inside them, so you are building every layer yourself, starting at sand.`);
+      await guide.next();
+
+      // Course restructure (2026-10-25): the scale this act works at, before the lattice
+      guide.story(`Every computer in that building runs on chips, and one AI chip, such as
+        NVIDIA's H100, holds about 80 billion tiny switches. This act builds one of those
+        switches, starting from silicon.`);
       await guide.next();
 
       /* ---------- what silicon is ---------- */
@@ -263,15 +350,19 @@ export async function step1(){
     const iFlow = new CurrentFlow(route, { n: 12, layer: iLayer });   // conventional current
     await fadeIn([wireL, wireR, contactL, contactR, batt, lamp.g], 340);
 
-    guide.say(`A battery pushes electrons out of its <b>−</b> terminal and pulls them back
-      in at <b>+</b>.`);
-    stage.focus(batt, { label: 'battery', at: 'bottom' });
-    await guide.next();
+    // Course restructure (2026-10-25): the battery and contacts are explained on the first
+    // crystal only; the second pass goes straight to the test
+    if (pass === 0){
+      guide.say(`A battery pushes electrons out of its <b>−</b> terminal and pulls them back
+        in at <b>+</b>.`);
+      stage.focus(batt, { label: 'battery', at: 'bottom' });
+      await guide.next();
 
-    guide.say(`The wires connect to the left and right faces of the crystal, so any current
-      has to pass through the silicon to reach the lamp.`);
-    stage.focus([wireL, wireR, contactL, contactR], { label: 'contacts', at: 'bottom' });
-    await guide.next();
+      guide.say(`The wires connect to the left and right faces of the crystal, so any current
+        has to pass through the silicon to reach the lamp.`);
+      stage.focus([wireL, wireR, contactL, contactR], { label: 'contacts', at: 'bottom' });
+      await guide.next();
+    }
 
     guide.say(pass === 0
       ? `Before you doped it, this circuit did nothing. Send current and watch the lamp.`
@@ -296,6 +387,17 @@ export async function step1(){
       `Silicon did not change. You gave it carriers. That is what doping means.`);
     await guide.next();
 
+    // Course restructure (2026-10-25): "semiconductor" named once, on the first crystal
+    // that conducts (whichever element was picked first)
+    if (pass === 0){
+      guide.say(`Pure silicon barely conducts, and a few atoms of the right element make it
+        conduct. A material like this is called a <b>semiconductor</b>. This is what people
+        mean when they say chips are made of semiconductors.`);
+      stage.focus(choice === 'N' ? [lat.g, field.layer] : lat.g,
+        { label: 'semiconductor', at: 'top' });
+      await guide.next();
+    }
+
     /* ---------- electron flow, then the convention (DESIGN.md §4.5) ---------- */
     if (!shownConvention){
       shownConvention = true;
@@ -310,40 +412,33 @@ export async function step1(){
       eFlow.setSpeed(0);
       iFlow.setSpeed(-120);
       SFX.blip();
-      guide.say(`Electric current was discovered before electrons were. At the time,
-        people drew current flowing from <b>+</b> to <b>−</b>, and that is what these
-        arrows show.`);
+      // Course restructure (2026-10-25): three convention cards merged into two
+      guide.say(`Electric current was described before electrons were discovered, and people
+        drew it flowing from <b>+</b> to <b>−</b>. These arrows show that direction, called
+        <b>conventional current</b>.`);
       stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
       await guide.next();
 
-      guide.say(`We now know current is electrons flowing from <b>−</b> to <b>+</b>. The
-        drawing convention never changed, and honestly it does not matter, as long as we
-        are consistent.`);
-      stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
-      await guide.next();
-
-      guide.say(`Every circuit from here on uses those + to − arrows, because that is how
-        every real schematic is drawn. When it matters, we will remind you that the
-        electrons actually run the other way.`);
+      guide.say(`The electrons really flow from <b>−</b> to <b>+</b>, but the drawing
+        convention never changed. Every circuit from here on uses these <b>+</b> to <b>−</b>
+        arrows, as real schematics do.`);
       stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
       await guide.next();
     } else {
+      // Course restructure (2026-10-25): the reminder card is cut; the arrows still switch
       eFlow.setSpeed(0);
       iFlow.setSpeed(-120);
-      guide.say(`These arrows show conventional current, from + to −, the convention we
-        agreed on with the first crystal. The electrons underneath still run the other way.`);
-      stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
-      await guide.next();
     }
 
     /* ---------- grow a fresh crystal and run the other element? ---------- */
     if (pass === 0){
       stage.clearFocus();
-      guide.say(`You will need both kinds of silicon later in this act. Because a doped
-        crystal cannot be re-doped with the opposite element, chipmakers grow a fresh
-        crystal instead.`);
+      // Course restructure (2026-10-25): the old "cannot be re-doped" claim was wrong (step 4
+      // dopes N patches into P); the fresh crystal is only so each element is seen alone
+      guide.say(`You will need both kinds of silicon later in this act. The next crystal is
+        a fresh one, so you can see the other element on its own.`);
       const again = await guide.choose([
-        { label: 'Melt it down and dope with the other element ↺', value: 'again', hint: 'fresh crystal, other dopant. Recommended.' },
+        { label: 'Start a fresh crystal with the other element ↺', value: 'again', hint: 'fresh crystal, other dopant. Recommended.' },
         { label: 'Move on with this wafer ▸', value: 'continue', hint: 'you can always come back' },
       ]);
       if (again === 'again'){
@@ -353,6 +448,8 @@ export async function step1(){
         continue;
       }
     }
+    stage.clearFocus();
+    await realLife(svg);
     break;
   }
 }

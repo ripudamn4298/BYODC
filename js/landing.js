@@ -17,12 +17,14 @@ const framePath = i => `animation-frames-webp/ezgif-frame-${String(i + 1).padSta
 //   150 — the single 7nm FinFET, fully drawn             (05 · THE TRANSISTOR)
 const ANCHORS = [0, 77, 103, 127, 150];
 
+/* Ripu (2026-10-27, N-130 to N-134): no titles, the numbered label is the heading, and each
+   phase says one short, plain thing. No word the visitor has not met yet (no "rack"). */
 const PHASES = [
-  { idx: '01', label: 'THE DATA CENTRE', title: 'This is where it <em>ends up.</em>', body: `A rack in a data centre — servers, switches, and the cabling that ties them into one machine. <b>Data centres are what make today's internet possible</b> — every search, stream and sentence you've ever typed lives in a room like this. You're going to build one from nothing. So let's go <b>all the way in.</b>` },
-  { idx: '02', label: 'THE SERVER', title: 'Pull out <em>one server.</em>', body: `Slide a single tray from the stack: fans, CPUs, memory and storage packed into a box <b>one rack-unit tall</b>. Everything a data centre does happens inside thousands of these. Keep going.` },
-  { idx: '03', label: 'THE GPU', title: 'Inside it — <em>the GPU.</em>', body: `The card doing the real work. Under the shroud: a heatsink, stacks of high-bandwidth memory, and <b>thousands of small cores</b> built for one job — multiplying numbers, all at once, without rest. Closer.` },
-  { idx: '04', label: 'THE CHIP', title: 'At its heart — <em>the die.</em>', body: `Lift the package open and you reach a sliver of silicon smaller than a fingernail — cache, logic gates, and the metal wiring that stitches <b>tens of billions</b> of switches together. Closer still.` },
-  { idx: '05', label: 'THE TRANSISTOR', title: 'All the way down — <em>one transistor.</em>', body: `A single 7nm FinFET: a source, a drain, and a gate that creates a channel where there was none. No moving parts — just doped silicon, switching billions of times a second. <b>That's where you begin.</b> One switch — then we climb every rung back up to the machine.` },
+  { idx: '01', label: 'THE DATA CENTRE', body: `Data centres are what make today's internet possible. Every search and every sentence you ever type lives in a room like this.` },
+  { idx: '02', label: 'THE SERVER', body: `Pull out one computer and this is what you find: fans, processors, memory and storage, packed into one flat box called a <b>server</b>. A data centre holds thousands of them.` },
+  { idx: '03', label: 'THE GPU', body: `Inside the server is the GPU. It does <b>trillions of multiplications every second</b>, all at once, and its memory feeds it numbers at more than 3 trillion bytes a second.` },
+  { idx: '04', label: 'THE CHIP', body: `At its heart is the chip: a sliver of silicon holding <b>tens of billions of tiny switches</b>. This is how a computer is built: switches that hold its 0s and 1s, wired together.` },
+  { idx: '05', label: 'THE TRANSISTOR', body: `One of those switches is a transistor, the most important invention behind every computer. <b>This is where you begin.</b>` },
 ];
 
 /* ---------------- the real world — statements + flying fact cards ---------------- */
@@ -202,8 +204,8 @@ export function initLanding(){
   const jc = $('.journey-copy');
   PHASES.forEach((ph, i) => {
     jc.appendChild(el('div', { class: 'jphase', 'data-phase': i },
-      `<div class="microlabel"><span class="idx">${ph.idx}</span> — ${ph.label}</div>
-       <h3>${ph.title}</h3><p>${ph.body}</p>`));
+      `<div class="jcue microlabel" aria-hidden="true"><span class="cue-arrow">↓</span> keep scrolling</div>
+       <h3><span class="idx">${ph.idx}</span> ${ph.label}</h3><p>${ph.body}</p>`));
   });
 
   const art = artifact();

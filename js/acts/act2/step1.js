@@ -1,4 +1,4 @@
-// ACT 2 · STEP 1 — "Weigh two inputs at once" (the NAND gate).
+// ACT 2 · STEP 1 — "How do four transistors perform logic?" (the NAND gate).
 // Ported to the micro-learning contract in DESIGN_MAKEOVER.md §2 / §4: one card at a time
 // (guide.cards), every card focuses and names the one thing it is about, and the step opens
 // on the CMOS inverter the player finished Act 1 with (rule 4) before anything new appears.
@@ -16,13 +16,15 @@
 // Determinism: every interaction records the value it left behind (the inverter's input,
 // the A/B pair), so a replay lands on the same state as a live run. No Math.random, no
 // Date.now, no bare setTimeout driving a visual.
-import { svgEl, el, waitFor, sleep } from '../../engine/util.js';
+import { svgEl, el, sleep } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeLamp, makeChip, makeSeg, makePlacer } from '../../engine/components.js';
+import { makeLamp, makeChip, makeSeg, makePlacer, makeRaisedTiles, slideInPanel } from '../../engine/components.js';
+import { setLabState } from '../../engine/labcircuits.js';
+import { lab21Part, lab21Board } from './lab.js';
 import { makeGate, sigWire } from '../../engine/gates.js';
 
 /* ---------- geometry, in the stage's 720×480 user units ---------- */
@@ -63,10 +65,10 @@ async function fadeOut(nodes, dur = 260){
 }
 
 export async function step1(){
-  guide.title('STEP 1 / 4 · NANOVOLT LOGIC', 'Weigh <em>two inputs at once</em>');
+  guide.title('STEP 1 / 4', 'How do four transistors <em>perform logic?</em>');
   guide.cards();
 
-  const stage = newStage('06', 'The Act 1 inverter, then four switches wired into a two-input gate');
+  const stage = newStage('06', 'The Act 1 inverter, then four transistors wired into a two-input gate');
   const { svg, controls } = stage;
   const focusOn = (nodes, opts) => stage.focus(inOrder(Array.isArray(nodes) ? nodes : [nodes]), opts);
 
@@ -106,57 +108,23 @@ export async function step1(){
   const invP = device('PMOS', INV_P);
   const invN = device('NMOS', NB);
 
-  const invChip = makeChip(controls, 'OUT: <b>1</b>');
-  const seen = new Set();
-  let IN = null, cancelInvHint = null;
-  function setInv(v, silent){
-    if (IN === v) return;
-    IN = v;
-    if (cancelInvHint){ cancelInvHint(); cancelInvHint = null; }
-    const out = v === 0 ? 1 : 0;
-    invSeg.set(v);
-    invP.bridge.style.opacity = v === 0 ? '1' : '0';
-    invN.bridge.style.opacity = v === 1 ? '1' : '0';
-    invIn.set(!!v);
-    invSpine.set(!!out); outWire.set(!!out);
-    lamp.set(out);
-    invChip.set(`OUT: <b>${out}</b>`);
-    seen.add(v);
-    if (!silent) SFX.blip();
-  }
-  const invSeg = makeSeg(controls, [
-    { id: 'inv-0', label: 'IN = 0', value: 0 },
-    { id: 'inv-1', label: 'IN = 1', value: 1 },
-  ], v => setInv(v));
-  setInv(0, true);
-  seen.clear();
+  /* Course restructure (2026-10-25): the inverter is shown in one fixed state (IN = 0,
+     OUT = 1) with no buttons. The "flip the input both ways" task was cut, because it
+     repeated Act 1 step 5's inverter flip. */
+  invP.bridge.style.opacity = '1';
+  invN.bridge.style.opacity = '0';
+  invIn.set(false);
+  invSpine.set(true); outWire.set(true);
+  lamp.set(1);
 
-  /* ---- CARD 1 — where we are and what this step builds ---- */
+  /* ---- CARD 1 — where we are, the problem, and what this step builds ----
+     Course restructure (2026-10-25): the old opening card and the old "To decide anything"
+     card are merged into this one, and the problem is stated concretely. */
 
-  guide.say(`Here is the inverter from the end of Act 1. One input, one output. This step
-    builds a gate that reads two inputs at once.`);
+  guide.say(`Here is the CMOS inverter you built at the end of Act 1. An inverter only flips
+    one signal. Adding or comparing combines two, so this step builds a logic gate (a circuit
+    that turns its inputs into one output) that reads two inputs at once.`);
   focusOn([outG, invG, invP.g, invN.g], { label: 'your act 1 inverter', at: 'bottom', ring: false });
-  await guide.next();
-
-  /* ---- CARD 2 — flip it both ways ---- */
-
-  stage.clearFocus();
-  const t1 = guide.task('Flip the input both ways and watch the output.');
-  await flow.ask(async replay => {
-    if (replay !== undefined){ setInv(replay, true); return replay; }
-    cancelInvHint = flow.hintAfter(14000, `The two buttons under the bench set the input.
-      Press <b>IN = 1</b>, then <b>IN = 0</b>.`);
-    await waitFor(() => seen.has(0) && seen.has(1), { hold: 400 });
-    if (cancelInvHint){ cancelInvHint(); cancelInvHint = null; }
-    return IN;
-  });
-  t1.done();
-
-  /* ---- CARD 3 — the aim ---- */
-
-  guide.say(`One input can only invert. To decide anything, a gate has to weigh two inputs
-    at once.`);
-  focusOn(invG.querySelector('rect'), { label: 'one input', at: 'bottom' });
   await guide.next();
 
   /* ================= the twins multiply: one inverter becomes four switches ========= */
@@ -166,6 +134,7 @@ export async function step1(){
   controls.innerHTML = '';
 
   const tiles = [mosTile('PMOS'), mosTile('PMOS'), mosTile('NMOS'), mosTile('NMOS')];
+  makeRaisedTiles(svg, tiles);
   tiles.forEach((t, i) => {
     t.home = TRAY[i];
     t.g.style.display = 'none';
@@ -230,54 +199,52 @@ export async function step1(){
   slotsG.style.display = 'none';
   await fadeIn([skelG, slotsG], 340);
 
-  /* ---- CARD 4 — two of each switch ---- */
+  /* ---- CARD 2 — two of each switch ---- */
 
-  guide.say(`Your two switches from Act 1, copied. Two PMOS and two NMOS.`);
+  guide.say(`Here are your two transistors from Act 1, copied once each: two PMOS and two
+    NMOS.`);
   focusOn(tiles.map(t => t.g), { label: 'two of each', at: 'bottom' });
   await guide.next();
 
-  /* ---- CARD 5 — name the two inputs ----
+  /* ---- CARD 3 — name the two inputs ----
      The two terminals sit on opposite sides of the stage, so their union box is almost the
      whole bench: no ring, and the label goes in the clear strip under the power rail. */
 
-  guide.say(`Two inputs now. A comes in on the left, B on the right.`);
+  guide.say(`There are two inputs now. A comes in on the left and B on the right.`);
   focusOn([...skelG.querySelectorAll('rect.batt-body')],
     { label: 'inputs a and b', at: 'top', ring: false });
   await guide.next();
 
-  /* ---- CARD 6 — the goal ---- */
-
-  guide.say(`<b>Your goal: a gate whose output is 0 only when A and B are both 1.</b> Every
-    other pair leaves it at 1.`);
-  focusOn(lamp.g, { label: 'output', at: 'top' });
+  /* REVIEW_NOTES N-022: say what a 0 and a 1 physically are, the first time this act hands
+     the player 0s and 1s as inputs.
+     Course restructure (2026-10-25): Act 1 step 5 now defines a 1 and a 0 as a wire held high
+     or low, so this card only points back to it instead of defining them a second time. The
+     goal card that followed was cut: its goal sentence is repeated word for word in the
+     placement task below. */
+  guide.say(`As in Act 1, each input is a wire. A 1 is that wire held high, and a 0 is that
+    wire held low.`);
   await guide.next();
 
-  /* ---- CARD 7 — why the NMOS go in a chain ---- */
+  /* REVIEW_NOTES N-020: the two "why the NMOS go in a chain / why the PMOS go side by side"
+     cards used to come HERE, before the player placed anything, and gave the answer away.
+     They now come after the pair is placed, as the explanation of what was built. */
 
-  guide.say(`The output only drops to 0 when both inputs are 1. Two switches in a chain do
-    that: current gets through only if both are on.`);
-  focusOn([slots[2].g, slots[3].g], { label: 'nmos chain to ground', at: 'left' });
-  await guide.next();
-
-  /* ---- CARD 8 — why the PMOS go side by side ---- */
-
-  guide.say(`Either input at 0 has to leave the output at 1. Two switches side by side do
-    that: one open path to power is enough.`);
-  focusOn([slots[0].g, slots[1].g], { label: 'pmos pair to power', at: 'top' });
-  await guide.next();
-
-  /* ---- CARD 9 — place the four switches ----
+  /* ---- CARD 5 — place the four switches ----
      No focus on this card: stage.focus re-parents what it raises, which breaks the
      placer's pointer handling on anything it lifts. */
 
   stage.clearFocus();
-  const t2 = guide.task('<b>Your goal: fill all four slots.</b> Drag each tile into the pair where it belongs.');
+  const t2 = guide.task(`<b>Your goal is to build a gate whose output is 0 only when A and B
+    are both 1.</b> Drag each transistor into a slot. Each one is labelled with the input that
+    turns it on.`);
 
   const placer = makePlacer({
     svg, tiles, slots,
     validate: v => v[0] === 'PMOS' && v[1] === 'PMOS' && v[2] === 'NMOS' && v[3] === 'NMOS',
-    onWrong: () => guide.note(`Not that arrangement. The chain below the output takes the two
-      NMOS, the pair above it takes the two PMOS. All four tiles are back on the bench.`),
+    onWrong: () => guide.note(`That arrangement does not give the right output. Check it
+      against the goal: the output must connect to ground only when A and B are both 1, and it
+      must connect to power whenever either input is 0. All four transistors are back on the
+      bench.`),
   });
   await flow.ask(async replay => {
     if (replay !== undefined){ placer.autoPlace(); return replay; }
@@ -297,12 +264,24 @@ export async function step1(){
   await fadeIn(devs.map(d => d.g), 340);
   if (!flow.instant) SFX.success();
 
+  /* ---- why it works (moved here from before the placement, N-020) ---- */
+
+  guide.say(`Here is why this works. The two NMOS sit in a chain (one after the other) between
+    the output and ground. Current can get through a chain only if both transistors are on, so
+    the output drops to 0 only when A and B are both 1.`);
+  focusOn([nmosA.g, nmosB.g], { label: 'nmos chain to ground', at: 'left' });
+  await guide.next();
+
+  guide.say(`The two PMOS sit side by side between power and the output. One PMOS that is on
+    is enough to connect the output to power, so if either input is 0, the output stays at 1.`);
+  focusOn([pmosA.g, pmosB.g], { label: 'pmos pair to power', at: 'top' });
+  await guide.next();
+  stage.clearFocus();
+
   /* ---- the live bench ---- */
 
   const chipOut = makeChip(controls, 'OUT: <b>1</b>');
   let A = null, B = null;
-  const visited = new Set();
-  let cancelHint = null;
 
   function setAB(a, b, silent){
     if (a === A && b === B) return;
@@ -319,8 +298,6 @@ export async function step1(){
     lamp.set(out);
     chipOut.set(`OUT: <b>${out}</b>`);
     chipOut.cls('state-on', !!out);
-    visited.add(a * 2 + b);
-    if (cancelHint){ cancelHint(); cancelHint = null; }
     if (!silent) SFX.blip();
   }
   const segA = makeSeg(controls, [
@@ -332,39 +309,21 @@ export async function step1(){
     { id: 'b-1', label: 'B = 1', value: 1 },
   ], v => setAB(A ?? 0, v));
   setAB(0, 0, true);
-  visited.clear();
 
-  /* ---- CARD 10 — where A goes ---- */
+  /* ---- CARD 8 — where A and B go ----
+     Course restructure (2026-10-25): the separate A and B cards are merged into this one.
+     The "try all four combinations" task that followed was cut: the truth table below has
+     the player set every combination on the bench and read the lamp, so it was the same
+     activity twice. */
 
-  guide.say(`A runs to the left PMOS and to the top NMOS. One input, two switches.`);
-  focusOn([aWire.el, pmosA.g, nmosA.g], { label: 'input a', at: 'left', ring: false });
+  guide.say(`Each input sets two transistors. A sets the left PMOS and the top NMOS. B sets
+    the right PMOS and the bottom NMOS.`);
+  focusOn([...skelG.querySelectorAll('rect.batt-body, text.batt-t'), aWire.el, bWire.el, ...devs.map(d => d.g)],
+    { label: 'inputs a and b', at: 'top', ring: false });
   await guide.next();
-
-  /* ---- CARD 11 — where B goes ---- */
-
-  guide.say(`B does the same on the other side: the right PMOS and the bottom NMOS.`);
-  focusOn([bWire.el, pmosB.g, nmosB.g], { label: 'input b', at: 'bottom', ring: false });
-  await guide.next();
-
-  /* ---- CARD 12 — try all four combinations ---- */
-
   stage.clearFocus();
-  const t3 = guide.task('Try all four combinations of A and B. Watch which one turns the lamp off.');
-  await flow.ask(async replay => {
-    if (replay !== undefined){
-      [0, 1, 2, 3].forEach(v => visited.add(v));
-      setAB(replay >> 1, replay & 1, true);
-      return replay;
-    }
-    cancelHint = flow.hintAfter(15000, `Four combinations in all: 0 and 0, 0 and 1, 1 and 0,
-      1 and 1. Use the A and B buttons under the bench.`);
-    await waitFor(() => visited.size >= 4, { hold: 400 });
-    if (cancelHint){ cancelHint(); cancelHint = null; }
-    return A * 2 + B;
-  });
-  t3.done();
 
-  /* ---- CARD 13 — the truth table ----
+  /* ---- CARD 9 — the truth table ----
      guide.truthTable and its hints both render through beat(), which in card mode swaps
      the one card slot: a hint would delete the table the player is filling in. So the
      instruction is prepended inside the table's own card and note() is pointed at a hint
@@ -381,8 +340,9 @@ export async function step1(){
   const origNote = guide.note;
   if (ttEl){
     ttEl.insertBefore(el('p', { class: 'guide-p', style: 'margin:0 0 14px' },
-      `<b>Your goal: fill in the OUT column.</b> Set A and B on the bench, read the lamp,
-       then click a cell to match. Each click toggles it.`), ttEl.firstChild);
+      `<b>Your goal is to fill in the OUT column.</b> Set A and B on the bench, read the
+       lamp, then click a cell to match. Each click flips the cell between 0 and
+       1.`), ttEl.firstChild);
     guide.note = html => {
       let n = ttEl.querySelector('.tt-hint');
       if (!n){ n = el('p', { class: 'guide-note tt-hint', style: 'margin:14px 0 0' }); ttEl.appendChild(n); }
@@ -405,14 +365,14 @@ export async function step1(){
   nandTile.g.style.display = 'none';
   await fadeIn([nandTile.g], 340);
 
-  /* ---- CARD 14 — the name ---- */
+  /* ---- CARD 10 — the name ---- */
 
-  guide.say(`Four switches, one answer: 0 only when both inputs are 1. The name for that
-    shape is <b>NAND</b>, short for not both.`);
+  guide.say(`Four transistors give one answer: the output is 0 only when both inputs are 1.
+    The name for a gate that does this is <b>NAND</b>, short for not both.`);
   focusOn(nandTile.g, { label: 'nand', at: 'bottom' });
   await guide.next();
 
-  /* ---- CARD 15 — fold one: NOT ---- */
+  /* ---- CARD 11 — fold one: NOT ---- */
 
   stage.clearFocus();
   const notG = svgEl('g');
@@ -428,12 +388,13 @@ export async function step1(){
   notG.style.display = 'none';
   await fadeIn([notG], 300);
 
-  guide.say(`Tie both inputs to one wire and they are always equal. Feed it 1 and the
-    output is 0. The NAND is now an inverter.`);
+  guide.say(`If you tie both inputs to one wire, they are always equal. Feed that wire a 1
+    and the output is 0. The NAND now works as an inverter, also called a <b>NOT</b>
+    gate.`);
   focusOn([nandTile.g, notG], { label: 'not', at: 'top' });
   await guide.next();
 
-  /* ---- CARD 16 — fold two: AND ---- */
+  /* ---- CARD 12 — fold two: AND ---- */
 
   stage.clearFocus();
   const andRow = svgEl('g');
@@ -454,17 +415,51 @@ export async function step1(){
   [andRow, andNand.g, andNot.g].forEach(n => { n.style.display = 'none'; });
   await fadeIn([andRow, andNand.g, andNot.g], 320);
 
-  guide.say(`Put a NAND in front of that inverter and the 0 flips back to 1. The pair
-    reads 1 only when both inputs are 1, which is <b>AND</b>.`);
+  guide.say(`If you put a NAND in front of that NOT gate, the 0 flips back to 1. The pair
+    now outputs 1 only when both inputs are 1, and that is an <b>AND</b> gate.`);
   focusOn([andRow, andNand.g, andNot.g], { label: 'and', at: 'bottom' });
   await guide.next();
 
-  /* ---- CARD 17 — universality ---- */
+  /* ---- CARD 13 — universality ---- */
 
   stage.clearFocus();
-  guide.aha(`NOT and AND both came out of the same tile, wired two different ways.`,
-    `Universal means exactly that. Any logic you can describe, built from copies of this one gate.`);
+  guide.aha(`NOT and AND both came out of the same NAND gate, wired two different ways.`,
+    `That is what makes NAND a <b>universal</b> gate: any logic you can describe can be
+     built from copies of this one gate.`);
   await guide.next();
+
+  /* ================= IN THE LAB (DESIGN.md §6d rule 8) =============================
+     The 74HC00 and its datasheet pinout, then gate 1 on a breadboard in two states. Pin
+     numbers are TI's SN74HC00 data sheet; see js/acts/act2/lab.js for every source. */
+
+  stage.clearFocus();
+  const part = slideInPanel(svg, lab21Part(), { lab: true });
+  part.focus('part');
+  await part.show();
+  guide.lab(`Here is the NAND gate you just built, sold as a part. This black chip is a 74HC00,
+    19.3 mm long, with seven legs down each side. It holds four NAND gates, each built from
+    PMOS and NMOS transistors like yours.`, { intro: true });
+  await guide.next();
+
+  part.focus('pinout');
+  guide.lab(`Its datasheet (the maker's description of the part) shows what each leg does. Gate
+    1 takes its inputs on pins 1 and 2 and puts its output on pin 3. Pin 14 takes the supply,
+    and pin 7 goes to ground.`);
+  await guide.next();
+
+  const bench = slideInPanel(svg, lab21Board(), { lab: true });
+  setLabState(bench, true);
+  await part.swapTo(bench);      // N-053: no flash of the stage between panels
+  guide.lab(`Here is gate 1 on a breadboard with a 5 V supply. Wires join pins 1 and 2 to the +
+    rail, so both inputs are 1. The output on pin 3 is 0, so the LED stays dark.`);
+  await guide.next();
+
+  setLabState(bench, false);
+  guide.lab(`If you move the wire on pin 2 to ground, that input is 0. The output on pin 3 goes
+    to 1, and current flows through the LED and its 1 kΩ resistor to ground, so the LED
+    lights.`);
+  await guide.next();
+  await bench.hide();
 
   /* ---------- drawing helpers ---------- */
 
@@ -507,7 +502,7 @@ export async function step1(){
   /* a switch on the bench, waiting to be placed */
   function mosTile(kind){
     const p = kind === 'PMOS', col = p ? 'var(--red)' : 'var(--blue)';
-    const g = svgEl('g', { class: 'tile', 'data-part': kind.toLowerCase(), 'aria-label': kind + ' switch' });
+    const g = svgEl('g', { class: 'tile', 'data-part': kind.toLowerCase(), 'aria-label': kind + ' transistor' });
     g.innerHTML = `
       <rect width="${TILE.w}" height="${TILE.h}" rx="11" class="tile-bg" fill="var(--paper-high)"/>
       <rect x="10" y="14" width="8" height="28" rx="2" class="gate-metal"/>

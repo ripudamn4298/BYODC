@@ -32,6 +32,17 @@ export const SFX = {
   success(){ this.tone(590, .12, { g: .6 }); setTimeout(() => this.tone(885, .22, { g: .5 }), 110); },
   blip(){ this.tone(1050, .045, { type: 'square', g: .2 }); },
   hop(){ this.tone(430, .07, { type: 'triangle', f1: 340, g: .35 }); },
+  /* Ripu (2026-10-25): finishing a step, and finishing an act. A soft low thunk for the
+     button going down, then a quick bright arpeggio; the act gets a longer climb and a held chord. */
+  stepDone(){
+    this.tone(180, .09, { type: 'triangle', f1: 110, g: .7 });
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => this.tone(f, .16, { type: 'square', g: .16, lp: 2600 }), 70 + i * 62));
+  },
+  actDone(){
+    this.tone(160, .14, { type: 'triangle', f1: 90, g: .8 });
+    [392, 523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => this.tone(f, .2, { type: 'square', g: .15, lp: 2800 }), 90 + i * 85));
+    setTimeout(() => [523, 659, 784, 1047].forEach(f => this.tone(f, 1.1, { type: 'triangle', g: .22 })), 640);
+  },
   toggleMute(){ this.muted = !this.muted; return this.muted; },
 };
 document.addEventListener('pointerdown', () => SFX.init(), { once: true, capture: true });

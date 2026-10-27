@@ -254,7 +254,7 @@ export function makeMuxRig(svg, { x, y, n = 8, p = 4 }){
     out.push({ rect, tx });
   }
   const outLbl = svgEl('text', { x: x + fileW / 2, y: outY + cell + 16, class: 'lbl' });
-  outLbl.textContent = 'TO THE ENGINE';
+  outLbl.textContent = 'TO THE MAC UNIT';
   g.appendChild(outLbl);
   svg.appendChild(g);
 

@@ -1,6 +1,9 @@
 // BYODC engine — act runner with BACK / RESTART via record-and-replay.
 // Steps are deterministic async fns; every interaction resolves through flow.ask()
 // and is recorded. Back = re-run the step, auto-answering all but the last answer.
+import { showNumbersArt } from './numbersart.js';
+import { celebrate } from './celebrate.js';
+const CELEBRATE_ACTS = new Set(['ACT 1', 'ACT 2', 'ACT 3', 'ACT 4', 'ACT 5']);   // Ripu (2026-10-27): all acts
 import { $, el, setInstantCheck, cancelAllWaits, reseed } from './util.js';
 import { Anim } from './anim.js';
 import { SFX } from './sfx.js';
@@ -106,7 +109,9 @@ export const flow = {
       this.updateNav();
       try {
         await step.run();
-        guide.endCards();     // venture card / premise / CTA always append normally
+        // Ripu (2026-10-25): the last card gives way to an "END OF STEP X.Y" label
+        guide.stepEnd(`END OF STEP ${(String(this.actLabel).match(/\d+/) || ['1'])[0]}.${this.stepIndex + 1}`);
+        guide.endCards();     // premise / CTA always append normally
       } catch (err){
         if (!guard()) return;
         console.error('[BYODC] step crashed:', err);
@@ -116,12 +121,23 @@ export const flow = {
         return;   // halt this runner; Restart/Back still work
       }
       if (!guard()) return;
-      // post-step: venture card, cost tick, premise, CTA
-      guide.card(step.businessCard);
+      // post-step: cost tick, the real-numbers box, premise, CTA (the Nanovolt venture card
+      // that used to sit here is gone, N-005)
       hud.addCost(step.costDelta, step.inventory, this.instant);
+      if (step.numbers) guide.numbers(step.numbers);
+      // REVIEW_NOTES N-053: the numbers box gets its own picture on the stage, not the step's
+      // diagram again. Not awaited: it animates while the player reads.
+      if (step.numbersArt) showNumbersArt(step.numbersArt);
       if (step.premise) guide.say(step.premise);
-      await guide.button(step.cta);
+      await guide.button(step.cta, 'primary', { cta: true });
       if (!guard()) return;
+      /* Ripu (2026-10-25): a finishing moment on the step's button, a bigger one at the end of
+         an act. Live clicks only; a replay lands straight on the next step. Act 1 first. */
+      if (!this.instant && CELEBRATE_ACTS.has(this.actLabel)){
+        const actNo = (String(this.actLabel).match(/\d+/) || ['1'])[0];
+        await celebrate({ act: actNo, step: this.stepIndex + 1, total: this.steps.length, last: this.stepIndex === this.steps.length - 1 });
+        if (!guard()) return;
+      }
       this.saved[this.stepIndex] = this.answers.slice();
       this.stepIndex++;
       this.answers = [];
@@ -164,7 +180,10 @@ export const flow = {
   /* opts: { onComplete, onProgress, actLabel='ACT 1', baseCost=0, startAt=0 } —
      baseCost carries the cumulative spend from earlier acts into the HUD;
      startAt resumes a saved session at a step boundary (the runner recomputes
-     cost from baseCost + the costDeltas below it, so the HUD lands correct). */
+     cost from baseCost + the costDeltas below it, so the HUD lands correct).
+     queue/saved are for the localhost dev index (js/dev/index-panel.js): queue
+     replays answers inside the start step to land on a card mid-step, saved holds
+     the answers of the steps before it so Back still crosses a step boundary. */
   run(steps, opts = {}){
     if (typeof opts === 'function') opts = { onComplete: opts };
     this.steps = steps;
@@ -172,14 +191,14 @@ export const flow = {
     this.onProgress = opts.onProgress || null;
     this.actLabel = opts.actLabel || 'ACT 1';
     this.baseCost = opts.baseCost || 0;
-    this.saved = [];
+    this.saved = (opts.saved || []).slice();
     this.initNav();
     window.__byodcFlow = this;   // debug/verification hook (harmless)
     const at = Math.min(Math.max(0, opts.startAt || 0), steps.length - 1);
     // resuming mid-act: the bench is fresh, so carry over what the player was
     // last holding — the cost line rebuilds itself in the runner
     if (at > 0) hud.setInv(steps[at - 1]?.inventory);
-    this.start(at, []);
+    this.start(at, (opts.queue || []).slice());
   },
 };
 

@@ -102,6 +102,11 @@ that it earns a colour. It predates the makeover in `css/game.css`.
 
 **Green `--green`** stays as it is: a completed check, nothing else.
 
+**Lab slate `--lab-ink` on `--lab-paper`** (added 2026-10-19, Ripu): marks an "In the Lab"
+section and nothing else. It is a section marker, never a physics meaning: inside a lab panel
+the parts keep their real colours and the five meanings above still hold (amber + rail, ink
+ground, amber glow on a lit LED).
+
 When a step needs a distinction the list does not cover, reach for **ink weight, dash pattern
 or opacity** before adding a colour. A sixth meaning is a spec change, not a step decision.
 
@@ -153,7 +158,7 @@ js/engine/hud.js    — top bar: wordmark, STEP n/4, SPENT $, mute
 js/engine/stage.js  — newStage(): fresh 720×480 SVG + controls row + defs
 js/engine/flow.js   — act runner + BACK/RESTART via record-and-replay (see §3)
 js/steps/step1.js … step4.js, summary.js
-js/steps/act.js     — ACT1 step configs (id/title/costDelta/inventory/businessCard/premise/cta/run)
+js/steps/act.js     — ACT1 step configs (id/title/costDelta/inventory/premise/cta/run)
 legacy/act1_v1.html — archived v1
 ```
 
@@ -229,13 +234,14 @@ returns to the end of the previous step. Steps therefore must be **pure**: same 
   watermark at 5% ink. Controls row beneath the SVG (chips, sliders, toggles, meter).
 - Guide: paper panel, step eyebrow (mono) + Instrument Serif h2 + hairline, EB Garamond beats,
   primary buttons = ink pill with mono uppercase label `BEGIN ▸`, ghost = hairline outline.
-- Business card: `--dark` block, cream text, mono amber cost line, eyebrow `VENTURE UPDATE`.
+- ~~Business card~~ (venture update): removed 2026-10-10 with the Nanovolt story (REVIEW_NOTES
+  N-005). Its slot at the end of each step goes to a real-numbers dark box (NUMBERS_BOXES.md).
 - Aha: `--dark` block with Instrument Serif italic lead — the dramatic moments are dark-on-paper.
 - Tasks: hairline cells with square tick boxes (green `--green` when done).
 
-## 5b. ACT 2 — "From Switches to Logic, Math & Memory"
+## 5b. ACT 2 — "From Transistors to Logic, Math & Memory"
 Ladder: **NAND → adder → latch → clocked datapath.** Steps live in `js/acts/act2/step1–4.js`
-(configs + all venture copy in `js/acts/act2/index.js`; do not duplicate copy in steps).
+(configs, premises and CTAs in `js/acts/act2/index.js`; do not duplicate copy in steps).
 Multi-act plumbing: `flow.run(steps, {actLabel, baseCost, onComplete})`; summaries are
 data-driven via `showSummary(spec, onNext)`.
 
@@ -300,6 +306,12 @@ not for a child who needs to be dazzled. Clarity beats flourish every time.
 - No suspense-building or hype ("here's the trick worth a chip company", "file that away").
 - No talking down, no cutesy asides, no exclamation-driven excitement.
 - Don't say the same thing three different ways for effect. Say it once, correctly.
+- **Never write a sentence fragment** (Ripu, 2026-10-11, binding): no "label: value" lines, no
+  "1 amp: 0.7 watts", no "80 billion, all held on: 560,000 watts". Every line, including list
+  items, ladder rungs and the "show the working" steps, is a full sentence in well-formed
+  English that says the condition and the result. See FS in AI_Writing_made_readable.md.
+- Use only comparisons that serve the point, and say how they connect to it. A comparison the
+  reader has to puzzle over (why a phone charger, here?) is noise.
 
 **Before → after (the standard):**
 - ✗ "Now push. Raise the voltage slowly and watch the wall itself — find the exact push where
@@ -312,8 +324,9 @@ not for a child who needs to be dazzled. Clarity beats flourish every time.
   barrier — that control is the basis of every switch in a chip."
 
 The "aha" payoff block still exists, but it states the insight directly (the numbers, the
-consequence) — it is not an excuse for purple prose. Same Nanovolt venture storyline for the
-business cards; that flavour lives in the cards, never in the teaching copy. Landing headline:
+consequence) — it is not an excuse for purple prose. There is no company storyline any more:
+the Nanovolt venture cards were removed on 2026-10-10 (REVIEW_NOTES N-005), and the dark box
+at the end of a step carries real-world numbers instead (NUMBERS_BOXES.md). Landing headline:
 **"Build your own Data Centre."** — subline "From a grain of sand to the machines that think.
 An interactive course you play, not read."
 
@@ -462,6 +475,20 @@ the old thing become the new thing. No jump cuts to a new diagram.
 **Rule 6 — plain names, plain verbs.** Step titles say what you build or learn; button labels
 say what the button does. The real industry term is still taught, but as a label on the thing
 or as the reveal at the end, per §6b. It is never the hook.
+
+**Rule 8 — every step runs Theory → In the Lab → The Real Numbers** (Ripu, 2026-10-19).
+After the theory cards, an "In the Lab" section shows what a student meets in a lab and in
+real life: the real part (drawn from its datasheet: package, markings, leg order), and, where
+the step's theory used a supply, ground or a voltage, the step's own circuit built on a
+breadboard with a bench supply on its rails. Lab panels use `slideInPanel(svg, html, { lab:
+true })`, lab cards use `guide.lab(html)` (`{ intro: true }` on the first one in a step), and
+the breadboard parts live in `js/engine/reallife.js` and `js/engine/labcircuits.js`. The real
+numbers box follows after the step ends, and it gets its own picture on the stage, never the
+step's diagram again (REVIEW_NOTES N-053): `numbersArt: build` in the step's registry entry,
+shown by `js/engine/numbersart.js` on a panel tagged THE REAL NUMBERS, with a real-world object
+tied to what the box says, drawn in detail, coming apart or assembling, then floating (1.2: a
+phone charger taken apart, `js/art/charger.js`). Going from one panel to the next, use
+`panel.swapTo(next)` so the stage never flashes between them.
 
 **Rule 7 — preface every step.** First card: what you will build here, in one sentence. If the
 step has a test or a payoff number, say what it will be. No mystery.

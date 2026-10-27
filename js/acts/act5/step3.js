@@ -1,11 +1,11 @@
-// ACT 5 · STEP 3 — "Cooling costs you megawatts".
-// Rebuilt to the micro-learning contract in DESIGN_MAKEOVER.md §2 and the card script in
-// ACT5_MAKEOVER.md §3: one card at a time (guide.cards), the Act 1 inverter and its meter
-// twitch opening the step (rule 4), each rung of the power ladder named on its own card
-// with its label landing at that moment (rule 3), the supply line defined before the
-// player is asked to fit anything under it, and the cooling choice shown on the ladder
-// rather than asserted in prose. The task is unchanged: 25 MW of IT load under a 30 MW
-// line, which only liquid cooling can do.
+// ACT 5 · STEP 4 — "How much of the power line do the computers actually get?"
+// (file step3.js, seed key 5:power). Course restructure (2026-10-25): the steps were
+// reordered, so the network step (step4.js) now comes just before this one and this is
+// step 4 of 5. The Act 1 inverter opening is cut; the step opens on the hall's 445 racks,
+// names each part of the power ladder on its own card, defines the supply line before the
+// player is asked to fit anything under it, and shows the cooling choice on the ladder.
+// The task is unchanged: 25 MW of IT load under a 30 MW line, which only liquid cooling
+// can do.
 //
 // THE ARITHMETIC. Every megawatt on screen is computed in tenths of a megawatt as
 // integers, and the total is the sum of the three rung figures that are actually printed.
@@ -18,18 +18,19 @@
 // Air runs out at 20 MW of IT load (29.5), liquid at 25 MW (29.4), so the task has exactly
 // one solution and the closing figures are the ones the player is looking at.
 //
-// Determinism: the needle twitch and every ladder move run on Anim.tween, which collapses
-// to its end state while replaying, and the three recorded answers (final input level,
-// cooling choice, {cooling, it}) restore the same state live or on replay. No Math.random,
+// Determinism: every ladder move runs on Anim.tween, which collapses to its end state
+// while replaying, and the two recorded answers (cooling choice, {cooling, it}) restore
+// the same state live or on replay. No Math.random,
 // no Date.now, no setTimeout driving a visual.
-import { waitFor, el, svgEl } from '../../engine/util.js';
+import { waitFor, svgEl } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makePowerLadder } from '../../engine/dc.js';
-import { makeSlider, makeSeg } from '../../engine/components.js';
+import { makeSlider, makeSeg, slideInPanel } from '../../engine/components.js';
+import { powerLab } from './lab.js';
 
 /* ---------- the power model, in tenths of a megawatt so nothing rounds twice ---------- */
 const LIMIT = 30;                 // the hall's grid line, MW
@@ -50,13 +51,12 @@ function budget(it, cooling){
 }
 
 /* ---------- stage geometry, in the stage's 720×480 user units ---------- */
-const MET = { x: 300, y: 74, w: 120, h: 96, cx: 360, cy: 156, r: 42 };
-const A0 = 215 * Math.PI / 180, A1 = 325 * Math.PI / 180;
-const INV = { x: 300, y: 214, w: 120, h: 58, mid: 243 };
+// Course restructure (2026-10-25): the hall plan replaces the meter and the inverter.
+// 445 racks (25,000 kW ÷ 56 kW ≈ 446, which the course rounds to 445) on a 30 × 15 grid.
+const HALL = { racks: 445, kw: 56, cols: 30, rows: 15, x: 122, y: 130, dx: 16, dy: 14 };
 const LAD = { x: 300, y: 70, w: 120, h: 300 };
 const NAME_X = 206, VAL_X = 286;
 
-const polar = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(1)} ${(cy + r * Math.sin(a)).toFixed(1)}`;
 const lerp = (a, b, p) => a + (b - a) * p;
 
 async function fadeIn(nodes, dur = 320){
@@ -74,136 +74,39 @@ async function fadeOut(nodes, dur = 280){
 }
 
 export async function step3(){
-  guide.title('STEP 3 / 5 · NANOVOLT CLOUD', 'Cooling costs you <em>megawatts</em>');
+  // Course restructure (2026-10-25): now step 4; the network step comes before it.
+  guide.title('STEP 4 / 5', 'How much of the power line <em>do the computers actually get?</em>');
   guide.cards();
 
-  const stage = newStage('23', 'A meter twitching as an inverter flips, then a power ladder splitting a 30 MW line between IT load, cooling and losses');
+  const stage = newStage('24', 'A hall of 445 racks, then a bar splitting a 30 MW line between IT load, cooling and losses');
   const { svg, controls } = stage;
 
-  /* ==================== SCENE A — the Act 1 inverter, still true ==================== */
+  /* ==================== SCENE A — the hall, as racks ==================== */
+  // Course restructure (2026-10-25): the Act 1 inverter, its meter and the flip task are
+  // cut (Act 4's last step has just made the billions-of-flips point). The step now opens
+  // on the hall from step 1: a top-down plan of 445 racks at 56 kW each, about 25 MW.
 
   const sceneA = svgEl('g');
   svg.appendChild(sceneA);
 
-  const meterG = svgEl('g');
-  meterG.innerHTML = `
-    <rect x="${MET.x}" y="${MET.y}" width="${MET.w}" height="${MET.h}" rx="5" class="tile-bg"/>
-    <path d="M${polar(MET.cx, MET.cy, MET.r, A0)} A${MET.r} ${MET.r} 0 0 1 ${polar(MET.cx, MET.cy, MET.r, A1)}"
-          fill="none" stroke="var(--hairline-strong)" stroke-width="1.2"/>
-    ${[A0, (A0 + A1) / 2, A1].map(a =>
-      `<path d="M${polar(MET.cx, MET.cy, MET.r - 7, a)} L${polar(MET.cx, MET.cy, MET.r, a)}" class="wire"/>`).join('')}`;
-  const needle = svgEl('line', {
-    x1: MET.cx, y1: MET.cy, x2: MET.cx, y2: MET.cy,
-    stroke: 'var(--ink)', 'stroke-width': 2, 'stroke-linecap': 'round',
-  });
-  const pivot = svgEl('circle', { cx: MET.cx, cy: MET.cy, r: 3, fill: 'var(--ink)' });
-  const readout = svgEl('text', { x: MET.cx, y: MET.y + MET.h + 16, class: 'lbl-strong' });
-  readout.textContent = 'AT REST';
-  meterG.append(needle, pivot, readout);
-  sceneA.appendChild(meterG);
-
-  /* the needle reads a fraction of full deflection. There is no sourced figure for the
-     current of one flip, so the dial carries no units and the copy claims none. */
-  function setNeedle(f){
-    const a = A0 + (A1 - A0) * Math.max(0, Math.min(1, f));
-    needle.setAttribute('x2', (MET.cx + 32 * Math.cos(a)).toFixed(1));
-    needle.setAttribute('y2', (MET.cy + 32 * Math.sin(a)).toFixed(1));
+  const hallG = svgEl('g');
+  let cells = `<rect x="${HALL.x - 14}" y="${HALL.y - 14}" width="${HALL.cols * HALL.dx + 24}" height="${HALL.rows * HALL.dy + 24}" rx="5" class="tile-bg"/>`;
+  for (let i = 0; i < HALL.racks; i++){
+    const c = i % HALL.cols, r = Math.floor(i / HALL.cols);
+    cells += `<rect x="${HALL.x + c * HALL.dx}" y="${HALL.y + r * HALL.dy}" width="${HALL.dx - 4}" height="${HALL.dy - 5}" rx="1" fill="var(--hairline-strong)"/>`;
   }
-  setNeedle(0);
+  hallG.innerHTML = cells;
+  const hallT = svgEl('text', { x: 360, y: HALL.y - 26, class: 'lbl-strong' });
+  hallT.textContent = `${HALL.racks} RACKS, SEEN FROM ABOVE`;
+  const hallSum = svgEl('text', { x: 360, y: HALL.y + HALL.rows * HALL.dy + 36, class: 'lbl' });
+  hallSum.textContent = `${HALL.racks} × ${HALL.kw} kW ≈ ${TASK_IT} MW`;
+  hallG.append(hallT, hallSum);
+  sceneA.appendChild(hallG);
 
-  const invG = svgEl('g');
-  invG.innerHTML = `
-    <line x1="${MET.cx}" y1="${MET.y + MET.h}" x2="${MET.cx}" y2="${INV.y}" class="wire"/>
-    <rect x="${INV.x}" y="${INV.y}" width="${INV.w}" height="${INV.h}" rx="5" class="tile-bg"/>
-    <line x1="270" y1="${INV.mid}" x2="${INV.x}" y2="${INV.mid}" class="wire"/>
-    <line x1="${INV.x + INV.w}" y1="${INV.mid}" x2="450" y2="${INV.mid}" class="wire"/>
-    <rect x="238" y="227" width="32" height="32" rx="3" class="bit-cell"/>
-    <rect x="450" y="227" width="32" height="32" rx="3" class="bit-cell"/>`;
-  const invT = svgEl('text', { x: INV.x + INV.w / 2, y: INV.mid + 4, class: 'gate-lbl' });
-  invT.textContent = 'INVERTER';
-  const inT = svgEl('text', { x: 254, y: INV.mid + 5, class: 'bit-t' });
-  const outT = svgEl('text', { x: 466, y: INV.mid + 5, class: 'bit-t' });
-  const inL = svgEl('text', { x: 254, y: 278, class: 'lbl-faint' });
-  inL.textContent = 'IN';
-  const outL = svgEl('text', { x: 466, y: 278, class: 'lbl-faint' });
-  outL.textContent = 'OUT';
-  invG.append(invT, inT, outT, inL, outL);
-  sceneA.appendChild(invG);
-
-  let IN = 0, flips = 0, twitching = false;
-  function setIN(v){
-    IN = v;
-    inT.textContent = String(v);
-    outT.textContent = String(v === 0 ? 1 : 0);
-  }
-  setIN(0);
-
-  async function twitch(){
-    twitching = true;
-    readout.textContent = 'SWITCHING';
-    // a fast rise and a slower fall, on a linear clock, so one flip is watchable
-    await Anim.tween(760, p => {
-      setNeedle(p >= 1 ? 0 : p < 0.16 ? 0.6 * (p / 0.16) : 0.6 * Math.exp(-4.6 * (p - 0.16)));
-    }, p => p);
-    setNeedle(0);
-    readout.textContent = 'AT REST';
-    twitching = false;
-  }
-
-  const scaleG = svgEl('g');
-  const scale1 = svgEl('text', { x: 360, y: 336, class: 'lbl' });
-  scale1.textContent = 'BILLIONS OF FLIPS PER SECOND';
-  const scale2 = svgEl('text', { x: 360, y: 360, class: 'lbl' });
-  scale2.textContent = '× THOUSANDS OF CHIPS IN THIS HALL';
-  scaleG.append(scale1, scale2);
-  scaleG.style.display = 'none';
-  sceneA.appendChild(scaleG);
-
-  /* ---- card 1: it is the player's own inverter ---- */
-  guide.say(`This is the inverter you built in Act 1, wired to a meter that reads what it
-    draws from the supply.`);
-  stage.focus(invG, { label: 'your act 1 inverter', at: 'bottom' });
-  await guide.next();
-
-  /* ---- card 2: power only at the instant it flips ---- */
-  guide.say(`It draws power only at the instant its output flips. Flip the input twice and
-    watch the needle.`);
-  stage.focus(meterG, { label: 'watch the meter', at: 'left' });
-
-  const flipBtn = el('button', { class: 'btn primary', 'data-label': 'flip-the-input' }, 'FLIP THE INPUT');
-  controls.appendChild(flipBtn);
-
-  await flow.ask(async replay => {
-    if (replay !== undefined){
-      setIN(replay);
-      flipBtn.disabled = true; flipBtn.classList.add('used');
-      return replay;
-    }
-    flipBtn.addEventListener('click', async () => {
-      if (twitching || flips >= 2) return;
-      SFX.click();
-      flips++;
-      setIN(IN === 0 ? 1 : 0);
-      if (flips >= 2){ flipBtn.disabled = true; flipBtn.classList.add('used'); }
-      await twitch();
-    });
-    await waitFor(() => flips >= 2 && !twitching, { hold: 320 });
-    return IN;
-  });
-
-  /* ---- card 3: what the meter did ---- */
-  guide.say(`Two flips, two twitches. In between, the pair held its answer and drew almost
-    nothing.`);
-  stage.focus(meterG, { label: 'power only when it changes', at: 'left' });
-  await guide.next();
-
-  /* ---- card 4: the same twitch, multiplied ---- */
-  stage.clearFocus();
-  await fadeIn([scaleG], 340);
-
-  guide.say(`One chip flips billions of times a second, and this hall holds thousands of
-    chips. Every one of those twitches comes off the same power line.`);
-  stage.focus(scaleG, { label: 'what the hall pays for', at: 'top' });
+  /* ---- card 1: the hall from step 1 ---- */
+  guide.say(`Your hall will hold about ${HALL.racks} racks, each drawing ${HALL.kw} kW all day.
+    Together they will draw about ${TASK_IT} MW.`);
+  stage.focus(hallG, { label: 'your hall', at: 'top' });
   await guide.next();
 
   /* ==================== SCENE B — the power ladder ==================== */
@@ -307,13 +210,14 @@ export async function step3(){
 
   await fadeIn([ladder.g], 360);
 
-  /* ---- card 5: the bar is the hall's whole draw ---- */
-  guide.say(`Every watt this hall pulls lands in one of three piles. The bar is the whole
-    draw, split between them. <b>Your goal: keep it under the line you are given.</b>`);
+  /* ---- card 2: the bar is the hall's whole draw ---- */
+  guide.say(`Every watt this hall draws goes into one of three parts. The bar is the whole
+    draw, split between them. <b>Your goal is to keep the bar under the line you are
+    given.</b>`);
   stage.focus(frameRect, { label: "the hall's draw", at: 'top' });
   await guide.next();
 
-  /* ---- card 6: IT load ---- */
+  /* ---- card 3: IT load ---- */
   stage.clearFocus();
   const slider = makeSlider(controls, {
     label: 'IT LOAD (MW)', min: 4, max: 30, step: 1, value: itLoad, fmt: v => `${v} MW`,
@@ -321,40 +225,51 @@ export async function step3(){
   slider.input.disabled = true;
   await moveTo({ it: START_IT, cool: 0, loss: 0 }, 520);
 
-  guide.say(`IT load is the power the computers themselves take. It is the only part of the
-    bill that does any work.`);
+  guide.say(`IT load is the power the computers themselves draw: the servers in the racks,
+    the machines that hold the GPUs. It is the only part of the draw that does any computing.`);
   stage.focus([itRect, rungLab.it.g], { label: 'it load', at: 'top' });
   await guide.next();
 
-  /* ---- card 7: cooling ---- */
+  /* ---- card 4: cooling ---- */
   stage.clearFocus();
   const air12 = budget(START_IT, 'air');
   await moveTo({ it: air12.it, cool: air12.cool, loss: 0 }, 460);
 
-  guide.say(`All of that power leaves the racks as heat. Cooling is what you spend carrying
-    the heat back out of the building.`);
+  guide.say(`All of that power leaves the racks as heat. Cooling is the power you spend
+    carrying that heat back out of the building.`);
   stage.focus([coolRect, rungLab.cool.g], { label: 'cooling', at: 'top' });
   await guide.next();
 
-  /* ---- card 8: losses ---- */
+  /* ---- card 5: losses ---- */
   stage.clearFocus();
   await moveTo({ it: air12.it, cool: air12.cool, loss: air12.loss }, 420);
 
-  guide.say(`The rest warms the transformers and power supplies that feed the hall. About 4
-    percent never reaches a rack.`);
+  guide.say(`Losses are the power that warms the transformers and power supplies feeding the
+    hall. About 4 percent never reaches a rack.`);
   stage.focus([lossRect, rungLab.loss.g], { label: 'losses', at: 'top' });
   await guide.next();
 
-  /* ---- card 9: the line ---- */
+  /* ---- card 6: the line ---- */
   stage.clearFocus();
   await fadeIn([limitLine, limitTxt, headT], 340);
 
-  guide.say(`One line feeds the hall, and the utility rated it at ${LIMIT} MW. Nothing you
-    build changes that number. Everything on the bar has to fit under it.`);
+  guide.say(`One power line feeds the hall from the grid, and the utility rated it at
+    ${LIMIT} MW. Nothing you build changes that number. Everything on the bar has to fit
+    under it.`);
   stage.focus([limitLine, limitTxt], { label: 'the grid line', at: 'top' });
   await guide.next();
 
-  /* ---- card 10: air cooling ---- */
+  /* ---- card 7: the line in the news ---- */
+  // Course restructure (2026-10-25): a light-bulb card tying the fixed line to the news.
+  // Well reported: Microsoft's 2024 deal with Constellation to restart a Three Mile Island
+  // reactor, and Amazon's 2024 deal with Talen for power from the Susquehanna nuclear plant.
+  guide.say(`When the news says power is the bottleneck, it means this line. A large new
+    line can take years to get from the grid, so AI companies now sign deals with power
+    plants, nuclear ones included.`);
+  stage.focus([limitLine, limitTxt], { label: 'the grid line', at: 'top' });
+  await guide.next();
+
+  /* ---- card 8: air cooling ---- */
   stage.clearFocus();
   let segLive = false, onCoolPick = null;
   const seg = makeSeg(controls, [
@@ -373,16 +288,17 @@ export async function step3(){
   segEnabled(false);
 
   guide.say(`Air cooling blows cold air through the racks. Shifting heat that way takes a
-    lot of fan power, which is why this rung is ${air12.cool.toFixed(1)} MW wide.`);
+    lot of fan power, which is why the cooling part of the bar is
+    ${air12.cool.toFixed(1)} MW.`);
   stage.focus([coolRect, rungLab.cool.g], { label: 'air cooling', at: 'top' });
   await guide.next();
 
-  /* ---- card 11: liquid cooling, and the switch ---- */
+  /* ---- card 9: liquid cooling, and the switch ---- */
   stage.clearFocus();
   segEnabled(true);
 
-  guide.say(`Liquid cooling pumps coolant through plates sitting on the chips. Water carries
-    heat far better than air. Switch to it and watch the rung.`);
+  guide.say(`Liquid cooling pumps water through plates sitting on the chips. Water carries
+    heat far better than air. Switch to it and watch the cooling part of the bar.`);
 
   await flow.ask(async replay => {
     if (replay !== undefined){
@@ -395,14 +311,22 @@ export async function step3(){
     return cooling;
   });
 
-  /* ---- card 12: the two overheads, side by side ---- */
+  /* ---- card 10: the two overheads, side by side ---- */
   const liq12 = budget(START_IT, 'liquid');
-  guide.say(`Same ${START_IT} MW of computing. Air spent ${air12.cool.toFixed(1)} MW
-    carrying the heat out. Liquid spends ${liq12.cool.toFixed(1)}.`);
+  guide.say(`Same ${START_IT} MW of IT load. Air spent ${air12.cool.toFixed(1)} MW carrying
+    the heat out. Liquid spends ${liq12.cool.toFixed(1)} MW.`);
   stage.focus([coolRect, rungLab.cool.g], { label: 'liquid cooling', at: 'top' });
   await guide.next();
 
-  /* ---- card 13: the task ---- */
+  /* ---- card 11: where the water goes ---- */
+  // Course restructure (2026-10-25): the step never shows evaporation, so the water card
+  // rides on the liquid rung and names the cooling tower in words.
+  guide.say(`The water in those plates goes round a closed loop and is not used up. The water
+    use you read about in the news is water evaporated in cooling towers.`);
+  stage.focus([coolRect, rungLab.cool.g], { label: 'a closed loop', at: 'right' });
+  await guide.next();
+
+  /* ---- card 12: the task ---- */
   // no focus while the player works: the slider and the buttons sit outside the SVG, and a
   // scrim would dim the four figures they have to read
   stage.clearFocus();
@@ -433,7 +357,7 @@ export async function step3(){
     hintId = setTimeout(() => {
       if (ep !== flow._epoch) return;
       noteT.textContent = cooling === 'air'
-        ? `AIR CANNOT CARRY ${TASK_IT} MW UNDER THIS LINE`
+        ? `WITH AIR COOLING, ${TASK_IT} MW WILL NOT FIT UNDER THE LINE`
         : `PUSH THE IT LOAD SLIDER UP TO ${TASK_IT} MW`;
     }, 14000);
     await waitFor(() => {
@@ -448,25 +372,66 @@ export async function step3(){
   noteT.textContent = '';
   task.done();
 
-  /* ---- card 14: read the four numbers back ---- */
+  /* ---- card 13: read the numbers back ---- */
+  // Course restructure (2026-10-25): the read-back and the old aha both stated 25.0 MW and
+  // 4.4 MW, so they are merged here; a PUE card follows, and the aha hands on to the site.
   const held = budget(answer.it, answer.cooling);
   slider.input.disabled = true;
   segEnabled(false);
 
-  guide.say(`Held. ${held.it.toFixed(1)} MW of computing, ${held.cool.toFixed(1)} MW of
-    cooling and ${held.loss.toFixed(1)} MW lost on the way in. ${held.total.toFixed(1)} MW
-    on a ${LIMIT} MW line.`);
+  guide.say(`It holds: ${held.total.toFixed(1)} MW on a ${LIMIT} MW line. The computers get
+    ${held.it.toFixed(1)} MW of it, and cooling and losses take the other
+    ${(held.cool + held.loss).toFixed(1)} MW.`);
   // the sum and the headroom ride along, or the scrim dims the two figures the card quotes
   stage.focus([itRect, coolRect, lossRect, totalTxt,
     rungLab.it.g, rungLab.cool.g, rungLab.loss.g, headT],
-    { label: 'the three piles', at: 'top', ring: false });
+    { label: 'the three parts', at: 'top', ring: false });
   await guide.next();
 
-  /* ---- card 15: what the budget really bought ---- */
-  stage.clearFocus();
-  guide.aha(`Cooling and losses took ${(held.cool + held.loss).toFixed(1)} MW of the
-    ${LIMIT}. You paid for the whole line, and the computers got ${held.it.toFixed(1)} MW of it.`,
-    `Cooling is part of the power budget from the day you size the line. It is why these
-     halls get built where power is cheap and water is close.`);
+  /* ---- card 14: PUE ---- */
+  // Course restructure (2026-10-25): PUE is now defined on a card. 29.4 ÷ 25 = 1.176.
+  guide.say(`The whole draw divided by the IT load is called the PUE (power usage
+    effectiveness). Your hall's is ${held.total.toFixed(1)} ÷ ${held.it.toFixed(0)} =
+    ${(held.total / held.it).toFixed(2)}. At 1.0, every watt would reach the computers.`);
+  stage.focus([itRect, rungLab.it.g, totalTxt], { label: 'whole draw ÷ it load', at: 'right', ring: false });
   await guide.next();
+
+  /* ---- card 15: the aha, handing on to the site ---- */
+  stage.clearFocus();
+  guide.aha(`Cooling and losses come out of the same line as the computers.`,
+    `Halls like yours are built where power is cheap and water is close. Choosing that place
+     for yours comes next.`);
+  await guide.next();
+
+  /* ==================== IN THE LAB — the power and the cooling, as installed ========== */
+
+  stage.clearFocus();
+  const lab = slideInPanel(svg, powerLab(), { lab: true });
+  lab.focus('pdu');
+  await lab.show();
+
+  // Course restructure (2026-10-25): step 1 no longer defines PDUs, so the clause here does.
+  guide.lab(`The IT load on your bar reaches each rack through its power distribution units
+    (PDUs), the upright strips of sockets at the back that feed each server. The amber display shows the current
+    the strip is carrying, in amps.`, { intro: true });
+  await guide.next();
+
+  lab.focus('psu');
+  guide.lab(`Power supplies inside each server turn that AC into the DC the chips use. This
+    label is from one in a DGX H100. A good supply delivers over 90 percent as DC, and the
+    rest becomes heat in the server.`);
+  await guide.next();
+
+  lab.focus('plate');
+  guide.lab(`Here are the plates from the step, as installed. A copper cold plate sits on the
+    GPU in place of a heat sink, and coolant, mostly water with some glycol, flows through
+    fine channels inside it.`);
+  await guide.next();
+
+  lab.focus(['plate', 'cdu']);
+  guide.lab(`The hoses run to a coolant distribution unit (CDU). Its pump pushes the coolant
+    round the racks, and a heat exchanger passes the heat to the building's water without the
+    two mixing. This is part of the cooling on your bar.`);
+  await guide.next();
+  await lab.hide();
 }

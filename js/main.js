@@ -28,13 +28,18 @@ const ACTS = {
   5: { steps: ACT5, summary: ACT5_SUMMARY, label: 'ACT 5', baseCost: ACT5_BASE_COST, nextAct: null },
 };
 
-function startAct(n, startAt = 0){
+let currentAct = 1;
+function startAct(n, startAt = 0, replay = {}){
   const act = ACTS[n];
   if (!act) return;
+  currentAct = n;
+  $('#game').dataset.act = String(n);   // Ripu (2026-10-25): per-act styling, retro buttons in Act 1 first
   flow.run(act.steps, {
     actLabel: act.label,
     baseCost: act.baseCost,
     startAt,
+    queue: replay.queue,     // dev index only: land on a card mid-step
+    saved: replay.saved,
     onProgress: step => progress.save(n, step),
     onComplete: () => {
       // park the player at the top of the next act — or forget the run
@@ -47,7 +52,7 @@ function startAct(n, startAt = 0){
 window.__byodcStartAct = startAct;   // debug/verification hook (harmless)
 
 let started = false;
-function startGame(actId = 1, startAt = 0){
+function startGame(actId = 1, startAt = 0, replay = {}){
   if (started) return;
   started = true;
   SFX.init(); SFX.click();
@@ -56,7 +61,20 @@ function startGame(actId = 1, startAt = 0){
   $('#game').classList.add('active');
   window.scrollTo(0, 0);
   Music.start();   // idempotent — already playing if the landing kicked it off
-  startAct(actId, startAt);
+  startAct(actId, startAt, replay);
+}
+
+/* ---- dev index (localhost only) ----------------------------------------
+   A review drawer that jumps to any act, step or card. It is never loaded on
+   the live site: the import only happens when the page is served locally. */
+if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)){
+  import('./dev/index-panel.js').then(m => m.initDevIndex({
+    acts: ACTS,
+    currentAct: () => currentAct,
+    jump(n, step, replay){
+      if (started) startAct(n, step, replay); else startGame(n, step, replay);
+    },
+  })).catch(err => console.warn('[BYODC dev index] not loaded:', err));
 }
 
 document.querySelectorAll('[data-begin]').forEach(b =>
@@ -76,6 +94,7 @@ document.querySelectorAll('[data-begin]').forEach(b =>
     el.textContent = `Resume — ${act.label} · step ${saved.step + 1} / ${act.steps.length} ▸`;
     el.addEventListener('click', () => startGame(saved.act, saved.step));
   });
+  document.querySelectorAll('[data-new-visitor]').forEach(el => { el.hidden = true; });   // N-136
   document.querySelectorAll('[data-forget]').forEach(el => {
     el.hidden = false;
     el.addEventListener('click', () => { progress.clear(); location.reload(); });

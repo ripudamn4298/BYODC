@@ -42,9 +42,10 @@
   border-color:var(--hairline);
 }
 #lnav .wordmark{
-  font-family:var(--font-display);font-size:21px;color:var(--ink);text-decoration:none;
+  font-family:var(--font-pixel);font-size:32px;line-height:1;letter-spacing:.06em;color:var(--ink);text-decoration:none;
+  text-shadow:var(--h3d-ink-sm);   /* Ripu (2026-10-26): 3D pixel wordmark */
 }
-#lnav .wordmark .dot{color:var(--red)}
+#lnav .wordmark .dot{color:var(--ink)}
 #lnav .links{display:flex;gap:26px;margin:0 auto}
 #lnav .links a{color:var(--ink-soft);text-decoration:none;padding-bottom:2px;border-bottom:1px solid transparent}
 #lnav .links a:hover{color:var(--ink);border-color:var(--ink)}
@@ -58,10 +59,12 @@
 .hero-inner{display:grid;grid-template-columns:minmax(0,58%) 1fr;align-items:center;flex:1;padding-top:70px}
 .hero-copy .microlabel{margin-bottom:26px}
 .hero-copy h1{
-  font-family:var(--font-display);font-weight:400;
-  font-size:clamp(52px,8.2vw,118px);line-height:.98;letter-spacing:-.015em;
+  font-family:var(--font-pixel);font-weight:400;text-transform:uppercase;
+  font-size:clamp(50px,7.1vw,104px);line-height:.92;letter-spacing:.01em;
+  text-shadow:var(--h3d-ink);
 }
-.hero-copy h1 em{font-style:italic}
+/* VT323 has no italic: the second line is set apart in the act red instead (Ripu, 2026-10-25) */
+.hero-copy h1 em{font-style:normal}
 .hero-copy .lede{
   margin-top:30px;max-width:46ch;font-size:clamp(17px,1.5vw,20px);color:var(--ink-soft);
 }
@@ -118,14 +121,17 @@
   opacity:0;pointer-events:none;
 }
 .rm .jphase{position:relative;top:auto;transform:none;opacity:1;margin-bottom:56px;pointer-events:auto}
-.jphase .microlabel{margin-bottom:16px}
-.jphase .microlabel .idx{color:var(--red)}
+/* Ripu (2026-10-27): a scroll cue above each phase, and the numbered label as the heading */
+.jphase .jcue{display:flex;align-items:center;gap:12px;margin-bottom:20px;color:var(--ink-soft)}
+.jphase .jcue .cue-arrow{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;
+  border:1px solid var(--hairline-strong);border-radius:50%;font-family:var(--font-mono);font-size:13px;color:var(--ink);
+  animation:cueBounce 1.9s var(--ease) infinite}
 .jphase h3{
-  font-family:var(--font-display);font-weight:400;
-  font-size:clamp(34px,4.2vw,58px);line-height:1.03;
+  font-family:var(--font-pixel);font-weight:400;text-transform:uppercase;letter-spacing:.02em;
+  font-size:clamp(44px,5.4vw,78px);line-height:.95;text-shadow:var(--h3d-ink);
 }
-.jphase h3 em{font-style:italic}
-.jphase p{margin-top:18px;font-size:17.5px;color:var(--ink-soft);max-width:42ch}
+.jphase h3 .idx{color:var(--ink-faint);text-shadow:none;margin-right:.2em}
+.jphase p{margin-top:20px;font-size:19px;line-height:1.5;color:var(--ink-soft);max-width:40ch}
 .jphase p b{color:var(--ink)}
 @media (max-width:880px){
   .journey-copy{width:100%;max-width:480px}
@@ -189,8 +195,8 @@
 /* ---------- acts ---------- */
 #acts{padding-top:8vh;padding-bottom:14vh}
 .acts-head{display:flex;align-items:baseline;gap:26px;flex-wrap:wrap;margin-bottom:34px}
-.acts-head h2{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,4.6vw,60px)}
-.acts-head h2 em{font-style:italic}
+.acts-head h2{font-family:var(--font-pixel);font-weight:400;text-transform:uppercase;font-size:clamp(40px,5.4vw,70px);line-height:.95;text-shadow:var(--h3d-ink)}
+.acts-head h2 em{font-style:normal}
 .acts-table{border-top:1px solid var(--ink);max-width:1080px}
 .act-row{
   display:flex;align-items:center;gap:26px;width:100%;
@@ -218,3 +224,26 @@
 }
 #colophon p{max-width:60ch;font-size:16.5px;color:var(--ink-soft)}
 #colophon .foot-rule{border-top:1px dashed var(--hairline);padding-top:16px;color:var(--ink-faint)}
+
+/* ---------- Ripu (2026-10-26): pixel act names and retro 3D buttons on the landing page ---------- */
+.act-row .nm{font-family:var(--font-pixel);font-size:27px;line-height:1.05;letter-spacing:.03em;text-transform:uppercase}
+.act-row .nm em{font-family:var(--font-body);font-size:.66em;letter-spacing:0;text-transform:none}
+.act-row.playable .tag.play{font-family:var(--font-pixel);font-size:19px;letter-spacing:3px;padding:6px 14px 5px;
+  background:var(--btn-accent);color:var(--brand-ink);
+  box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink);transition:transform .08s, box-shadow .08s}
+.act-row.playable:active .tag.play{transform:translateY(3px);box-shadow:0 0 0 2px var(--brand-ink)}
+#landing .btn{
+  font-family:var(--font-pixel);font-size:21px;font-weight:400;line-height:1;
+  text-transform:uppercase;letter-spacing:3px;
+  border:0;border-radius:0;padding:10px 24px 9px;
+  background:var(--paper-high);color:var(--brand-ink);
+  box-shadow:0 0 0 2px var(--brand-ink), 0 4px 0 2px var(--brand-ink);
+  transition:transform .08s ease-out, box-shadow .08s ease-out, background .2s, color .2s;
+}
+#landing .btn:hover:not(:disabled){background:#fff9ea;color:var(--brand-ink);transform:translateY(-1px);
+  box-shadow:0 0 0 2px var(--brand-ink), 0 5px 0 2px var(--brand-ink)}
+#landing .btn:active:not(:disabled){transform:translateY(4px);box-shadow:0 0 0 2px var(--brand-ink)}
+#landing .btn.primary{background:var(--btn-accent);color:var(--brand-ink)}
+#landing .btn.primary:hover:not(:disabled){background:#e9846f;color:var(--brand-ink)}
+#landing .btn.big{font-size:26px;padding:14px 34px 12px}
+#landing .btn.micro{font-size:17px;padding:6px 14px 5px;letter-spacing:2px;box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink)}

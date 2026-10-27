@@ -17,12 +17,12 @@ No runtime network: GSAP is vendored in `vendor/`, fonts (Instrument Serif, EB G
 - **Landing** — hero with a draggable 430-dot constellation that morphs lattice → transistor → MOSFET →
   chip → rack as you scroll the pinned Journey; a dark "Meanwhile, in the real world" interlude with
   flying fact cards (ASML, TSMC, nm-vs-hair…); acts ladder; colophon.
-- **Act 2 — From Switches to Logic, Math & Memory** (4 steps): wire CMOS twins into a **NAND**
+- **Act 2 — Build Your Own Processor** (4 steps): wire CMOS twins into a **NAND**
   and pass its truth-table test; build a full adder from gates, compress it into a tile, stamp
   four and watch the **carry ripple**; cross-couple two NANDs by hand into a **latch** that
   remembers after you let go; then loop register → adder → register with a **clock** and make
   the machine count to a target. Ends at a working datapath — a CPU's heartbeat at 1 press/second.
-- **Act 1 — The Physics of a Switch** (4 steps, each hands-on):
+- **Act 1 — Build Your Own Transistor** (4 steps, each hands-on):
   1. Dope a silicon crystal (bond electron *pairs* drawn honestly; holes = vacancy rings that hop
      between bonds; electron-flow vs conventional-current beat, then chevrons everywhere after).
   2. NPN transistor (emitter small / base thin / collector wide; current INTO base; LED ×100 test).

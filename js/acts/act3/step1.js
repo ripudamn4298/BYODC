@@ -28,7 +28,8 @@ import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeChip, cornerTicks } from '../../engine/components.js';
+import { makeChip, cornerTicks, slideInPanel } from '../../engine/components.js';
+import { cleanroomHTML } from './lab.js';   // Course restructure (2026-10-25): ingotScaleHTML no longer used here
 import { mulberry32 } from '../../engine/fab.js';
 
 /* ---------- the puller, drawn down the left of the stage ---------- */
@@ -65,7 +66,7 @@ const FACE = {
 const BASE_SEED = 0x51C0;
 
 export async function step1(){
-  guide.title('STEP 1 / 5 · NANOVOLT MATERIALS', 'Grow <em>one perfect crystal</em>');
+  guide.title('STEP 1 / 5', 'How do you grow an ultra-pure silicon crystal <em>with atom-level precision?</em>');
   guide.cards();
 
   const stage = newStage('10', 'Czochralski crystal pull, with the lattice at the growth face');
@@ -244,13 +245,23 @@ export async function step1(){
 
   /* ================= cards ================= */
 
-  guide.say(`A transistor only works if the silicon under it is one unbroken pattern of
-    atoms. Here you grow that crystal, then slice it into wafers.`);
+  // Course restructure (2026-10-25): new first card, the hand-in from Act 2, which ends on
+  // "Nobody places those by hand: they are printed." The stage shows only the puller here,
+  // so the card names the crystal and the next card points at the machine.
+  guide.say(`In Act 2 you built a small processor as a drawing of gates and wires. To make
+    it real, every transistor in it has to be made in silicon, and that starts with a
+    crystal.`);
+  await guide.next();
+
+  guide.say(`A transistor only works if the silicon under it is one unbroken crystal
+    lattice, the ordered grid of atoms from Act 1. Here you grow that crystal, then slice
+    it into thin discs called wafers.`);
   stage.focus(rigG, { label: 'crystal puller', at: 'right' });
   await guide.next();
 
-  guide.say(`This is refined sand: 99.9999999% silicon, nine nines, held molten at 1,414 °C.
-    Pure is not enough on its own. Every atom still has to land in the right place.`);
+  guide.say(`This is the melt: refined sand, 99.9999999% silicon (nine nines), held liquid
+    at 1,414 °C. Purity is not enough on its own, because every atom still has to land in
+    the right place.`);
   stage.focus(melt, { label: 'the melt', at: 'left' });
   await guide.next();
 
@@ -277,8 +288,9 @@ export async function step1(){
   await Anim.tween(420, p => { panelG.style.opacity = String(p); detailG.style.opacity = String(p * 0.9); });
   panelG.style.opacity = '1';
 
-  guide.say(`The panel magnifies the boundary where the crystal meets the melt. Each ink
-    circle is one silicon atom. The ones below the dashed line are still liquid.`);
+  guide.say(`The panel magnifies the growth face, the boundary where the crystal meets the
+    melt. Each ink circle is one silicon atom, and the ones below the dashed line are
+    still liquid.`);
   stage.focus(panelG, { label: 'growth face', at: 'top' });
   await guide.next();
 
@@ -305,8 +317,8 @@ export async function step1(){
     drawMelt(seedNum);
   }
 
-  guide.say(`That layer is about 0.24 nm thick. A finished ingot is 1.6 m of them, every
-    atom sitting where the row below it says.`);
+  guide.say(`That layer is about 0.14 nm thick. A finished ingot (the whole grown crystal)
+    is 1.6 m of such layers, every atom sitting where the row below it says.`);
   stage.focus(rowNodes[ROWS - 1], { label: 'one layer of atoms', at: 'bottom' });
   await guide.next();
 
@@ -323,8 +335,9 @@ export async function step1(){
     if (!flow.instant) SFX.blip();
   }
 
-  guide.say(`Pull speed decides how well each layer lands. Run a short test at all three
-    speeds and watch the growth face. <b>Your goal: a full ingot with no breaks in it.</b>`);
+  guide.say(`Pull speed decides how well each layer lands. Run a short test pull at all
+    three speeds and watch the growth face. <b>Your goal is a full ingot with no breaks
+    (missing or extra atoms) in its lattice.</b>`);
   stage.clearFocus();
 
   const testBtns = {};
@@ -370,7 +383,7 @@ export async function step1(){
 
   setReadout('fast', drawLattice('fast', seedNum, ROWS));
   guide.say(`At 1.5 mm/min the row closes before every atom has arrived. Each gap left
-    behind is a permanent break in the pattern.`);
+    behind is a permanent break in the lattice.`);
   // faceCap sits outside panelG, so it has to be raised with it or the scrim dims the
   // one line that says what the card is talking about. Document order: panelG, faceCap.
   stage.focus([panelG, faceCap], { label: 'pulled at 1.5 mm/min', at: 'top' });
@@ -378,8 +391,9 @@ export async function step1(){
 
   stage.clearFocus();
   setReadout('slow', drawLattice('slow', seedNum, ROWS));
-  guide.say(`At 0.2 mm/min extra silicon atoms have time to squeeze between the rows and
-    clump. The furnace also runs for five days instead of two.`);
+  guide.say(`At 0.2 mm/min, extra silicon atoms have time to squeeze between the rows and
+    clump. Pulling this slowly also takes much longer: the full 1.6 m ingot takes about five
+    and a half days, instead of about two days at 0.5 mm/min.`);
   stage.focus([panelG, faceCap], { label: 'pulled at 0.2 mm/min', at: 'top' });
   await guide.next();
 
@@ -405,17 +419,19 @@ export async function step1(){
   }
 
   const wrongCard = {
-    fast: `Pulled at 1.5 mm/min, the whole body came out like the test patch. Every red mark
-      is a break in the pattern, and a chip printed over one is scrap.`,
+    fast: `Pulled at 1.5 mm/min, the whole ingot came out like the test patch. Every red
+      mark is a break in the lattice, and a chip printed over a break is scrap (thrown
+      away).`,
     slow: `0.2 mm/min held the furnace for 133 hours and still left clumps of extra atoms
-      through the body, marked in red.`,
+      through the ingot, marked in red.`,
   };
 
   let attempt = 0, choice;
   for (;;){
     stage.clearFocus();
     guide.say(attempt === 0
-      ? `One speed filled every site. Pick the speed for the full 1.6 m pull.`
+      ? `One speed filled every site (every place in the lattice where an atom belongs).
+         Pick that speed for the full 1.6 m pull.`
       : `The last ingot is beside you and the growth face is on the right. Pick again.`);
     choice = await guide.choose([
       { label: '1.5 mm/min', value: 'fast', hint: '18 hours in the furnace' },
@@ -431,20 +447,18 @@ export async function step1(){
     attempt++;
   }
 
-  guide.say(`One crystal, 300 mm across and 1.6 m long, about 265 kg. The pattern runs
-    unbroken from the seed to the bottom.`);
+  // Course restructure (2026-10-25): the old Czochralski card is merged in here as one
+  // sentence. The step's numbers box tells the 1916 story, so the date and the chemist go.
+  guide.say(`Here is one crystal, 300 mm across, 1.6 m long and about 265 kg. Its lattice
+    runs unbroken from the seed to the bottom. This way of growing a crystal is called the
+    <b>Czochralski method</b>.`);
   stage.focus(ingot, { label: 'the ingot', at: 'left' });
-  await guide.next();
-
-  guide.say(`The method is called Czochralski, after the chemist who worked it out in 1916.
-    Nearly all the silicon in chips is still grown this way.`);
-  stage.focus([melt, ingot], { label: 'czochralski pull', at: 'bottom' });
   await guide.next();
 
   /* ================= slice ================= */
 
-  guide.say(`A fab prints on flat discs, not on logs. A wire saw cuts the ingot into wafers
-    0.775 mm thick.`);
+  guide.say(`A fab (a chip factory) prints on thin flat discs, not on a whole ingot. A
+    wire saw cuts the ingot into those discs, the wafers, each 0.775 mm thick.`);
   stage.clearFocus();
   await guide.button('Slice into wafers ▸');
 
@@ -484,8 +498,33 @@ export async function step1(){
   waferG.appendChild(waferCap);
 
   stage.focus(waferG, { label: 'wafers', at: 'top' });
-  guide.aha(`One pull, more than a thousand wafers. Each one will carry billions of the
-    switches you built by hand in Act 1.`,
-    `A single wafer holds more transistors than there are people alive. They get printed onto it, not placed one at a time.`);
+  // Course restructure (2026-10-25): the sub's second sentence ("printed onto it, not
+  // placed one at a time") is cut. Act 2's last card and step 2's premise both say it.
+  guide.aha(`One pull gives more than a thousand wafers. Each one will carry billions of
+    the transistors you built by hand in Act 1.`,
+    `A single wafer holds more transistors than there are people alive.`);
   await guide.next();
+
+  /* ================= In the Lab (DESIGN.md §6d rule 8) =================
+     The cleanroom the wafers go into: the filtered air, then the gowns. Step 3's premise
+     ("as the cleanroom in step 1 tried to stop") and its dust card ("The air in a fab is
+     filtered") lean on both, and step 2's lab uses the word cleanroom without defining it.
+     Course restructure (2026-10-25): the ingot-to-scale card (it repeated the 1.6 m and
+     265 kg two cards above) and the FOUP card (never used again) are cut. lab.js is not
+     touched, so the cleanroom panel still draws its carriers, unfocused. */
+  stage.clearFocus();
+  const room = slideInPanel(svg, cleanroomHTML(), { lab: true });
+  room.focus('air');
+  await room.show();
+  guide.lab(`The wafers are made into chips in a <b>cleanroom</b>, a room whose air is filtered
+    all the time. Fans push the air down through filters in the ceiling and out through the
+    floor, so dust is carried down and away from the wafers.`, { intro: true });
+  await guide.next();
+
+  room.focus('suit');
+  guide.lab(`People are the biggest source of dust in a cleanroom, because skin and hair shed
+    tiny flakes all the time. So everyone wears a gown that covers them from hood to boots,
+    with goggles, a mask and gloves. People often call it a bunny suit.`);
+  await guide.next();
+  await room.hide();
 }

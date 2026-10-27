@@ -24,6 +24,18 @@ export const guide = {
     return this;
   },
   endCards(){ this._cards = null; },
+  /* Ripu (2026-10-25): when a step's cards are done, the last card (usually an In the Lab
+     card) no longer stays above the real-numbers box. The card slot becomes one label,
+     "END OF STEP 1.1", which marks the place in the journey and points down to the button. */
+  stepEnd(label){
+    if (!this._cards) return;
+    const { slot, hint, actions } = this._cards;
+    slot.innerHTML = '';
+    slot.classList.add('ended');
+    hint.innerHTML = ''; hint.hidden = true;
+    actions.innerHTML = ''; actions.hidden = true;
+    slot.appendChild(el('div', { class: 'step-end' }, `<span>${label}</span>`));
+  },
 
   /* A hint must never replace the card it is helping with. In card mode it gets
      its own slot below the card; outside card mode it is an ordinary note. */
@@ -39,7 +51,8 @@ export const guide = {
   },
 
   /* replace whatever is in `host` with `node`; the outgoing card is taken out of
-     flow while it fades so the incoming one does not get pushed down the panel.
+     flow while it fades so the incoming one does not get pushed down the panel. In the card
+     slot the swap is sequential (N-053): out in 140 ms, then the new card fades in.
      Every current child is retired, not just the first: taking firstElementChild
      twice inside the 260 ms fade picked the SAME node both times and orphaned the
      card appended in between, so the slot grew by one on every fast swap. */
@@ -57,7 +70,7 @@ export const guide = {
       old.style.top = '0';
       old.style.width = '100%';
       old.classList.add('out');
-      setTimeout(() => old.remove(), 260);
+      setTimeout(() => old.remove(), 150);     // matches .card-slot .beat.out in game.css (N-053)
     }
     host.appendChild(node);
     requestAnimationFrame(() => requestAnimationFrame(() => node.classList.add('in')));
@@ -102,14 +115,44 @@ export const guide = {
   story(html, sub){
     return this.beat(el('div', { class: 'aha' }, html + (sub ? `<span class="sub">${sub}</span>` : '')));
   },
-  async button(label, variant = 'primary'){
+  /* An "In the Lab" card (2026-10-19): the parts and circuits a student meets in a lab and
+     in real life, after the theory and before the real-numbers box. The same one-card text,
+     on the lab paper with its own eyebrow. `intro` adds the one-line framing, used on the
+     first lab card of a step. */
+  lab(html, { intro = false } = {}){
+    return this.beat(el('div', { class: 'lab-card' },
+      `<div class="lab-eyebrow">IN THE LAB</div>`
+      + (intro ? `<p class="lab-sub">What you will meet in a lab, and in the things around you.</p>` : '')
+      + `<p class="guide-p">${html}</p>`));
+  },
+  /* The real-numbers box at the end of a step (REVIEW_NOTES N-005, NUMBERS_BOXES.md): the
+     same dark block, with the arithmetic folded away behind a toggle so the box reads as
+     text first. Opening the toggle is not an answer: nothing here goes through flow.ask. */
+  /* spec.text is a list of blocks, each its own line (N-007): a string is a paragraph, and
+     { ladder: [...] } is a scale ladder, one rung per line. */
+  numbers(spec){
+    const blocks = (Array.isArray(spec.text) ? spec.text : [spec.text]).map(b =>
+      typeof b === 'string' ? `<p>${b}</p>`
+        : `<ul class="ladder">${b.ladder.map(r => `<li>${r}</li>`).join('')}</ul>`).join('');
+    const working = (spec.working || []).map(w => `<li>${w}</li>`).join('');
+    return this.beat(el('div', { class: 'aha numbers' },
+      `<div class="numbers-eyebrow">THE REAL NUMBERS</div>${blocks}`
+      + (working ? `<details class="working"><summary><span class="i" aria-hidden="true">i</span>
+          Click to see the arithmetic, with formulae</summary><ol>${working}</ol></details>` : '')));
+  },
+  async button(label, variant = 'primary', { cta = false } = {}){
     const b = el('button', { class: 'btn ' + variant, 'data-label': slug(label) }, label);
     const row = this.beat(el('div', { class: 'btn-row' }), 'actions');
     row.appendChild(b);
     await flow.ask(replay => {
-      if (replay !== undefined){ b.disabled = true; b.classList.add('used'); return true; }
+      if (replay !== undefined){ b.disabled = true; b.classList.add(cta ? 'cta-done' : 'used'); return true; }
       return new Promise(res => b.addEventListener('click', () => {
-        SFX.click(); b.disabled = true; b.classList.add('used'); res(true);
+        b.disabled = true;
+        /* Ripu (2026-10-25): the step's own button stays pressed and turns into a check;
+           flow.js then plays the step-finish moment */
+        if (cta){ b.classList.add('cta-done'); b.innerHTML = `✓ ${label.replace(/\s*▸\s*$/, '')}`; }
+        else { SFX.click(); b.classList.add('used'); }
+        res(true);
       }));
     });
   },
@@ -185,13 +228,5 @@ export const guide = {
         });
       });
     });
-  },
-  card(c){
-    this.beat(el('div', { class: 'biz-card' },
-      `<div class="eyebrow">VENTURE UPDATE</div>
-       <div class="co">${c.company}</div>
-       <div class="loc">${c.location} · REVENUE ${c.revenue}</div>
-       <p>${c.body}</p>
-       <div class="cost-line">${c.cost}</div>`));
   },
 };

@@ -20,12 +20,26 @@
   --amber-soft:rgba(168,116,31,.10);
   --green:#5C6B45;       /* success / olive accent */
 
+  /* "In the Lab" sections (2026-10-19): a section marker, never a physics meaning. A cooler
+     sage paper and a slate-teal accent, close enough to the warm paper to stay one world. */
+  --lab-paper:#E8ECE2;
+  --lab-ink:#3F6062;
+  --lab-soft:rgba(63,96,98,.10);
+
   --grid-fine:rgba(150,96,44,.075);   /* graph-paper texture, warm sepia */
   --grid-bold:rgba(150,96,44,.12);
 
   --font-display:'Instrument Serif', 'New York', ui-serif, Georgia, serif;
   --font-body:'EB Garamond', 'Iowan Old Style', Palatino, Georgia, serif;
   --font-mono:'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, monospace;
+  --font-pixel:'VT323', 'IBM Plex Mono', ui-monospace, monospace;   /* Ripu 2026-10-25: headlines and buttons */
+  /* Ripu (2026-10-26): the hard outline ink, the cream, and the 3D extrusion under pixel
+     headings. No red in headings or buttons (Ripu: black buttons, ink headings). */
+  --brand-ink:#2B2118;
+  --brand-cream:#F4E9CD;
+  --btn-accent:#E2725B;   /* Ripu (2026-10-27, N-136): the main buttons, landing + Act 1 */
+  --h3d-ink:0 1px 0 #c3b18c, 0 2px 0 #c3b18c, 0 3px 0 #b8a57e, 0 4px 0 #b8a57e, 0 5px 0 #a8946b, 0 8px 6px rgba(43,33,24,.22);
+  --h3d-ink-sm:0 1px 0 #c3b18c, 0 2px 0 #b8a57e, 0 3px 0 #a8946b, 0 5px 4px rgba(43,33,24,.18);
 
   --label-size:10.5px;
   --label-track:.16em;

@@ -17,7 +17,9 @@ import { guide } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
 import { CurrentFlow } from '../engine/pathflow.js';
-import { makeLamp, makeBattery, makeSlider, makeChip, makePlacer } from '../engine/components.js';
+import { makeLamp, makeBattery, makeSlider, makeChip, makePlacer, slideInPanel } from '../engine/components.js';
+import { axialDiode, led } from '../engine/reallife.js';
+import { circuitDiode, setLabState } from '../engine/labcircuits.js';
 import { makeCarrierGrid, makeDepletionBands, hopElectrons, makeBarrierHill } from '../engine/junction.js';
 
 /* ---- geometry (720 x 480 stage user units) --------------------------------
@@ -54,8 +56,163 @@ const hillPath = top =>
   `M${HX0} ${HILL_BASE} C${HX0 + HILL_W * 0.30} ${HILL_BASE} ${SEAM - HILL_W * 0.18} ${top} ${SEAM} ${top}` +
   ` C${SEAM + HILL_W * 0.18} ${top} ${HX1 - HILL_W * 0.30} ${HILL_BASE} ${HX1} ${HILL_BASE}`;
 
+/* ---------- REVIEW_NOTES N-052: what happens inside the depletion layer ----------
+   A zoom into the junction, after the player has found 0.7 V. Three beats, one per card:
+   (A) the battery pushes carriers toward the junction from both ends: fresh electrons into
+   the N side from its − end, fresh holes into the P side as its + end pulls electrons out;
+   (B) the arrivals sit on the charged atoms at the layer's outer edges and cancel them, so
+   the layer thins (the hill lowering, seen from inside); (C) a steady stream: electrons
+   cross and fill holes on the P side, and each meeting gives up a little heat (amber, the
+   heat colour). Electrons move faster than holes, which is true of silicon, so they meet on
+   the P side. A and B ride Anim.tween (replay lands their end state); C is a ticker that is
+   pure decoration, a function of the clock only, and is stopped before the panel leaves. */
+const ZROWS = [170, 206, 242, 278, 314];
+const ZSEAM = 360, ZX0 = 60, ZX1 = 660;
+function junctionZoom(svg, panelFn){
+  const ion = (x, y, neg) => `<g class="ion-fixed"><circle cx="${x}" cy="${y}" r="7" fill="none"
+      stroke="${neg ? 'var(--blue)' : 'var(--red)'}" stroke-width="1.4" stroke-dasharray="2 2"/>
+    <text x="${x}" y="${y + 3.6}" class="ion-sign" style="font-size:11px" fill="${neg ? 'var(--blue)' : 'var(--red)'}">${neg ? '−' : '+'}</text></g>`;
+  const ionsIn = ZROWS.map(y => ion(345, y, true) + ion(375, y, false)).join('');
+  const ionsOut = ZROWS.map(y => ion(315, y, true) + ion(405, y, false)).join('');
+  const holeAt = (x, y) => `<circle cx="${x}" cy="${y}" r="6" class="carrier-h"/>`;
+  const eAt = (x, y) => `<circle cx="${x}" cy="${y}" r="5.4" class="carrier-e"/>`;
+  const holes = ZROWS.map(y => [285, 245, 205, 165, 125].map(x => holeAt(x, y)).join('')).join('');
+  const elecs = ZROWS.map(y => [435, 475, 515, 555, 595].map(x => eAt(x, y)).join('')).join('');
+  const holesNew = ZROWS.map(y => holeAt(85, y)).join('');
+  const elecsNew = ZROWS.map(y => eAt(635, y)).join('');
+  const panel = panelFn(svg, `
+    <text x="360" y="84" class="lbl" style="fill:var(--ink)">ZOOMED IN ON THE JUNCTION, WITH THE BATTERY CONNECTED</text>
+    <rect x="${ZX0}" y="150" width="${ZSEAM - ZX0}" height="184" class="p-region"/>
+    <rect x="${ZSEAM}" y="150" width="${ZX1 - ZSEAM}" height="184" class="n-region"/>
+    <text x="${(ZX0 + ZSEAM) / 2}" y="140" class="lbl">P SIDE</text>
+    <text x="${(ZSEAM + ZX1) / 2}" y="140" class="lbl">N SIDE</text>
+    <g class="z-band">
+      <rect class="z-neg" x="300" y="150" width="60" height="184" style="fill:var(--blue);opacity:.08"/>
+      <rect class="z-pos" x="360" y="150" width="60" height="184" style="fill:var(--red);opacity:.08"/>
+      <rect class="z-hatch" x="300" y="150" width="120" height="184" fill="url(#depl-hatch)"/>
+      <line class="z-edgeL" x1="300" y1="150" x2="300" y2="334" stroke="var(--ink-soft)" stroke-dasharray="4 3"/>
+      <line class="z-edgeR" x1="420" y1="150" x2="420" y2="334" stroke="var(--ink-soft)" stroke-dasharray="4 3"/>
+    </g>
+    <line x1="${ZSEAM}" y1="150" x2="${ZSEAM}" y2="334" stroke="var(--ink)" stroke-width="1.2"/>
+    <g class="z-bracket">
+      <path class="z-brk" d="M300 344 v6 H420 v-6" fill="none" stroke="var(--ink-soft)" stroke-width="1"/>
+      <text x="360" y="366" class="lbl" font-size="9">DEPLETION LAYER</text>
+    </g>
+    <g class="z-ions-in">${ionsIn}</g>
+    <g class="z-ions-out">${ionsOut}</g>
+    <g class="z-holes">${holes}</g>
+    <g class="z-holes-new" opacity="0">${holesNew}</g>
+    <g class="z-elecs">${elecs}</g>
+    <g class="z-elecs-new" opacity="0">${elecsNew}</g>
+    <g class="z-stream"></g>
+    <path d="M14 242 H${ZX0}" stroke="var(--ink)" stroke-width="2"/>
+    <path d="M${ZX1} 242 H706" stroke="var(--ink)" stroke-width="2"/>
+    <text x="30" y="226" class="lbl" font-size="11" style="fill:var(--ink)">+</text>
+    <text x="690" y="226" class="lbl" font-size="11" style="fill:var(--ink)">−</text>
+    <text x="${ZX0}" y="404" class="lbl-faint" font-size="8.5" text-anchor="start">FROM THE BATTERY'S + END</text>
+    <text x="${ZX1}" y="404" class="lbl-faint" font-size="8.5" text-anchor="end">FROM THE BATTERY'S − END</text>
+    <g transform="translate(160 436)">
+      <circle cx="0" cy="-4" r="5.4" class="carrier-e"/><text x="10" y="0" class="lbl-faint" font-size="8.5" text-anchor="start">FREE ELECTRON</text>
+      <circle cx="140" cy="-4" r="6" class="carrier-h"/><text x="150" y="0" class="lbl-faint" font-size="8.5" text-anchor="start">HOLE</text>
+      <circle cx="226" cy="-4" r="7" fill="none" stroke="var(--ink-soft)" stroke-width="1.3" stroke-dasharray="2 2"/>
+      <text x="238" y="0" class="lbl-faint" font-size="8.5" text-anchor="start">CHARGED ATOM, FIXED IN PLACE</text>
+    </g>`);
+  const q = c => panel.g.querySelector(c);
+  // the hatch pattern lives in the stage's defs, made by makeDepletionBands earlier in the step
+  const setBand = f => {           // f = 1: two columns each side; 0.5: one column
+    const half = 60 * f;
+    q('.z-neg').setAttribute('x', ZSEAM - half); q('.z-neg').setAttribute('width', half);
+    q('.z-pos').setAttribute('width', half);
+    q('.z-hatch').setAttribute('x', ZSEAM - half); q('.z-hatch').setAttribute('width', 2 * half);
+    ['x1', 'x2'].forEach(a => { q('.z-edgeL').setAttribute(a, ZSEAM - half); q('.z-edgeR').setAttribute(a, ZSEAM + half); });
+    q('.z-brk').setAttribute('d', `M${ZSEAM - half} 344 v6 H${ZSEAM + half} v-6`);
+  };
+  let tick = null;
+  return {
+    ...panel,
+    /* A: both crowds move 30 units toward the junction, and new carriers enter at the ends */
+    async pushIn(){
+      await Anim.tween(1300, p => {
+        q('.z-holes').setAttribute('transform', `translate(${(30 * p).toFixed(1)} 0)`);
+        q('.z-elecs').setAttribute('transform', `translate(${(-30 * p).toFixed(1)} 0)`);
+        q('.z-holes-new').setAttribute('opacity', p.toFixed(2));
+        q('.z-elecs-new').setAttribute('opacity', p.toFixed(2));
+      });
+    },
+    /* B: the carriers that now sit on the outer ions cancel them, and the layer thins */
+    async thin(){
+      const firstH = [...q('.z-holes').children].filter((_, i) => i % 5 === 0);
+      const firstE = [...q('.z-elecs').children].filter((_, i) => i % 5 === 0);
+      await Anim.tween(1100, p => {
+        q('.z-ions-out').style.opacity = String(1 - p);
+        [...firstH, ...firstE].forEach(n => { n.style.opacity = String(1 - p); });
+        setBand(1 - .5 * p);
+      });
+    },
+    /* C: the steady stream. Each lane sends an electron in from the right every 1.6 s and
+       a hole in from the left at the same moment; where they meet, both go and a small
+       amber ring marks the heat given up. */
+    stream(){
+      ['.z-holes', '.z-elecs', '.z-holes-new', '.z-elecs-new'].forEach(c => { q(c).style.transition = 'opacity .4s'; q(c).style.opacity = '0'; });
+      const layer = q('.z-stream');
+      const VE = 120, VH = 48, PERIOD = 1.6, LIFE = (ZX1 - ZX0) / (VE + VH);
+      const xMeet = ZX1 - VE * LIFE;
+      const lanes = ZROWS.map((y, i) => {
+        const e = svgEl('g'), h = svgEl('g'), f = svgEl('circle', { cx: xMeet, cy: y, r: 6, fill: 'none', stroke: 'var(--amber)', 'stroke-width': 1.6 });
+        layer.append(e, h, f);
+        return { y, e, h, f, off: i * 0.53 };
+      });
+      let t0 = null;
+      tick = Anim.add((dt, t) => {
+        if (t0 === null) t0 = t;
+        const T = t - t0;
+        lanes.forEach(L => {
+          let eh = '', hh = '', flash = 0;
+          for (let k = 0; k < 4; k++){
+            const age = ((T + L.off) % PERIOD) + k * PERIOD;      // carriers launched k periods ago
+            if (age < LIFE){
+              eh += `<circle cx="${(ZX1 - VE * age).toFixed(1)}" cy="${L.y}" r="5.4" class="carrier-e"/>`;
+              hh += `<circle cx="${(ZX0 + VH * age).toFixed(1)}" cy="${L.y}" r="6" class="carrier-h"/>`;
+            } else if (age < LIFE + .45) flash = 1 - (age - LIFE) / .45;
+          }
+          L.e.innerHTML = eh; L.h.innerHTML = hh;
+          L.f.setAttribute('r', (6 + (1 - flash) * 10).toFixed(1));
+          L.f.style.opacity = flash.toFixed(2);
+        });
+      });
+    },
+    stop(){ if (tick){ Anim.remove(tick); tick = null; } },
+  };
+}
+
+/* ---------- how it looks in real life (HANDOFF_NEXT.md §1) ----------
+   The diode as a part: a 1N4001 (black DO-41 case, grey band) at 15 px per mm, lying with
+   the cathode band on the right, then a 5 mm LED standing up with its longer anode leg on the left. Ends are labelled with the
+   P and N sides the player built, so anode and cathode land on something already known. */
+function realLifeHTML(){
+  const ends = (cx, cy, half) => `
+    <text x="${cx - half}" y="${cy + 34}" class="lbl" font-size="8.5" style="fill:var(--ink)">ANODE</text>
+    <text x="${cx - half}" y="${cy + 46}" class="lbl-faint" font-size="8">P SIDE</text>
+    <text x="${cx + half}" y="${cy + 34}" class="lbl" font-size="8.5" style="fill:var(--ink)">CATHODE</text>
+    <text x="${cx + half}" y="${cy + 46}" class="lbl-faint" font-size="8">N SIDE</text>`;
+  // Course restructure (2026-10-25): the 1N4148 is gone from the drawing, and the 1N4001
+  // moves to the middle of the left column, level with the LED.
+  const d2 = { cx: 214, cy: 236 };
+  return `
+    <g data-k="1n4001">${axialDiode({ cx: d2.cx, cy: d2.cy, mm: 15, len: 5.2, dia: 2.7, text: '4001', lead: 88 })}
+      ${ends(d2.cx, d2.cy, 130)}
+      <text x="${d2.cx}" y="${d2.cy - 36}" class="lbl" style="fill:var(--ink)">1N4001</text></g>
+    <line x1="430" y1="70" x2="430" y2="400" stroke="var(--hairline)" stroke-dasharray="3 4"/>
+    <g data-k="led">${led({ cx: 570, base: 262, mm: 15, lit: true, len: 90 })}
+      <text x="${570 - 30}" y="${262 + 116}" class="lbl" font-size="8.5" text-anchor="end" style="fill:var(--ink)">ANODE</text>
+      <text x="${570 - 30}" y="${262 + 128}" class="lbl-faint" font-size="8" text-anchor="end">LONGER LEG</text>
+      <text x="${570 + 30}" y="${262 + 96}" class="lbl" font-size="8.5" text-anchor="start" style="fill:var(--ink)">CATHODE</text>
+      <text x="${570}" y="${262 - 160}" class="lbl" style="fill:var(--ink)">A 5 MM LED</text></g>
+    <text x="360" y="448" class="lbl-faint">THE DIODE, AS IT LOOKS IN REAL LIFE (PARTS DRAWN AT 15 TIMES LIFE SIZE)</text>`;
+}
+
 export async function step2(){
-  guide.title('STEP 2 / 5 · NANOVOLT SEMICONDUCTORS', 'What happens where <em>N meets P?</em>');
+  guide.title('STEP 2 / 5', 'What happens where <em>N meets P?</em>');
   guide.cards();
 
   const stage = newStage('02', 'A PN junction: the depletion layer builds itself, then a voltage flattens it');
@@ -97,18 +254,13 @@ export async function step2(){
   stage.focus([pBlock, nTile], { label: 'both from step 1', at: 'bottom' });
   await guide.next();
 
-  await fadeIn([nGrid.el], 340);
-  guide.say(`This block was doped with phosphorus, so each phosphorus atom contributed one
-    <span class="e-blue">spare electron</span> that no bond holds. These free electrons
-    drift around the block.`);
-  stage.focus(nTile, { label: 'n-type', at: 'top' });
-  await guide.next();
-
-  await fadeIn([pGrid.el], 340);
-  guide.say(`This one was doped with boron, so each boron atom left one bond an electron
-    short. Each of those is a <span class="e-red">hole</span>, drawn as a ring, and the
-    holes drift too.`);
-  stage.focus(pBlock, { label: 'p-type', at: 'top' });
+  // Course restructure (2026-10-25): the N card and the P card are one card now. Step 1
+  // has just taught both, so this only recalls which block carries which.
+  await fadeIn([nGrid.el, pGrid.el], 340);
+  guide.say(`The N block, doped with phosphorus, has <span class="e-blue">free
+    electrons</span>. The P block, doped with boron, has <span class="e-red">holes</span>,
+    drawn as rings. Both drift around their block.`);
+  stage.focus([pBlock, nTile], { label: 'holes and free electrons', at: 'top' });
   await guide.next();
 
   /* ============ SCENE B — the player presses them flush ==================== */
@@ -181,8 +333,18 @@ export async function step2(){
      itself still raised, and the restore throws. */
   const ionNodes = [...pGrid.dots, ...nGrid.dots].filter(d => d.state === 'ion').map(d => d.node);
 
+  // REVIEW_NOTES N-001: say WHY they crossed. Not a voltage (both blocks start neutral):
+  // diffusion, many to few. The voltage is the result, and card "stopped on its own" says so.
   guide.say(`The electrons nearest the junction crossed over and filled the nearest holes.
-    Each one left behind a charged atom that is locked in the crystal and cannot move.`);
+    No battery pushed them. The N side is crowded with free electrons and the P side has
+    almost none, so electrons spread from where there are many to where there are few. This
+    spreading is called <b>diffusion</b>.`);
+  stage.focus(seam, { label: 'electrons crossed here', at: 'top' });
+  await guide.next();
+
+  stage.clearFocus();
+  guide.say(`Each electron that crossed left behind a charged atom that is locked in the
+    crystal and cannot move.`);
   stage.focus(ionNodes, { label: 'fixed ions', at: 'top' });
   await guide.next();
 
@@ -352,10 +514,28 @@ export async function step2(){
   stage.focus([ghost, measure], { label: 'hill height', at: 'right' });
   await guide.next();
 
-  guide.say(`The arrows on the wire run from + to −. That is conventional current. The
-    electrons inside the silicon go the other way, as in step 1.`);
-  stage.focus([wireIn, wireOut, flowLayer], { label: 'conventional current', at: 'bottom' });
+  /* REVIEW_NOTES N-052: the same thing seen from inside the depletion layer */
+  stage.clearFocus();
+  const zoom = junctionZoom(svg, slideInPanel);
+  await zoom.show();
+  // Course restructure (2026-10-25): the push-in card and the thinning card are one card.
+  // The text lands first, then both animations play under it in order.
+  guide.say(`Inside, the battery's − end pushes electrons into the N side, and its + end
+    pulls electrons out of the P side, leaving holes. These new carriers cancel the charged
+    atoms at the depletion layer's edges, so the layer thins and the hill drops.`);
+  await zoom.pushIn();
+  await zoom.thin();
   await guide.next();
+
+  zoom.stream();
+  guide.say(`At 0.7 V the layer is too thin to hold them back. Electrons cross the junction and
+    fill holes on the P side, giving off a little heat, while the battery keeps sending more.
+    That steady stream is the current.`);
+  await guide.next();
+  zoom.stop();
+  await zoom.hide();
+  // Course restructure (2026-10-25): the conventional-current reminder card is cut. Step 1
+  // teaches it and step 3 recalls it; the chevrons on the wire still run + to −.
 
   /* ============ SCENE F — flip it, and nothing helps ====================== */
 
@@ -389,8 +569,42 @@ export async function step2(){
   await guide.next();
 
   stage.clearFocus();
+  // Course restructure (2026-10-25): the payoff now answers the step's premise, which asked
+  // what silicon gives us that a copper wire does not.
   guide.aha(`You have built a <b>diode</b>: a one-way street for current. It passes current
     in one direction and blocks it in the other.`,
-    `A voltage raises or lowers the barrier. That control is the basis of every switch in a chip.`);
+    `A voltage raises or lowers the barrier. That control is the basis of every switch in a chip. Copper cannot do this.`);
   await guide.next();
+
+  /* how it looks in real life (HANDOFF_NEXT.md §1) */
+  // Course restructure (2026-10-25): the 1N4148 card is cut. The 1N4001 card opens the lab
+  // and carries the band, cathode and anode the 1N4148 card used to introduce.
+  stage.clearFocus();
+  const real = slideInPanel(svg, realLifeHTML(), { lab: true });
+  real.focus('1n4001');
+  await real.show();
+  guide.lab(`Here is the diode you built, sold as a part: the 1N4001. The grey band marks the
+    N side, called the <b>cathode</b>. The P side is the <b>anode</b>. Like yours, it lets
+    current through from P to N once about 0.7 V is applied, up to 1 amp.`, { intro: true });
+  await guide.next();
+
+  real.focus('led');
+  guide.lab(`An LED is a diode too, made from other materials, such as gallium nitride. When an
+    electron crosses its junction and fills a hole, it gives off light. Its longer leg is the
+    anode.`);
+  await guide.next();
+
+  const board = slideInPanel(svg, circuitDiode(), { lab: true });
+  setLabState(board, true);
+  await real.swapTo(board);      // N-053: no flash of the stage between panels
+  guide.lab(`Here is your diode test on a breadboard. Current leaves the + rail, passes through
+    the 1N4001 with its band towards the LED, then through a resistor and the LED to ground.
+    The LED lights.`);
+  await guide.next();
+
+  setLabState(board, false);
+  guide.lab(`Turn the diode round, band towards the supply, and the LED goes out, just as your
+    lamp did when you flipped the battery.`);
+  await guide.next();
+  await board.hide();
 }

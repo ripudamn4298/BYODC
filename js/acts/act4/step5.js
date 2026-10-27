@@ -10,7 +10,9 @@ import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makeLaneGrid } from '../../engine/lanes.js';
-import { makeSlider } from '../../engine/components.js';
+import { makeSlider, slideInPanel } from '../../engine/components.js';
+import { labHbm, labMemCompare } from './lab.js';
+import { ringsMap } from '../../art/rings.js';
 
 /* --- the arithmetic of the whole step ---
    one lane asks for 1 number per cycle; one HBM stack sends PER_STACK numbers per cycle. */
@@ -37,7 +39,7 @@ async function fadeIn(nodes, dur = 320){
 }
 
 export async function step5(){
-  guide.title('STEP 5 / 6 · NANOVOLT GRAPHICS', 'Match memory <em>to compute</em>');
+  guide.title('STEP 5 / 6', 'Crazy multiplication speeds also need <em>crazy data delivery speeds</em>');
   guide.cards();
 
   const stage = newStage('19', 'HBM stacks feeding a grid of sixteen lanes over a bundle of wires');
@@ -162,17 +164,30 @@ export async function step5(){
 
   /* ================= CARD 1 — preface, on the machine they already built ============= */
 
-  guide.say(`These are your sixteen lanes from step 1. A lane computes only when its
-    numbers arrive, so here you make delivery match what the lanes need.`);
+  guide.say(`These are your sixteen lanes. Since step 2, each lane has its own MAC unit, and
+    it does one multiply-add every cycle.`);
   stage.focus(grid.g, { label: 'sixteen lanes', at: 'bottom' });
   await guide.next();
 
+  /* REVIEW_NOTES N-066 / N-067: say what the step is about before anything new appears.
+     Act 4 restructure (2026-10-25): on step 3's map of where numbers wait, with main memory
+     lit, so this step reads as the next ring out. */
+  stage.clearFocus();
+  const map = slideInPanel(svg, ringsMap({ lit: 'mem', title: "WHERE THE LANES' NUMBERS WAIT" }));
+  await map.show();
+  guide.say(`A lane can only work when its numbers arrive, and most of them start far out, in
+    main memory (ring 4 on the map from step 3). In this step you make main memory deliver as
+    many numbers as the lanes need.`);
+  await guide.next();
+  await map.hide();
+
   /* ================= CARD 2 — the stacks ============================================ */
 
-  stage.clearFocus();
+  // Course restructure (2026-10-25): the stacks card and the "called HBM" card are one card.
+  // HBM is first named in step 3's lab, so this card points back to it.
   await fadeIn([stacksG]);
-  guide.say(`Memory sits in stacks of chips, and each stack delivers numbers at a fixed
-    rate called its <b>bandwidth</b>. More stacks, more numbers per cycle.`);
+  guide.say(`A GPU's main memory sits in stacks of memory chips, the HBM (high bandwidth
+    memory) from step 3. The rate a stack delivers numbers at is its <b>bandwidth</b>.`);
   stage.focus(stacksG, { label: 'hbm stack', at: 'right' });
   await guide.next();
 
@@ -180,16 +195,40 @@ export async function step5(){
 
   stage.clearFocus();
   await fadeIn([bundleG]);
-  guide.say(`Every wire carries one number per cycle. Add a stack and the bundle gets
-    wider, because four more wires run across to the lanes.`);
+  guide.say(`These wires connect the memory to the lanes. Numbers travel along them, from
+    the HBM stacks on the left to the lanes on the right. Every wire carries one number per
+    cycle.`);
   stage.focus(bundleG, { label: 'one wire, one number per cycle', at: 'top' });
   await guide.next();
+
+  /* REVIEW_NOTES N-067: show that a stack brings four wires, rather than only saying it.
+     A third stack is added for one card, its four wires drawn amber (still in flight),
+     then taken away again. Pure: the same three render() calls live and on replay. */
+  stage.clearFocus();
+  stackCount = 3;
+  render();
+  const newWires = wires.slice(8, 12);
+  newWires.forEach(w => { w.style.stroke = 'var(--amber)'; });
+  await fadeIn([towers[2].g, ...newWires], 360);
+  // Course restructure (2026-10-25): the "third stack is taken away" card is folded into
+  // this one as its closing clause. The render calls keep their order, so replay is the same.
+  guide.say(`Each stack drives four wires. Here a third stack has been added, and its four
+    wires, shown in amber, have joined the bundle. Two stacks sent 8 numbers a cycle, and
+    three send 12. For now, the third stack goes back.`);
+  stage.focus([towers[2].g, ...newWires], { label: 'a third stack, four more wires', at: 'top', ring: false });
+  await guide.next();
+
+  stage.clearFocus();
+  newWires.forEach(w => { w.style.stroke = ''; });
+  stackCount = 2;
+  render();
 
   /* ================= CARDS 4 and 5 — the two counters =============================== */
 
   stage.clearFocus();
   await fadeIn([neededC.g]);
-  guide.say(`Each lane asks for one number every cycle. This counter totals what the
+  // Course restructure (2026-10-25): "one new number", so it does not contradict step 4's reuse
+  guide.say(`Each lane asks for one new number every cycle. This counter totals what the
     lanes need.`);
   stage.focus(neededC.g, { label: 'needed per cycle', at: 'left' });
   await guide.next();
@@ -206,8 +245,8 @@ export async function step5(){
   stage.clearFocus();
   lampsLive = true;
   render();
-  guide.say(`Blue means the lane has its numbers. Amber means the lane is waiting for
-    data.`);
+  guide.say(`Each lane has a small lamp. Blue means the lane has its numbers, and amber
+    means it is waiting for data.`);
   stage.focus(grid.lanes.map(l => l.lamp), { label: 'lane lamp', at: 'left', ring: false });
   await guide.next();
 
@@ -239,53 +278,108 @@ export async function step5(){
     return render();
   };
 
-  guide.say(`This rig has too many lanes for its memory. Pull the sliders until
-    utilization reaches <b>90% or better</b>.`);
-
-  await flow.ask(async replay => {
-    if (replay !== undefined){ setRig(replay.lanes, replay.stacks); return replay; }
-    setRig(MAX_LANES, 1);
-    const cancel = flow.hintAfter(14000, `Sixteen lanes ask for sixteen numbers a cycle,
-      and one stack sends four. Add stacks, or build fewer lanes, until utilization reads
-      <b>90% or better</b>.`);
-    await waitFor(() => render().util >= 0.9, { hold: 500 });
-    cancel();
-    return { lanes: laneCount, stacks: stackCount };
-  });
-
-  guide.note(`Every lamp is blue and the two counters agree. Nothing on this die is
-    waiting for data.`);
+  /* REVIEW_NOTES N-066: announce the new design before asking anything of it */
+  setRig(MAX_LANES, 1);
+  guide.say(`Now take a design with all sixteen lanes but only one stack. One stack sends 4
+    numbers a cycle and the lanes ask for 16, so twelve lanes sit waiting, shown amber.`);
+  stage.focus([towers[0].g, ...grid.lanes.map(l => l.lamp)], { label: 'one stack, sixteen lanes', at: 'top', ring: false });
   await guide.next();
+  stage.clearFocus();
 
-  /* ================= CARD 9 — second fix: memory nobody asks for ==================== */
-
-  guide.say(`The faint wires carry nothing, because this rig pays for memory its lanes
-    never ask for. Bring memory down and hold utilization at <b>90% or better</b>.`);
+  /* Act 4 restructure (2026-10-25): the two slider tasks became this one. Reach 90% and
+     fit no memory the lanes do not use. */
+  guide.say(`The two sliders under the stage build or remove lanes and add or remove stacks.
+    <b>Reach 90% utilization or better without fitting memory the lanes do not use</b>, because
+    spare memory still costs money and power.`);
 
   await flow.ask(async replay => {
     if (replay !== undefined){ setRig(replay.lanes, replay.stacks); return replay; }
-    setRig(4, MAX_STACKS);
-    const cancel = flow.hintAfter(14000, `Drop stacks until delivery meets the lane count,
-      or raise the lane count until it uses the memory you already bought. Keep utilization
-      at <b>90% or better</b>.`);
+    const cancel = flow.hintAfter(14000, `Sixteen lanes ask for sixteen numbers a cycle, and
+      one stack sends four. Add stacks, or build fewer lanes, until utilization reads <b>90% or
+      better</b> and no wire is drawn faint.`);
     await waitFor(() => {
-      const s = render();
-      return s.util >= 0.9 && s.delivered - s.needed <= 2;
+      const st = render();
+      return st.util >= 0.9 && st.delivered - st.needed <= 2;
     }, { hold: 500 });
     cancel();
     return { lanes: laneCount, stacks: stackCount };
   });
 
-  guide.note(`Delivery now matches demand, and every wire you paid for carries a number.`);
+  guide.note(`Utilization is now 90% or better, and memory delivers about what the lanes ask
+    for, so little of it sits unused.`);
   await guide.next();
 
   /* ================= CARD 10 — payoff ============================================== */
 
-  guide.aha(`Whichever of the two numbers is smaller caps the machine. Half of GPU design
-    is delivery, not math.`,
-    `The chart of that trade-off is called the <b>roofline</b>. The same problem comes back
-     one floor up in Act 5, where a lane becomes a whole machine.`);
+  // Course restructure (2026-10-25): the unsupported "half of GPU design" figure and the
+  // unpictured roofline are replaced by the memory-bound name and the memory wall.
+  guide.aha(`Whichever of the two counters is smaller sets the speed of the whole chip. When
+    memory is the smaller counter, the chip is called <b>memory-bound</b>. News calls this
+    limit the memory wall.`,
+    `The same problem comes back one level up, in Act 5, where the lane is a whole machine.`);
   stage.focus([deliveredC.g, neededC.g], { label: 'the smaller number wins', at: 'top', ring: false });
   await guide.next();
   stage.clearFocus();
+
+  /* Course restructure (2026-10-25): closes the joint with step 4. Adding stacks works for
+     sixteen lanes; a real chip reuses numbers instead. Figures from this step's numbers box
+     in index.js (16,896 lanes, five stacks, a 40-times gap, about 200 stacks). */
+  guide.say(`A real H100 has 16,896 lanes and five stacks. Fed one new number per lane per
+    cycle, it would need about 200 stacks. So it reuses each number many times, as your array
+    did in step 4.`);
+  await guide.next();
+
+  /* ============ IN THE LAB — inside an HBM stack, and the spec sheet (§6d rule 8) =====
+     A cut through the package: GPU die and one HBM stack on a silicon interposer. Facts
+     (8 dies, about 30 µm, 1,024 data wires, 3.35 TB/s) and sources are in lab.js. */
+  const lab = slideInPanel(svg, labHbm(), { lab: true });
+  lab.focus('stack');
+  await lab.show();
+
+  guide.lab(`The stacks you matched to your lanes look like this inside. Each HBM stack on the
+    H100 is eight <b>DRAM dies</b> (memory chips), each ground to about 30 micrometres thick
+    and piled one on another.`, { intro: true });
+  await guide.next();
+
+  lab.focus(['tsv', 'stack']);
+  guide.lab(`Wires run straight down through the dies, in copper-filled holes called
+    <b>through-silicon vias</b>, vias like those in Act 3 step 2 but through a whole die. They end in the base die at the bottom, which sends 1,024
+    data wires out of the stack.`);
+  await guide.next();
+
+  lab.focus(['interposer', 'base']);
+  // Course restructure (2026-10-25): the interposer is now taught in Act 3 step 4
+  guide.lab(`A circuit board cannot carry 1,024 wires that fine. So the stack and the GPU die
+    both sit on an <b>interposer</b>, the slice of finely wired silicon from Act 3 step 4,
+    which joins them side by side.`);
+  await guide.next();
+
+  lab.focus('spec');
+  guide.lab(`On the H100's spec sheet, the stacks become one line: a memory bandwidth of 3.35
+    TB/s, which is 3.35 trillion bytes a second. That is the delivery rate to compare with
+    the lanes, as you did in this step.`);
+  await guide.next();
+
+  /* REVIEW_NOTES N-108: why a GPU needs HBM, against a desktop CPU's memory, and the newest
+     memory. Facts and sources in lab.js (labMemCompare). */
+  const cmp = slideInPanel(svg, labMemCompare(), { lab: true });
+  cmp.focus(['cpu', 'b-cpu']);
+  await lab.swapTo(cmp);
+  guide.lab(`A desktop CPU keeps its main memory on separate sticks on the circuit board, called
+    <b>DDR5</b>. Two sticks reach the CPU over 128 data wires and deliver about 90 GB a
+    second.`);
+  await guide.next();
+
+  cmp.focus(['gpu', 'b-h100', 'b-cpu']);
+  guide.lab(`The H100's lanes need far more. Its HBM stacks sit beside the die on the
+    interposer, so they can use 5,120 data wires in all. They deliver 3.35 TB a second, about
+    37 times the desktop's memory.`);
+  await guide.next();
+
+  cmp.focus(['b-cpu', 'b-h100', 'b-next']);
+  guide.lab(`Much of the newest progress in AI chips is here. NVIDIA's B200 (2024) reaches 8 TB
+    a second. The next kind, <b>HBM4</b>, doubles each stack to 2,048 wires, and NVIDIA has
+    announced its Rubin GPUs (2026) with about 22 TB a second.`);
+  await guide.next();
+  await cmp.hide();
 }

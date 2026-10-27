@@ -1,4 +1,4 @@
-// ACT 2 · STEP 2 — "Add the way you do on paper".
+// ACT 2 · STEP 2 — "How does a circuit add 5 + 3?".
 // Rebuilt to the micro-learning contract in DESIGN_MAKEOVER.md §2 / §4: one card at a
 // time (guide.cards), every card focuses and names the one thing it is about, and each
 // structural jump (paper sum → one column of circuit → four stamped copies) is watched.
@@ -23,7 +23,8 @@ import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeSeg, makeChip, makePlacer, makeLamp } from '../../engine/components.js';
+import { makeSeg, makeChip, makePlacer, makeLamp, slideInPanel } from '../../engine/components.js';
+import { lab22Part, lab22Board } from './lab.js';
 import { makeGate, makeBits, makeToggleBits, sigWire, makeColumnSum } from '../../engine/gates.js';
 
 /* ---------- geometry, in the stage's 720×480 user units ---------- */
@@ -50,7 +51,7 @@ async function fadeOut(nodes, dur = 280){
 }
 
 export async function step2(){
-  guide.title('STEP 2 / 4 · NANOVOLT COMPUTE', 'Add the way <em>you do on paper</em>');
+  guide.title('STEP 2 / 4', 'How does a circuit <em>add 5 + 3?</em>');
   guide.cards();
 
   const stage = newStage('07', 'Place value, the same sum worked on paper, one column of circuit, then four of them chained');
@@ -87,18 +88,23 @@ export async function step2(){
   bitsG.style.opacity = '0';
   await fadeIn([bitsG]);
 
-  guide.say(`Four lamps in a row. Each lamp has a weight: <b>8, 4, 2, 1</b>. The row is a
-    number: add the weights of the lit ones.`);
+  guide.say(`Here are four lamps in a row. Each lamp holds one <b>bit</b>: a single 0 or 1,
+    lit for 1 and dark for 0.`);
+  stage.focus(bits.g, { label: 'one bit per lamp', at: 'top' });
+  await guide.next();
+
+  guide.say(`Each lamp also has a weight: <b>8, 4, 2, 1</b>. This is <b>place value</b>. The
+    row shows a number: add up the weights of the lit lamps.`);
   stage.focus(bits.g, { label: 'place value', at: 'top' });
   await guide.next();
 
-  guide.say(`This row reads <span class="e-blue">8 + 4 + 1 = 13</span>.
-    <b>Your goal: make it say 9.</b>`);
+  guide.say(`This row reads <span class="e-blue">8 + 4 + 1 = 13</span>. <b>Your goal is to
+    make it read 9.</b>`);
   stage.focus(bits.g, { label: 'make this read 9', at: 'top' });
   await flow.ask(async replay => {
     if (replay !== undefined){ toggle.set(9, true); bits.set(9); return replay; }
     cancelHint = flow.hintAfter(11000,
-      `<b>Your goal: make the row read 9.</b> 9 is 8 + 1, so light the 8 lamp and the 1
+      `<b>Your goal is to make the row read 9.</b> 9 is 8 + 1, so light the 8 lamp and the 1
        lamp and leave 4 and 2 dark.`);
     await waitFor(() => toggle.value === 9, { hold: 400 });
     cancelHint(); cancelHint = null;
@@ -117,8 +123,9 @@ export async function step2(){
   spill.style.opacity = '0';
   await fadeIn([spill]);
 
-  guide.say(`One lamp only holds so much. <b>1 + 1</b> does not fit in a single lamp, so the
-    answer spills into the lamp on its left. That spill is the <b>carry</b>.`);
+  guide.say(`One lamp can only show 0 or 1. <b>1 + 1</b> is 2, which does not fit in a
+    single lamp, so the answer spills into the lamp on its left. That spill is called the
+    <b>carry</b>.`);
   stage.focus(spill, { label: 'carry', at: 'top' });
   await guide.next();
 
@@ -136,47 +143,49 @@ export async function step2(){
   gB.style.opacity = '0';
   await fadeIn([gB]);
 
-  guide.say(`The same sum on paper, in binary. <b>5 is 101</b> and <b>3 is 011</b>. Work it
-    one column at a time, starting at the right.`);
+  guide.say(`Here is the same sum on paper, in <b>binary</b> (numbers written with only the
+    digits 0 and 1). <b>5 is 101</b> and <b>3 is 011</b>. Work it one column at a time,
+    starting at the right.`);
   stage.focus(csum.el, { label: '5 + 3', at: 'top' });
   await guide.next();
 
   stage.clearFocus();
 
+  // Course restructure (2026-10-25): the twos and fours columns were two cards making the
+  // identical move. They are one card now, and the two columns are revealed in turn under it.
   const COLUMNS = [
     {
-      name: 'ONES COLUMN',
+      cols: [0], names: ['ONES COLUMN'],
       card: `<b>Ones column: 1 + 1 = 2.</b> Two does not fit here, so write 0 in this
              column and pass 1 to the column on the left.`,
       btn: 'Carry the 1 left ▸',
     },
     {
-      name: 'TWOS COLUMN',
-      card: `<b>Twos column: 0 + 1</b>, plus the 1 carried in from the right. That is 2
-             again. Write 0, pass 1 left.`,
+      cols: [1, 2], names: ['TWOS COLUMN', 'FOURS COLUMN'],
+      card: `In the <b>twos column</b>, 0 + 1 plus the carried 1 makes 2. In the <b>fours
+             column</b>, 1 + 0 plus the carried 1 makes 2 again. Each time, write 0 and pass
+             1 left.`,
       btn: 'Carry the 1 left ▸',
     },
     {
-      name: 'FOURS COLUMN',
-      card: `<b>Fours column: 1 + 0</b>, plus the 1 carried in. Two again. Write 0, and pass
-             1 left one more time.`,
-      btn: 'Carry the 1 left ▸',
-    },
-    {
-      name: 'EIGHTS COLUMN',
+      cols: [3], names: ['EIGHTS COLUMN'],
       card: `Nothing left to add in the <b>eights column</b>, but a carry is still coming in
              from the right. It lands here as a 1.`,
       btn: 'Read the answer ▸',
     },
   ];
 
-  for (let i = 0; i < csum.columns; i++){
-    csum.highlight(i);
-    colLbl.setAttribute('x', String(csumX(i)));
-    colLbl.textContent = COLUMNS[i].name;
-    csum.reveal(i);
-    guide.say(COLUMNS[i].card);
-    await guide.button(COLUMNS[i].btn);
+  for (const c of COLUMNS){
+    guide.say(c.card);
+    for (let k = 0; k < c.cols.length; k++){
+      const i = c.cols[k];
+      if (k) await sleep(900);      // the second column follows the first, so both are watched
+      csum.highlight(i);
+      colLbl.setAttribute('x', String(csumX(i)));
+      colLbl.textContent = c.names[k];
+      csum.reveal(i);
+    }
+    await guide.button(c.btn);
   }
   csum.clearHighlight();
   colLbl.textContent = '';
@@ -185,14 +194,14 @@ export async function step2(){
     The paper method lands on the answer you already had.`);
   await guide.next();
 
-  guide.say(`Every column did the same job. Add the two digits, add anything carried in,
-    write one digit, pass any spill left.`);
+  // Course restructure (2026-10-25): "one job per column" and "build it once, stamp it"
+  // were two cards; they are one now.
+  guide.say(`Every column did the same job: add two digits and the carry in, write one digit,
+    and pass any carry left. You will build that job once as a circuit, then copy it once
+    for each column. Making those copies is called <b>stamping</b>.`);
   stage.focus(csum.el, { label: 'one job, four times', at: 'bottom' });
   await guide.next();
-
-  guide.say(`Build that job once as a circuit, then stamp out one copy per column.`);
   stage.clearFocus();
-  await guide.next();
 
   /* ================= SCENE C — one column of circuit: the full adder ================ */
 
@@ -228,7 +237,7 @@ export async function step2(){
     { x: 350, y: 96,  correct: 'XOR', lane: 'sum',   cap: 'does that differ from carry in?', cx: 394, cy: 170 },
     { x: 170, y: 330, correct: 'AND', lane: 'carry', cap: 'were A and B both 1?',         cx: 214, cy: 404 },
     { x: 350, y: 262, correct: 'AND', lane: 'carry', cap: 'that answer and carry in, both 1?', cx: 394, cy: 336 },
-    { x: 520, y: 308, correct: 'OR',  lane: 'or',    cap: 'did either one spill?',        cx: 516, cy: 392 },
+    { x: 520, y: 308, correct: 'OR',  lane: 'or',    cap: 'did either one carry?',        cx: 516, cy: 392 },
   ];
   const W = 88, H = 56;
   const laneG = { sum: svgEl('g'), carry: svgEl('g'), or: svgEl('g') };
@@ -261,29 +270,28 @@ export async function step2(){
   stage.focus(gC, { label: 'full adder', at: 'top' });
   await guide.next();
 
-  guide.say(`Three inputs. The two digits in this column, <b>A</b> and <b>B</b>, and the
-    <b>carry in</b> from the column on its right.`);
-  stage.focus(inLblG, { label: '3 inputs', at: 'left' });
+  // Course restructure (2026-10-25): the inputs card and the outputs card are one card.
+  // inLblG then outG: focus restores back to front, so the list must be in document order.
+  guide.say(`It has three inputs: the two digits in this column, <b>A</b> and <b>B</b>, and
+    the <b>carry in</b> from the column on its right. It has two outputs: this column's
+    <b>sum</b> digit and the <b>carry out</b> going left.`);
+  stage.focus([inLblG, outG], { label: '3 in, 2 out', at: 'bottom' });
   await guide.next();
 
-  guide.say(`Two outputs. This column's <b>sum</b> digit, and the <b>carry out</b> going
-    left. Three wires in, two out.`);
-  stage.focus(outG, { label: '2 outputs', at: 'left' });
-  await guide.next();
-
-  guide.say(`The sum digit is 1 when the two digits <b>differ</b>. XOR is the gate for that
-    question. Two of them here, because the carry in has to be compared as well.`);
-  stage.focus(laneG.sum, { label: 'sum lane', at: 'top' });
+  guide.say(`The sum digit is 1 when the two digits <b>differ</b>. The gate that asks "do
+    these differ?" is <b>XOR</b> (exclusive or). There are two here, because the carry in
+    has to be compared as well.`);
+  stage.focus(laneG.sum, { label: 'sum row', at: 'top' });
   await guide.next();
 
   guide.say(`The carry asks a different question: were <b>both</b> digits 1? AND answers
-    that. Two again: one for A and B, one for the carry in.`);
-  stage.focus(laneG.carry, { label: 'carry lane', at: 'right' });
+    that. There are two again: one for A and B, and one for the carry in.`);
+  stage.focus(laneG.carry, { label: 'carry row', at: 'right' });
   await guide.next();
 
-  guide.say(`Two ways to spill, and either one is enough. <b>OR</b> merges them into the
-    single carry out.`);
-  stage.focus(laneG.or, { label: 'either spill', at: 'top' });
+  guide.say(`There are two ways to produce a carry, and either one is enough. <b>OR</b>
+    (output 1 if either input is 1) merges them into the single carry out.`);
+  stage.focus(laneG.or, { label: 'either carry', at: 'top' });
   await guide.next();
 
   /* ---- placement runs with no focus: the scrim would hide the tray, and the tiles
@@ -291,7 +299,7 @@ export async function step2(){
   stage.clearFocus();
 
   function gateTile(kind, idx){
-    const g = svgEl('g', { class: 'tile', 'aria-label': kind + ' tile ' + idx });
+    const g = svgEl('g', { class: 'tile', 'aria-label': kind + ' gate ' + idx });
     g.innerHTML = `
       <rect width="${W}" height="${H}" rx="6" class="tile-bg"/>
       <text x="${W / 2}" y="${H / 2 + 5}" class="gate-lbl">${kind}</text>`;
@@ -306,18 +314,20 @@ export async function step2(){
     validate: v => v[0] === 'XOR' && v[1] === 'XOR' && v[2] === 'AND' && v[3] === 'AND' && v[4] === 'OR',
     onWrong: () => {
       if (cancelHint){ cancelHint(); cancelHint = null; }
-      guide.note(`Match each tile to the caption under its box. A <b>differ</b> question
-        takes XOR, a <b>both</b> question takes AND, and the box feeding CARRY OUT takes OR.`);
+      guide.note(`Match each gate to the caption under its box. A <b>differ</b> question
+        takes XOR, a <b>both</b> question takes AND, and the box feeding CARRY OUT takes
+        OR.`);
     },
   });
 
-  guide.say(`<b>Your goal: place the five tiles.</b> The caption under each box says which
-    question that box answers.`);
+  guide.say(`<b>Your goal is to place the five gates.</b> The caption under each empty box
+    says which question that box answers.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ placer.autoPlace(); return replay; }
     cancelHint = flow.hintAfter(14000,
-      `<b>Your goal: fill all five boxes.</b> The two boxes on the top lane take the XOR
-       tiles. The two <b>both</b> boxes take the AND tiles. The box feeding CARRY OUT takes OR.`);
+      `<b>Your goal is to fill all five boxes.</b> The two boxes on the top row take the two
+       XOR gates. The two <b>both</b> boxes take the two AND gates. The box feeding CARRY
+       OUT takes OR.`);
     await placer.done;
     if (cancelHint){ cancelHint(); cancelHint = null; }
     return true;
@@ -370,19 +380,19 @@ export async function step2(){
   }
   setABC(0, 0, 0, true);
 
-  guide.say(`Your five tiles are live gates now. <b>Your goal: make SUM read 0 while
-    CARRY OUT reads 1.</b>`);
+  guide.say(`Your five gates are live now. <b>Your goal is to make SUM read 0 while CARRY
+    OUT reads 1.</b>`);
   await flow.ask(async replay => {
     if (replay !== undefined){ setABC(replay[0], replay[1], replay[2], true); return replay; }
     cancelHint = flow.hintAfter(13000,
-      `<b>Your goal: SUM 0, CARRY OUT 1.</b> Try A = 1, B = 1, carry in = 0. Both digits are
-       1, so the column cannot hold the answer.`);
+      `<b>Your goal is SUM 0 and CARRY OUT 1.</b> Try A = 1, B = 1, carry in = 0. Because
+       both digits are 1, the column cannot hold the answer.`);
     await waitFor(() => { const r = setABC(A, Bv, Cin, true); return r.sum === false && r.cout === true; });
     if (cancelHint){ cancelHint(); cancelHint = null; }
     return [A, Bv, Cin];
   });
 
-  guide.say(`SUM reads 0 and CARRY OUT reads 1. The column kept 0 and handed the spill to
+  guide.say(`SUM reads 0 and CARRY OUT reads 1. The column kept 0 and handed the carry to
     the column on its left, the same move you made on paper.`);
   stage.focus(lampCout.g, { label: 'carry out = 1', at: 'left' });
   await guide.next();
@@ -409,12 +419,10 @@ export async function step2(){
   FAs[0].g.style.opacity = '0';
   await fadeIn([FAs[0].g]);
 
-  guide.say(`Box it, stamp it, repeat. Five gates fold into one tile, and the tile is the
-    part you copy.`);
-  stage.focus(FAs[0].g, { label: 'full adder', at: 'top' });
-  await guide.next();
-
-  stage.clearFocus();
+  // Course restructure (2026-10-25): "the gates fold into one part" and "here are four of
+  // them" are one card. The card arrives first, then the three copies are stamped under it.
+  guide.say(`The five gates now sit inside one box, the full adder. Here it is stamped four
+    times, once per column, in place value order: eights, fours, twos, ones.`);
   const colCap = svgEl('g');
   gD.appendChild(colCap);
   ['1s', '2s', '4s', '8s'].forEach((s, i) => {
@@ -430,10 +438,8 @@ export async function step2(){
     if (!flow.instant) SFX.click();
   }
   await fadeIn([colCap], 220);
-
-  guide.say(`Four tiles, one per column, laid out in place value order: eights, fours, twos,
-    ones.`);
-  stage.focus(chainG, { label: '4 columns', at: 'top' });
+  // chainG then colCap, in document order, so the place-value captions are lit too
+  stage.focus([chainG, colCap], { label: '4 full adders', at: 'top' });
   await guide.next();
 
   /* carry links, drawn above the tiles the way carries are written above a paper sum */
@@ -459,8 +465,8 @@ export async function step2(){
   await fadeIn([arcsG]);
   arcs.forEach(a => { a.style.opacity = '.28'; });
 
-  guide.say(`Each tile's <b>carry out</b> feeds the <b>carry in</b> of the tile on its left,
-    the same way you wrote the carries above the paper sum.`);
+  guide.say(`Each full adder's <b>carry out</b> feeds the <b>carry in</b> of the full adder
+    on its left, the same way you wrote the carries above the paper sum.`);
   stage.focus(arcsG, { label: 'carry out to carry in', at: 'top' });
   await guide.next();
 
@@ -543,7 +549,8 @@ export async function step2(){
   await guide.next();
 
   stage.clearFocus();
-  guide.say(`<b>Your goal: set A to 5 and B to 3</b>, with the bit buttons under the stage.`);
+  guide.say(`<b>Your goal is to set A to 5 and B to 3</b>, using the bit buttons under the
+    stage.`);
   await flow.ask(async replay => {
     if (replay !== undefined){
       toggleA4.set(replay[0], true); toggleB4.set(replay[1], true);
@@ -551,8 +558,8 @@ export async function step2(){
       return replay;
     }
     cancelHint = flow.hintAfter(13000,
-      `<b>Your goal: A = 5, B = 3.</b> 5 is 4 + 1 and 3 is 2 + 1. Tap the bits until the
-       readouts say 5 and 3.`);
+      `<b>Your goal is A = 5 and B = 3.</b> 5 is 4 + 1 and 3 is 2 + 1. Tap the bit buttons
+       until the readouts say 5 and 3.`);
     await waitFor(() => toggleA4.value === 5 && toggleB4.value === 3);
     if (cancelHint){ cancelHint(); cancelHint = null; }
     await ripple(5, 3);
@@ -560,40 +567,44 @@ export async function step2(){
   });
   lockBits(true);
 
-  guide.aha(`Eight. The carry moved right to left, one column at a time, the same walk you
-    made on paper.`);
+  // Course restructure (2026-10-25): the "now break it" task and the carry-flag card are
+  // cut (overflow is taught once, in step 4), and the two closing ahas are one card. The
+  // bit buttons stay locked from here, so the answer row keeps showing 8.
+  guide.aha(`The answer is 8. The carry moved right to left, one column at a time, the same
+    way you did it on paper.`,
+    `Every addition a computer does is built from this same column: a sum bit and a carry, right to left.`);
   await guide.next();
 
-  lockBits(false);
-  guide.say(`<b>Now break it. Your goal: find any A and B whose sum needs the 16 lamp.</b>`);
-  const [a2, b2] = await flow.ask(async replay => {
-    if (replay !== undefined){
-      toggleA4.set(replay[0], true); toggleB4.set(replay[1], true);
-      await ripple(replay[0], replay[1]);
-      return replay;
-    }
-    cancelHint = flow.hintAfter(13000,
-      `<b>Your goal: a sum that lights the 16 lamp.</b> Push both numbers high. 9 + 9 = 18,
-       more than four columns can hold.`);
-    // a long hold, so a player on their way to two big numbers is not cut off at the
-    // first pair that happens to clear 15
-    await waitFor(() => (toggleA4.value + toggleB4.value) > 15, { hold: 1100 });
-    if (cancelHint){ cancelHint(); cancelHint = null; }
-    const av = toggleA4.value, bv = toggleB4.value;
-    await ripple(av, bv);
-    return [av, bv];
-  });
-  lockBits(true);
-
-  guide.say(`${a2} + ${b2} is ${a2 + b2}. Four columns could not hold it, so the last carry
-    had nowhere to go but the 16 lamp. Chips call that lamp the <b>carry flag</b>.`);
-  stage.focus(outBits.cells[0].r, { label: 'carry flag', at: 'top' });
-  await guide.next();
+  /* ================= IN THE LAB (DESIGN.md §6d rule 8) =============================
+     The 74HC283 and its pinout, then 5 + 3 wired on a breadboard with the five answer
+     LEDs in place-value order. Sources for every pin are listed in js/acts/act2/lab.js. */
 
   stage.clearFocus();
-  guide.aha(`Every addition a computer does is this same ripple, right to left, column by
-    column.`,
-    `The adder in a 64-bit processor is the same circuit, 64 columns wide, running a few
-     billion times a second.`);
+  const part = slideInPanel(svg, lab22Part(), { lab: true });
+  part.focus('part');
+  await part.show();
+  // Course restructure (2026-10-25): the carry-lookahead mention is gone with the card it
+  // pointed back to.
+  guide.lab(`Here is the four-bit adder you just built, sold as a part. This chip is a 74HC283.
+    It adds two four-bit numbers.`, { intro: true });
   await guide.next();
+
+  part.focus('pinout');
+  guide.lab(`Each number comes in on four pins, A1 to A4 and B1 to B4, where 1 is the ones
+    column. The sum comes out on S1 to S4. Pin 7 is the carry in, and pin 9 is the carry
+    out.`);
+  await guide.next();
+
+  const bench = slideInPanel(svg, lab22Board(), { lab: true });
+  bench.focus('inputs');
+  await part.swapTo(bench);      // N-053: no flash of the stage between panels
+  guide.lab(`Here it is on a breadboard with a 5 V supply. A wire to the + rail is a 1 and a
+    wire to ground is a 0, so these wires set A to 5 (0101) and B to 3 (0011).`);
+  await guide.next();
+
+  bench.focus('outputs');
+  guide.lab(`The four sum LEDs read 1000, which is 8, the answer you worked out on paper. The
+    carry out LED, on the left, stays dark, because 8 fits in four bits.`);
+  await guide.next();
+  await bench.hide();
 }
