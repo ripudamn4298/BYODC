@@ -1,49 +1,56 @@
-# Hosting BYODC on Cloudflare Pages
+# Hosting BYODC on Cloudflare
 
-The site is static files plus a small backend in `functions/api/` (Cloudflare Pages
-Functions). That backend handles Google sign-in, nicknames, progress saved to your account,
+The site is static files plus a small backend: the route handlers in `functions/api/`, run by
+`server/worker.js`. That backend handles Google sign-in, nicknames, progress saved to your account,
 and the "people have started building" counter. It all runs on Cloudflare's free tier.
 
-Every push to `main` on GitHub redeploys the site automatically once step 2 is done.
 Locally, `tools/dev-server.mjs` has no backend, so the course behaves as it always has: no
 counter and no sign-in step.
 
-## 1. Google: get a sign-in key (about 10 minutes, once)
+## How it runs
+
+The site runs as a **Cloudflare Worker with static assets**, which is the project type the
+Cloudflare dashboard creates when you import a GitHub repo:
+- `wrangler.jsonc` is the config;
+- `server/worker.js` answers `/api/*` and hands everything else to the static files;
+- `.assetsignore` keeps non-site files (notes, tools, the backend source) from being served.
+
+The build's deploy command is `npx wrangler deploy`. Every push to `main` redeploys.
+
+Until the database is connected, `/api` answers "not connected yet", and the course runs as it
+does locally, with no counter and no sign-in step.
+
+## 1. Cloudflare: the project (done)
+
+Workers & Pages → Create → Import a repository → **ripudamn4298/BYODC**. Keep the deploy
+command as `npx wrangler deploy`. The site lives at `https://byodc.<your-subdomain>.workers.dev`,
+shown on the Worker's overview page.
+
+## 2. Cloudflare: the database
+
+1. **Storage & Databases → D1 → Create database**, named **byodc**.
+2. Copy its **Database ID** (it looks like `xxxxxxxx-xxxx-…`) and give it to Claude, or put it
+   in `wrangler.jsonc` yourself:
+   `"d1_databases": [{ "binding": "DB", "database_name": "byodc", "database_id": "<id>" }]`.
+   You do not create any tables: the site creates them itself the first time it runs.
+3. Push to `main`. The next deploy connects the database, and the counter appears.
+
+## 3. Google: the sign-in key (about 10 minutes, once)
 
 1. Go to https://console.cloud.google.com and create a project called **BYODC**.
 2. **APIs & Services → OAuth consent screen**:
    - choose **External**;
-   - fill in the app name (*Build Your Own Data Centre*), your support email and the developer email;
+   - fill in the app name, your support email and the developer email;
    - leave the scopes as they are (email, profile, openid);
-   - press **Publish app** so anyone can sign in. These basic scopes need no Google review.
+   - press **Publish app**.
 3. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
    - application type **Web application**;
-   - under **Authorized redirect URIs**, add `https://byodc.pages.dev/api/auth/callback`. Use your real Pages address from step 2; if `byodc` is taken, Cloudflare gives you something like `byodc-abc.pages.dev`.
-4. Copy the **Client ID** and the **Client secret**.
-
-## 2. Cloudflare: put the site online
-
-1. Sign up at https://dash.cloudflare.com (free).
-2. **Workers & Pages → Create → Pages → Connect to Git**. Allow GitHub access, then pick
-   **ripudamn4298/BYODC**.
-3. Build settings:
-   - production branch **main**;
-   - framework preset **None**;
-   - build command **empty**;
-   - build output directory **/**.
-4. Press **Save and Deploy**. The site goes live at `https://<project>.pages.dev`.
-
-## 3. Cloudflare: the database and the keys
-
-1. **Storage & Databases → D1 → Create** a database called **byodc**. You do not need to
-   create any tables: the site creates them itself the first time it runs.
-2. Open your Pages project → **Settings → Bindings → Add → D1 database**:
-   - variable name **DB**;
-   - database **byodc**.
-3. **Settings → Variables and Secrets** (Production):
-   - add `GOOGLE_CLIENT_ID` as text;
-   - add `GOOGLE_CLIENT_SECRET` and press **Encrypt**.
-4. **Deployments → Retry deployment** on the latest one, so the binding and the keys take effect.
+   - under **Authorized redirect URIs**, add `https://byodc.<your-subdomain>.workers.dev/api/auth/callback`, using the exact address from step 1.
+4. In Cloudflare, open the **byodc** Worker → **Settings → Variables and Secrets**. Add
+   `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, both with **type: Secret**. Secrets survive
+   every deploy; plain-text variables would be wiped by the next push, because `wrangler.jsonc`
+   is the source of truth for those.
+5. The sign-in button appears on the next page load. No redeploy is needed for secrets.
 
 ## 4. Check it
 
@@ -66,6 +73,8 @@ counter and no sign-in step.
 | `functions/api/guest.js` | A guest pressed start; counted once per browser |
 | `functions/api/stats.js` | The counter |
 | `server/lib.js` | Shared helpers, plus the table set-up |
+| `server/worker.js` | The Worker: routes `/api/*` to the handlers above, serves everything else as static files |
+| `wrangler.jsonc`, `.assetsignore` | Cloudflare config, and the files that are never served |
 | `js/account.js` | The browser side: counter, sign-in and nickname dialogs, progress sync |
 
 ## Data kept
@@ -79,7 +88,7 @@ No passwords are ever stored, because Google handles sign-in.
 
 ## Later (optional)
 
-- **Custom domain:** Pages project → **Custom domains**. Then add
+- **Custom domain:** the Worker → **Settings → Domains & Routes**. Then add
   `https://yourdomain/api/auth/callback` to the Google redirect URIs.
 - **GitHub Pages:** the old GitHub Pages site can be switched off once Cloudflare is live
   (repo → Settings → Pages).

@@ -1,0 +1,37 @@
+# Files in the repo that are not part of the public site (Cloudflare Workers static assets).
+node_modules
+.git
+.github
+.wrangler
+.assetsignore
+.gitignore
+wrangler.jsonc
+wrangler.json
+wrangler.toml
+package.json
+package-lock.json
+bun.lock
+bun.lockb
+functions
+server
+tools
+*.md
+test.html
+plates-act1
+# kept on disk only (also in .gitignore), never part of the site
+animation-frames
+animation-frames-hd
+website_inspiration
+animation_inspiration
+legacy
+untitled folder
+*.mov
+*.mp4
+transcript.txt
+GPU.png
+chip.png
+rack.png
+server.png
+transistor.png
+.DS_Store
+.claude

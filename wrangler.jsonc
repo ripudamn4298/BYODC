@@ -1,0 +1,15 @@
+// BYODC on Cloudflare Workers (static assets + a small /api Worker). See HOSTING.md.
+{
+  "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
+  "name": "byodc",
+  "main": "server/worker.js",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS"
+  }
+  // Step 2 of HOSTING.md: once the D1 database exists, its id goes here, e.g.
+  // ,"d1_databases": [{ "binding": "DB", "database_name": "byodc", "database_id": "<id>" }]
+  // GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set as secrets in the dashboard, not here.
+}
