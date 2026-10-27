@@ -8,6 +8,7 @@
 // Live clicks only (flow.js skips it on replay). Reduced motion gets the sound and a still frame.
 import { SFX } from './sfx.js';
 import { RM, sleep } from './util.js';
+import { account } from '../account.js';
 
 const COLS = ['#565D4C', '#2946CC', '#A8741F', '#5C6B45', '#2B2118'];
 
@@ -63,7 +64,7 @@ export async function celebrate({ act, step, total, last }){
   const over = document.createElement('div');
   over.className = 'cel-act';
   over.innerHTML = `<div class="cel-act-inner">
-      <div class="cel-act-kicker">ACT ${act}</div>
+      <div class="cel-act-kicker">ACT ${act}${account.nickname ? ` · WELL DONE, ${String(account.nickname).toUpperCase().replace(/[<>&"']/g, '')}` : ''}</div>
       <div class="cel-act-title">COMPLETE</div>
       ${pips(total, total, true)}
     </div>`;

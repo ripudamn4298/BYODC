@@ -13,6 +13,7 @@ import { ACT5, ACT5_SUMMARY, ACT5_BASE_COST } from './acts/act5/index.js';
 import { showSummary } from './steps/summary.js';
 import { progress } from './engine/progress.js';
 import { initLanding, teardownLanding } from './landing.js';
+import { account } from './account.js';
 
 guide.init();
 hud.init();
@@ -40,7 +41,7 @@ function startAct(n, startAt = 0, replay = {}){
     startAt,
     queue: replay.queue,     // dev index only: land on a card mid-step
     saved: replay.saved,
-    onProgress: step => progress.save(n, step),
+    onProgress: step => { progress.save(n, step); account.saveProgress(n, step); },
     onComplete: () => {
       // park the player at the top of the next act — or forget the run
       // entirely once the whole course is finished
@@ -77,13 +78,24 @@ if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)){
   })).catch(err => console.warn('[BYODC dev index] not loaded:', err));
 }
 
+/* ---- accounts (Ripu, 2026-10-27) ----------------------------------------
+   On the live site every start goes through account.gate: sign in with Google or play as
+   a guest, and pick a nickname. Locally there is no backend, so the gate lets you straight in. */
+await account.init();
+
 document.querySelectorAll('[data-begin]').forEach(b =>
-  b.addEventListener('click', () => startGame(+b.getAttribute('data-begin') || 1)));
+  b.addEventListener('click', () => {
+    const n = +b.getAttribute('data-begin') || 1;
+    account.gate(() => startGame(n), { act: n, step: 0 });
+  }));
 
 /* ---- pick up where you left off ----------------------------------------
    A saved run turns on the resume buttons (hero + acts ladder). They stay
    hidden for a first-time visitor, so nothing new appears until it's earned. */
 (function initResume(){
+  // a signed-in builder's saved place wins when it is newer than this browser's
+  const local = progress.load(), remote = account.user?.progress;
+  if (remote && (!local || (remote.at || 0) > (local.at || 0))) progress.save(remote.act, remote.step);
   const saved = progress.load();
   if (!saved) return;
   const act = ACTS[saved.act];
@@ -92,13 +104,28 @@ document.querySelectorAll('[data-begin]').forEach(b =>
   document.querySelectorAll('[data-resume]').forEach(el => {
     el.hidden = false;
     el.textContent = `Resume — ${act.label} · step ${saved.step + 1} / ${act.steps.length} ▸`;
-    el.addEventListener('click', () => startGame(saved.act, saved.step));
+    el.addEventListener('click', () => account.gate(() => startGame(saved.act, saved.step), { act: saved.act, step: saved.step }));
   });
   document.querySelectorAll('[data-new-visitor]').forEach(el => { el.hidden = true; });   // N-136
   document.querySelectorAll('[data-forget]').forEach(el => {
     el.hidden = false;
     el.addEventListener('click', () => { progress.clear(); location.reload(); });
   });
+})();
+
+/* back from Google: name the builder if needed, then one click starts where they asked */
+(function afterGoogle(){
+  const q = new URLSearchParams(location.search);
+  if (!q.has('signedin') && !q.has('signin')) return;
+  history.replaceState(null, '', location.pathname + location.hash);
+  if (q.get('signin') === 'failed'){
+    account.modal(`<div class="acct-kicker">SIGN-IN</div><h3 class="acct-title">THAT DID NOT WORK</h3>
+      <p class="acct-copy">Google did not finish signing you in. Try again, or play as a guest.</p>`,
+      [{ label: 'OK', value: 'ok', primary: true }]);
+    return;
+  }
+  const act = Math.min(5, Math.max(1, +q.get('act') || 1)), step = Math.max(0, +q.get('step') || 0);
+  account.afterSignIn(() => startGame(act, step));
 })();
 
 // one mute, two buttons (landing nav + game HUD): silences music AND effects together

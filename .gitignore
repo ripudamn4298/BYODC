@@ -28,3 +28,6 @@ chip.png
 rack.png
 server.png
 transistor.png
+
+# ── Cloudflare local runtime state ─────────────────────────────────
+.wrangler/

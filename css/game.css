@@ -530,3 +530,30 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
 #game .summary h2{font-family:var(--font-pixel);font-size:clamp(40px,5.6vw,62px);line-height:1;
   text-transform:uppercase;letter-spacing:.02em;text-shadow:var(--h3d-ink)}
 #game .summary h2 em{font-style:normal}
+
+/* ---------- Ripu (2026-10-27): sign-in and nickname dialogs (js/account.js) ---------- */
+.acct-modal{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:20px;
+  background:rgba(24,27,18,0);transition:background .25s}
+.acct-modal.in{background:rgba(24,27,18,.55)}
+.acct-card{width:min(460px,100%);background:var(--paper-high);padding:28px 28px 26px;
+  box-shadow:0 0 0 2px var(--brand-ink), 0 6px 0 2px var(--brand-ink);
+  transform:translateY(14px);opacity:0;transition:transform .3s cubic-bezier(.3,1.4,.5,1),opacity .2s}
+.acct-modal.in .acct-card{transform:none;opacity:1}
+.acct-kicker{font-family:var(--font-mono);font-size:10px;letter-spacing:.26em;color:var(--ink-soft)}
+.acct-title{font-family:var(--font-pixel);font-weight:400;font-size:38px;line-height:1;margin-top:8px;
+  text-transform:uppercase;letter-spacing:.02em;color:var(--ink);text-shadow:var(--h3d-ink-sm)}
+.acct-copy{margin-top:14px;font-size:17px;line-height:1.5;color:var(--ink-soft)}
+.acct-form{margin-top:18px}
+.acct-input{width:100%;font-family:var(--font-pixel);font-size:26px;letter-spacing:.04em;padding:10px 12px;
+  background:#fff;color:var(--ink);border:0;box-shadow:0 0 0 2px var(--brand-ink);border-radius:0;outline:none}
+.acct-input:focus{box-shadow:0 0 0 2px var(--brand-ink), 0 0 0 5px rgba(226,114,91,.45)}
+.acct-err{margin-top:10px;font-size:15px;color:var(--red)}
+.acct-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:22px}
+.acct-modal .btn{font-family:var(--font-pixel);font-size:21px;font-weight:400;line-height:1;text-transform:uppercase;
+  letter-spacing:3px;border:0;border-radius:0;padding:10px 20px 9px;background:var(--paper-high);color:var(--brand-ink);
+  box-shadow:0 0 0 2px var(--brand-ink), 0 4px 0 2px var(--brand-ink);cursor:pointer;
+  transition:transform .08s ease-out, box-shadow .08s ease-out}
+.acct-modal .btn:active{transform:translateY(4px);box-shadow:0 0 0 2px var(--brand-ink)}
+.acct-modal .btn.primary{background:var(--btn-accent)}
+.acct-google .g{display:inline-grid;place-items:center;width:22px;height:22px;margin-right:10px;background:#fff;
+  font-family:var(--font-mono);font-weight:500;font-size:14px;letter-spacing:0;box-shadow:0 0 0 2px var(--brand-ink)}

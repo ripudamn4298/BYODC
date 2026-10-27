@@ -247,3 +247,15 @@
 #landing .btn.primary:hover:not(:disabled){background:#e9846f;color:var(--brand-ink)}
 #landing .btn.big{font-size:26px;padding:14px 34px 12px}
 #landing .btn.micro{font-size:17px;padding:6px 14px 5px;letter-spacing:2px;box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink)}
+
+/* ---------- Ripu (2026-10-27): the builders counter and the account chip ---------- */
+.builders{display:inline-flex;align-items:center;gap:10px;margin-bottom:18px;
+  font-family:var(--font-pixel);font-size:22px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);
+  padding:6px 14px 5px;background:var(--paper-high);box-shadow:0 0 0 2px var(--brand-ink)}
+.builders b{font-weight:400;font-size:26px}
+.builders .pulse{width:9px;height:9px;background:var(--ink);animation:cueBounce 1.6s steps(2) infinite}
+#lnav .acct{display:flex;align-items:center;gap:12px;margin-right:14px;font-family:var(--font-pixel);font-size:19px;letter-spacing:.08em}
+#lnav .acct-hi{color:var(--ink)}
+#lnav .acct-link{background:none;border:0;padding:4px 2px;font:inherit;color:var(--ink-soft);cursor:pointer;
+  border-bottom:2px solid var(--hairline-strong)}
+#lnav .acct-link:hover{color:var(--ink);border-color:var(--ink)}
