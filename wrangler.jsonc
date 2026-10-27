@@ -8,8 +8,9 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS"
-  }
-  // Step 2 of HOSTING.md: once the D1 database exists, its id goes here, e.g.
-  // ,"d1_databases": [{ "binding": "DB", "database_name": "byodc", "database_id": "<id>" }]
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "byodc", "database_id": "990629ed-191e-4e8e-a350-84dade0406c0" }
+  ]
   // GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set as secrets in the dashboard, not here.
 }
