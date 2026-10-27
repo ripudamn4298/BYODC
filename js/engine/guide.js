@@ -81,7 +81,11 @@ export const guide = {
     node.classList.add('beat');
     if (this._cards){
       // a fresh card retires the buttons and the hint that belonged to the previous one
-      if (where !== 'actions'){ this._cards.actions.innerHTML = ''; this.clearHint(); }
+      if (where !== 'actions'){
+        this._cards.actions.innerHTML = ''; this.clearHint();
+        // Ripu (2026-10-28): the buddy on the floor (js/companion/floor.js) thinks about a new card
+        if (!flow.instant) document.dispatchEvent(new CustomEvent('byodc:card'));
+      }
       return this._swap(where === 'actions' ? this._cards.actions : this._cards.slot, node);
     }
     if (flow.instant) node.classList.add('instant', 'in');

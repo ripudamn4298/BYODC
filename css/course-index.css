@@ -1,0 +1,58 @@
+/* BYODC — the course index drawer (js/course-index.js, Ripu 2026-10-28) */
+#course-index{position:fixed;inset:0;z-index:95;pointer-events:none}
+#course-index .ci-scrim{position:absolute;inset:0;background:rgba(24,27,18,.45);opacity:0;transition:opacity .22s}
+#course-index .ci-panel{position:absolute;left:0;top:0;bottom:0;width:min(440px,94vw);display:flex;flex-direction:column;
+  background:var(--paper-high);box-shadow:2px 0 0 var(--brand-ink), 10px 0 30px rgba(29,33,23,.2);
+  transform:translateX(-104%);transition:transform .26s var(--ease)}
+#course-index.open{pointer-events:auto}
+#course-index.open .ci-scrim{opacity:1}
+#course-index.open .ci-panel{transform:none}
+#course-index button{font:inherit;color:inherit;background:none;border:0;text-align:left;cursor:pointer;padding:0}
+#course-index button:disabled{cursor:default}
+.ci-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 4px}
+.ci-head h2{font-family:var(--font-pixel);font-weight:400;font-size:40px;line-height:1;letter-spacing:.04em;color:var(--brand-ink);text-shadow:var(--h3d-ink-sm);margin:0}
+#course-index .ci-x{font-family:var(--font-pixel);font-size:22px;width:36px;height:34px;text-align:center;background:var(--paper-high);
+  box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink)}
+#course-index .ci-x:active{transform:translateY(3px);box-shadow:0 0 0 2px var(--brand-ink)}
+.ci-sub{font-size:15px;line-height:1.45;color:var(--ink-soft);padding:6px 20px 12px;margin:0;border-bottom:2px solid var(--brand-ink)}
+.ci-list{flex:1;overflow:auto;padding:4px 0 28px;scrollbar-width:thin}
+.ci-act{border-bottom:1px solid var(--hairline)}
+#course-index .ci-act-h{display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px 13px 12px}
+#course-index .ci-act-h:hover{background:var(--hairline-soft)}
+.ci-car{font:11px/1 var(--font-mono);color:var(--ink-faint);width:16px;flex:none;text-align:center}
+.ci-act-t{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.ci-act-t .n{font-family:var(--font-pixel);font-size:22px;line-height:1;letter-spacing:.06em;color:var(--brand-ink)}
+.ci-act-t .t{font:15px/1.2 var(--font-body);color:var(--ink-soft)}
+.ci-meter{width:64px;height:10px;flex:none;background:#fff;box-shadow:0 0 0 2px var(--brand-ink);position:relative;overflow:hidden}
+.ci-meter i{position:absolute;left:0;top:0;bottom:0;background:var(--brand-ink)}
+.ci-act.done .ci-meter i{background:var(--green)}
+.ci-pct{font-family:var(--font-pixel);font-size:18px;width:58px;text-align:right;flex:none;color:var(--ink-soft)}
+.ci-act.done .ci-pct{color:var(--green)}
+.ci-step{display:flex;align-items:center;gap:6px;padding:3px 18px 3px 30px}
+.ci-step:hover:not(.locked){background:var(--hairline-soft)}
+#course-index .ci-go{flex:1;display:flex;gap:8px;align-items:baseline;padding:5px 0;min-width:0}
+.ci-go .n{font:11px/1 var(--font-mono);color:var(--ink-soft);flex:none;min-width:30px}
+.ci-go .t{font:15.5px/1.3 var(--font-body);color:var(--ink)}
+.ci-cnt{font:10.5px/1 var(--font-mono);color:var(--ink-faint);white-space:nowrap;flex:none}
+.ci-step.here .ci-go .t{font-weight:600}
+.ci-step.locked{opacity:.38}
+.ci-cards{list-style:none;margin:0 0 8px;padding:0 16px 0 62px}
+#course-index .ci-card{display:flex;gap:8px;width:100%;padding:5px 6px;border-left:2px solid var(--hairline);align-items:flex-start;
+  font:13.5px/1.3 var(--font-body);color:var(--ink-soft)}
+#course-index .ci-card:hover:not(:disabled){background:var(--hairline-soft);color:var(--ink)}
+.ci-card .n{font:10px/1.6 var(--font-mono);color:var(--ink-faint);flex:none;min-width:46px}
+.ci-card .x{flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#course-index .ci-card.here{border-left-color:var(--btn-accent);background:rgba(226,114,91,.12);color:var(--ink)}
+#course-index .ci-card.locked{opacity:.38}
+.ci-lock{flex:none;color:var(--ink-soft);margin-top:2px}
+
+/* the INDEX button in the game's top bar */
+#hud .hud-index{font-family:var(--font-pixel);font-size:19px;letter-spacing:3px;line-height:1;padding:6px 12px 5px;border:0;cursor:pointer;
+  background:var(--paper-high);color:var(--brand-ink);box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink);flex:none}
+#hud .hud-index:hover{transform:translateY(-1px)}
+#hud .hud-index:active{transform:translateY(3px);box-shadow:0 0 0 2px var(--brand-ink)}
+@media (max-width:600px){
+  #hud .hud-index{font-size:15px;letter-spacing:2px;padding:5px 8px 4px}
+  #hud .wordmark{font-size:24px}
+  #hud .money{font-size:10px}
+}

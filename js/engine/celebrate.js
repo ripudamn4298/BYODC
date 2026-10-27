@@ -34,6 +34,8 @@ function sparks(host, x, y, n, spread, size = 7){
 export async function celebrate({ act, step, total, last }){
   const game = document.getElementById('game');
   if (!game) return;
+  // Ripu (2026-10-28): the buddy on the floor cheers, or throws a party at the end of an act
+  document.dispatchEvent(new CustomEvent('byodc:step-done', { detail: { act, step, last } }));
   const btn = game.querySelector('.btn.cta-done');
   const gr = game.getBoundingClientRect();
   if (btn && !RM){

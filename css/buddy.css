@@ -1,0 +1,110 @@
+/* BYODC — the buddy's expressions (Ripu, 2026-10-28; preview only, see js/companion/buddy.js).
+   One SVG user unit is one pixel of the sprite, so every move below is in sprite pixels. */
+.bb-wrap{ display:inline-block; line-height:0; pointer-events:none; }
+.bb{ overflow:visible; }
+.bb-all, .bb-arm, .bb-leg, .bb-sp, .cf, .bb-scrib{ transform-box:fill-box; transform-origin:50% 100%; }
+
+/* the screen: exactly one face at a time */
+.bb [data-f]{ display:none; }
+[data-face=open] [data-f=open], [data-face=blink] [data-f=blink], [data-face=happy] [data-f=happy],
+[data-face=up] [data-f=up], [data-face=down] [data-f=down], [data-face=worried] [data-f=worried],
+[data-face=letter] [data-f=letter]{ display:inline; }
+.bb-face{ transition:transform .15s steps(1); }
+[data-look=l] .bb-face{ transform:translateX(-1px); }
+[data-look=r] .bb-face{ transform:translateX(1px); }
+
+/* the extras stay hidden until a mood calls for them */
+.bb-bubble, .bb-pad, .bb-sweat, .bb-sparks, .bb-confetti{ display:none; }
+
+/* idle: a slow two-step bob */
+[data-mood=idle] .bb-all{ animation:bb-bob 2.4s steps(1) infinite; }
+/* walking: legs take turns, the body bobs with each step */
+[data-walk="1"] .bb-all{ animation:bb-bob .5s steps(1) infinite; }
+[data-walk="1"] .bb-leg.l{ animation:bb-step .5s steps(1) infinite; }
+[data-walk="1"] .bb-leg.r{ animation:bb-step .5s steps(1) .25s infinite; }
+[data-walk="1"] .bb-arm.l{ animation:bb-swing .5s steps(1) infinite; }
+[data-walk="1"] .bb-arm.r{ animation:bb-swing .5s steps(1) .25s infinite; }
+
+/* thinking: thought bubble with dots that fill in turn, a slight lean */
+[data-mood=thinking] .bb-bubble{ display:inline; }
+[data-mood=thinking] .bb-dot{ animation:bb-dot 1.5s steps(1) infinite; }
+[data-mood=thinking] .bb-dot.d2{ animation-delay:.5s; } [data-mood=thinking] .bb-dot.d3{ animation-delay:1s; }
+
+/* writing: a notepad, the pencil scribbles */
+[data-mood=writing] .bb-pad{ display:inline; }
+[data-mood=writing] .bb-scrib{ transform-origin:0 50%; animation:bb-scrib 1.2s steps(4) infinite; }
+[data-mood=writing] .bb-scrib.s2{ animation-delay:.6s; }
+[data-mood=writing] .bb-arm.r{ animation:bb-nudge .3s steps(1) infinite; }
+
+/* oops: a shake and a sweat drop */
+[data-mood=oops] .bb-sweat{ display:inline; animation:bb-drip 1.2s steps(3) infinite; }
+[data-mood=oops] .bb-all{ animation:bb-shake .16s steps(1) 6; }
+
+/* cheer (a step is done): a jump with arms up and sparkles */
+[data-mood=cheer] .bb-sparks, [data-mood=party] .bb-sparks{ display:inline; }
+[data-mood=cheer] .bb-sp, [data-mood=party] .bb-sp{ animation:bb-twinkle .5s steps(1) infinite; }
+[data-mood=cheer] .sp1, [data-mood=party] .sp1{ animation-delay:.12s } [data-mood=cheer] .sp2, [data-mood=party] .sp2{ animation-delay:.25s }
+[data-mood=cheer] .bb-all{ animation:bb-jump .8s cubic-bezier(.3,.7,.4,1) 3; }
+[data-mood=cheer] .bb-arm.l, [data-mood=party] .bb-arm.l{ transform:translate(-3px,-6px); }
+[data-mood=cheer] .bb-arm.r, [data-mood=party] .bb-arm.r{ transform:translate(3px,-6px); }
+
+/* party (an act is done): bigger jumps, waving arms, confetti */
+[data-mood=party] .bb-confetti{ display:inline; }
+[data-mood=party] .bb-all{ animation:bb-bigjump .95s cubic-bezier(.3,.7,.4,1) 4; }
+[data-mood=party] .bb-arm.l{ animation:bb-waveL .28s steps(1) infinite; }
+[data-mood=party] .bb-arm.r{ animation:bb-waveR .28s steps(1) .14s infinite; }
+[data-mood=party] .cf{ animation:bb-fall 1.4s linear infinite; }
+[data-mood=party] .cf1{ animation-delay:.2s } [data-mood=party] .cf2{ animation-delay:.45s } [data-mood=party] .cf3{ animation-delay:.7s }
+[data-mood=party] .cf4{ animation-delay:.9s } [data-mood=party] .cf5{ animation-delay:1.15s }
+
+@keyframes bb-bob{ 0%{ transform:translateY(0) } 50%{ transform:translateY(-1px) } }
+@keyframes bb-step{ 0%{ transform:translateY(0) } 50%{ transform:translateY(-2px) } }
+@keyframes bb-swing{ 0%{ transform:translateY(0) } 50%{ transform:translateY(-1px) } }
+@keyframes bb-dot{ 0%{ opacity:.2 } 33%{ opacity:1 } }
+@keyframes bb-scrib{ 0%{ transform:scaleX(.2) } 100%{ transform:scaleX(1) } }
+@keyframes bb-nudge{ 0%{ transform:translate(0,-2px) } 50%{ transform:translate(-1px,-2px) } }
+@keyframes bb-drip{ 0%{ transform:translateY(0) } 100%{ transform:translateY(3px) } }
+@keyframes bb-shake{ 0%{ transform:translateX(-1px) } 50%{ transform:translateX(1px) } }
+@keyframes bb-jump{ 0%,100%{ transform:translateY(0) scale(1.06,.94) } 20%{ transform:translateY(0) scale(.95,1.06) } 50%{ transform:translateY(-9px) } 85%{ transform:translateY(0) scale(1.06,.94) } }
+@keyframes bb-bigjump{ 0%,100%{ transform:translateY(0) scale(1.08,.92) } 18%{ transform:translateY(0) scale(.93,1.08) } 45%{ transform:translateY(-14px) rotate(-6deg) } 58%{ transform:translateY(-14px) rotate(6deg) } 88%{ transform:translateY(0) scale(1.08,.92) } }
+@keyframes bb-twinkle{ 0%{ opacity:1 } 50%{ opacity:.15 } }
+@keyframes bb-waveL{ 0%{ transform:translate(-3px,-6px) } 50%{ transform:translate(-3px,-8px) } }
+@keyframes bb-waveR{ 0%{ transform:translate(3px,-6px) } 50%{ transform:translate(3px,-8px) } }
+@keyframes bb-fall{ 0%{ transform:translateY(0); opacity:1 } 100%{ transform:translateY(34px); opacity:0 } }
+@media (prefers-reduced-motion:reduce){ .bb *{ animation:none !important; } }
+
+/* ---------- the floor (js/companion/floor.js): the buddy's strip along the bottom ---------- */
+#floor{position:fixed;left:0;right:0;bottom:0;height:70px;z-index:55;pointer-events:none;
+  background:color-mix(in srgb, var(--paper) 90%, transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border-top:2px solid var(--brand-ink)}
+#floor .fl-in{position:relative;max-width:1260px;height:100%;margin:0 auto;padding:0 24px;display:flex;align-items:flex-end;gap:16px}
+#floor .fl-lane{position:relative;flex:1;height:100%}
+#floor .fl-lane .bb-wrap{bottom:2px !important}
+#floor.no-buddy .fl-lane{visibility:hidden}
+#floor .fl-say{position:absolute;bottom:76px;z-index:2;background:#fff;color:var(--brand-ink);font:18px/1 var(--font-pixel);letter-spacing:.04em;
+  padding:6px 10px 4px;box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink);white-space:nowrap;
+  transform:translateX(-50%);opacity:0;transition:opacity .15s}
+#floor .fl-say.on{opacity:1}
+#floor .fl-bar{pointer-events:auto;align-self:center;display:flex;flex-direction:column;gap:5px;align-items:flex-end;
+  background:none;border:0;padding:0;cursor:pointer;color:var(--brand-ink)}
+#floor .fl-bar-h{font:17px/1 var(--font-pixel);letter-spacing:.12em;color:var(--ink-soft)}
+#floor .fl-bar-h b{font-weight:400;color:var(--brand-ink)}
+#floor .fl-segs{display:flex;gap:6px}
+#floor .fl-seg{position:relative;width:40px;height:16px;background:#fff;box-shadow:0 0 0 2px var(--brand-ink);overflow:hidden}
+#floor .fl-seg i{position:absolute;left:0;top:0;bottom:0;background:var(--brand-ink)}
+#floor .fl-seg.done i{background:var(--green)}
+#floor .fl-seg em{position:absolute;inset:0;display:grid;place-items:center;font:15px/1 var(--font-pixel);font-style:normal;
+  color:#fff;mix-blend-mode:difference}
+#floor .fl-bar:hover .fl-seg{box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink)}
+#floor .fl-hide{pointer-events:auto;align-self:center;background:none;border:0;cursor:pointer;padding:4px 2px;
+  font:15px/1 var(--font-pixel);letter-spacing:.1em;color:var(--ink-faint)}
+#floor .fl-hide:hover{color:var(--brand-ink)}
+@media (max-width:700px){
+  #floor{height:56px}
+  #floor .fl-in{padding:0 12px;gap:10px}
+  #floor .fl-seg{width:24px;height:13px}
+  #floor .fl-seg em{font-size:12px}
+  #floor .fl-bar-h{font-size:14px}
+  #floor .fl-hide{display:none}
+  #floor .fl-say{bottom:58px;font-size:16px}
+}

@@ -75,12 +75,16 @@ shown on the Worker's overview page.
 | `server/lib.js` | Shared helpers, plus the table set-up |
 | `server/worker.js` | The Worker: routes `/api/*` to the handlers above, serves everything else as static files |
 | `wrangler.jsonc`, `.assetsignore` | Cloudflare config, and the files that are never served |
-| `js/account.js` | The browser side: counter, sign-in and nickname dialogs, progress sync |
+| `js/account.js` | The browser side: counter, sign-in, the nickname and buddy dialog, progress sync |
+| `js/reach.js` | How far into each act the learner has got, card by card; decides what the index unlocks |
+| `js/course-index.js` | The index drawer: every act, step and card, with the cards ahead locked |
+| `js/companion/buddy.js`, `js/companion/floor.js` | The pixel buddy, and the strip at the bottom of the game where it walks beside the act progress bar |
 
 ## Data kept
 
 Only the following is stored, in D1:
-- for each user: their Google id, email, first name, nickname, last act and step, and timestamps;
+- for each user: their Google id, email, first name, nickname, buddy, last act and step, how far
+  they have got in each act, and timestamps;
 - session tokens;
 - one row per builder, for the counter.
 

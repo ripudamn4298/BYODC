@@ -31,3 +31,6 @@ transistor.png
 
 # ── Cloudflare local runtime state ─────────────────────────────────
 .wrangler/
+
+# Letterling plan page (preview only)
+companion-plan.html

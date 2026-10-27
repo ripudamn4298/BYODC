@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/landing.css">
 <link rel="stylesheet" href="css/game.css">
+<link rel="stylesheet" href="css/buddy.css">
+<link rel="stylesheet" href="css/course-index.css">
 <script src="vendor/gsap.min.js"></script>
 <script src="vendor/ScrollTrigger.min.js"></script>
 <script src="vendor/Draggable.min.js"></script>
@@ -31,6 +33,7 @@
       <a href="#journey">The journey</a>
       <a href="#acts">Acts</a>
       <a href="#colophon">Colophon</a>
+      <a href="#" data-open-index>Index</a>
     </div>
     <div class="acct" data-account hidden></div>
     <button id="lmute" aria-label="toggle sound" title="toggle sound">♪</button>
@@ -125,6 +128,7 @@
 <div id="game">
   <header id="hud">
     <a class="wordmark" href="index.html">BYODC<em>·</em></a>
+    <button class="hud-index" type="button" data-open-index aria-label="Open the course index">INDEX</button>
     <div class="stepmark" id="stepmark">ACT 1 · STEP <b>1 / 4</b></div>
     <div class="money-wrap">
       <div class="money" id="money">SPENT $0.0000</div>

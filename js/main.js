@@ -14,6 +14,9 @@ import { showSummary } from './steps/summary.js';
 import { progress } from './engine/progress.js';
 import { initLanding, teardownLanding } from './landing.js';
 import { account } from './account.js';
+import { reachStore } from './reach.js';
+import { courseIndex } from './course-index.js';
+import { floor } from './companion/floor.js';
 
 guide.init();
 hud.init();
@@ -41,8 +44,15 @@ function startAct(n, startAt = 0, replay = {}){
     startAt,
     queue: replay.queue,     // dev index only: land on a card mid-step
     saved: replay.saved,
-    onProgress: step => { progress.save(n, step); account.saveProgress(n, step); },
+    // Ripu (2026-10-28): every live answer reaches the next card; the index unlocks up to it
+    onAnswer: (s, k) => { reachStore.reached(n, s, k); account.saveReachSoon(n, s); },
+    onProgress: step => {
+      if (step < act.steps.length) reachStore.reached(n, step, 0);
+      progress.save(n, step); account.saveProgress(n, step);
+    },
     onComplete: () => {
+      reachStore.finished(n);
+      account.saveProgress(act.nextAct || n, act.nextAct ? 0 : act.steps.length - 1);
       // park the player at the top of the next act — or forget the run
       // entirely once the whole course is finished
       if (act.nextAct) progress.save(act.nextAct, 0); else progress.clear();
@@ -62,6 +72,7 @@ function startGame(actId = 1, startAt = 0, replay = {}){
   $('#game').classList.add('active');
   window.scrollTo(0, 0);
   Music.start();   // idempotent — already playing if the landing kicked it off
+  floor.show();
   startAct(actId, startAt, replay);
 }
 
@@ -81,7 +92,22 @@ if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)){
 /* ---- accounts (Ripu, 2026-10-27) ----------------------------------------
    On the live site every start goes through account.gate: sign in with Google or play as
    a guest, and pick a nickname. Locally there is no backend, so the gate lets you straight in. */
+await reachStore.init(ACTS);
 await account.init();
+
+/* ---- the course index, and the buddy's floor (Ripu, 2026-10-28) ------------
+   The index opens any card the learner has reached; a jump from the landing page goes
+   through the same gate as every other start. */
+courseIndex.init({
+  acts: ACTS,
+  where: () => (started && flow.steps.length && !document.querySelector('#guide-scroll .summary'))
+    ? { act: currentAct, step: flow.stepIndex, card: flow.answers.length } : null,
+  jump(n, step, replay){
+    if (started) startAct(n, step, replay);
+    else account.gate(() => startGame(n, step, replay), { act: n, step });
+  },
+});
+floor.init({ acts: ACTS, openIndex: () => courseIndex.open() });
 
 document.querySelectorAll('[data-begin]').forEach(b =>
   b.addEventListener('click', () => {

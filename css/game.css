@@ -555,5 +555,17 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
   transition:transform .08s ease-out, box-shadow .08s ease-out}
 .acct-modal .btn:active{transform:translateY(4px);box-shadow:0 0 0 2px var(--brand-ink)}
 .acct-modal .btn.primary{background:var(--btn-accent)}
+/* Ripu (2026-10-28): the buddy picker under the nickname */
+.acct-pick-h{margin-top:20px}
+.acct-pick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+.acct-buddy{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0 6px;cursor:pointer;border:0;
+  background:#fff;color:var(--brand-ink);font-family:var(--font-pixel);font-size:18px;letter-spacing:.08em;
+  box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink)}
+.acct-buddy[aria-checked=true]{background:var(--btn-accent)}
+.acct-buddy:active{transform:translateY(3px);box-shadow:0 0 0 2px var(--brand-ink)}
+.acct-buddy .bb-wrap{margin-top:-10px}
+/* room at the bottom of the game for the floor (js/companion/floor.js) */
+#game #stage-wrap{padding-bottom:110px}
+@media (min-width:921px){ #game #guide{max-height:calc(100vh - 170px)} }
 .acct-google .g{display:inline-grid;place-items:center;width:22px;height:22px;margin-right:10px;background:#fff;
   font-family:var(--font-mono);font-weight:500;font-size:14px;letter-spacing:0;box-shadow:0 0 0 2px var(--brand-ink)}

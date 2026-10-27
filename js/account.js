@@ -5,13 +5,20 @@
 // behaves exactly as before: no counter, no sign-in step, progress in this browser only.
 //
 // The flow on the live site:
-//   press Start / Play / Resume → signed in with a nickname? play.
-//   signed in, no nickname yet → "What should we call you?" → play.
+//   press Start / Play / Resume → signed in with a nickname and a buddy? play.
+//   signed in, no nickname or buddy yet → "What should we call you?" + "Choose your buddy" → play.
 //   not signed in → "Sign in with Google" (progress follows you across devices), or
 //   "Play as a guest" (progress stays in this browser). Either way you join the counter.
+// Guests, and the local review server, are asked the same question once; the answer stays
+// in this browser (Ripu, 2026-10-28).
 import { el } from './engine/util.js';
+import { AVATARS, mountBuddy } from './companion/buddy.js';
+import { reachStore } from './reach.js';
 
 const GUEST_KEY = 'byodc.guest.v1';
+const PROFILE_KEY = 'byodc.profile.v1';      // { nickname, avatar } for guests and local play
+const loadProfile = () => { try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null; } catch { return null; } };
+const storeProfile = p => { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch { /* storage off */ } };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 async function api(path, opts = {}){
@@ -40,6 +47,7 @@ export const account = {
       this.online = true;
       this.signin = !!me.signin;
       this.user = me.user;
+      if (this.user?.reach) reachStore.merge(this.user.reach);
       try { this.guest = !!localStorage.getItem(GUEST_KEY); } catch { /* no storage */ }
       api('/api/stats').then(s => { this.builders = s.builders; this.renderCounter(); }).catch(() => {});
     } catch { this.online = false; }
@@ -47,7 +55,9 @@ export const account = {
     return this;
   },
 
-  get nickname(){ return this.user?.nickname || null; },
+  get nickname(){ return this.user ? this.user.nickname || null : loadProfile()?.nickname || null; },
+  get avatar(){ return this.user ? this.user.avatar || null : loadProfile()?.avatar || null; },
+  get ready(){ return !!(this.nickname && this.avatar); },
 
   /* ---------- the counter and the nav chip ---------- */
   renderCounter(){
@@ -78,15 +88,15 @@ export const account = {
 
   /* ---------- the gate in front of every start button ---------- */
   async gate(start, { act = 1, step = 0 } = {}){
-    if (!this.online) return start();
-    if (this.user){
-      if (!this.nickname) await this.askNickname();
+    if (!this.online || this.user || this.guest || !this.signin){
+      if (this.online && !this.user) await this.joinAsGuest();
+      if (!this.ready) await this.askNickname();
       return start();
     }
-    if (this.guest || !this.signin){ await this.joinAsGuest(); return start(); }
     const choice = await this.askSignIn();
     if (choice === 'google') return this.goGoogle(act, step);
     await this.joinAsGuest();
+    if (!this.ready) await this.askNickname();
     return start();
   },
 
@@ -110,16 +120,24 @@ export const account = {
   /* after Google sends the visitor back: name them if needed, then one click to begin */
   async afterSignIn(start){
     if (!this.user) return;
-    if (!this.nickname) await this.askNickname();
+    if (!this.ready) await this.askNickname();
     else await this.modal(`<div class="acct-kicker">WELCOME BACK</div>
       <h3 class="acct-title">HI, ${esc(this.nickname.toUpperCase())}</h3>
       <p class="acct-copy">Your progress is saved to your account.</p>`, [{ label: 'Keep building ▸', value: 'go', primary: true }]);
     start();
   },
 
+  /* the Resume place plus the per-act reach. Called at every step end; card-by-card reach
+     changes are batched (saveReachSoon) so a fast reader does not post on every Next. */
   saveProgress(act, step){
+    clearTimeout(this._reachT);
     if (!this.online || !this.user) return;
-    api('/api/progress', { method: 'POST', body: JSON.stringify({ act, step }) }).catch(() => {});
+    api('/api/progress', { method: 'POST', body: JSON.stringify({ act, step, reach: reachStore.all }) }).catch(() => {});
+  },
+  saveReachSoon(act, step){
+    if (!this.online || !this.user) return;
+    clearTimeout(this._reachT);
+    this._reachT = setTimeout(() => this.saveProgress(act, step), 4000);
   },
 
   /* ---------- the two dialogs ---------- */
@@ -133,25 +151,52 @@ export const account = {
 
   askNickname(){
     return new Promise(resolve => {
+      let avatar = this.avatar || 'byte';
+      const startName = this.nickname || this.user?.name || '';
       const box = this._open(`<div class="acct-kicker">ONE LAST THING</div>
         <h3 class="acct-title">WHAT SHOULD WE CALL YOU?</h3>
         <form class="acct-form" novalidate>
           <input class="acct-input" name="nick" maxlength="24" autocomplete="nickname" placeholder="Your nickname"
-            value="${esc(this.user?.name || '')}" aria-label="nickname">
+            value="${esc(startName)}" aria-label="nickname">
+          <div class="acct-kicker acct-pick-h">CHOOSE YOUR BUDDY</div>
+          <div class="acct-pick" role="radiogroup" aria-label="buddy"></div>
           <p class="acct-err" hidden></p>
           <div class="acct-actions"><button class="btn primary" type="submit">Start building ▸</button></div>
         </form>`);
       const form = box.querySelector('form'), input = form.nick, err = form.querySelector('.acct-err');
+      const pick = form.querySelector('.acct-pick');
+      const buddies = AVATARS.map(a => {
+        const b = el('button', { type: 'button', class: 'acct-buddy', role: 'radio', 'data-id': a.id, 'aria-checked': String(a.id === avatar) });
+        pick.appendChild(b);
+        const m = mountBuddy(b, { avatar: a.id, name: startName, scale: 1.7 });
+        b.insertAdjacentHTML('beforeend', `<span>${a.label}</span>`);
+        b.addEventListener('click', () => {
+          avatar = a.id;
+          pick.querySelectorAll('.acct-buddy').forEach(x => x.setAttribute('aria-checked', String(x.dataset.id === avatar)));
+          m.play('cheer');
+        });
+        return { a, m };
+      });
+      // the initial on every buddy's screen follows the name as it is typed
+      input.addEventListener('input', () => buddies.forEach(({ a, m }) => m.set({ avatar: a.id, name: input.value })));
       input.focus(); input.select();
       form.addEventListener('submit', async e => {
         e.preventDefault();
         err.hidden = true;
+        const finish = nickname => { buddies.forEach(({ m }) => m.destroy()); this._close(box); resolve(nickname); };
+        if (!this.user){      // a guest, or the local review server: kept in this browser
+          const nickname = input.value.replace(/\s+/g, ' ').trim();
+          if (!/^[\p{L}\p{N} ._'-]{1,24}$/u.test(nickname)){ err.textContent = 'Use 1 to 24 letters, numbers or spaces.'; err.hidden = false; return; }
+          storeProfile({ nickname, avatar });
+          this.renderNav();
+          return finish(nickname);
+        }
         try {
-          const r = await api('/api/nickname', { method: 'POST', body: JSON.stringify({ nickname: input.value }) });
-          this.user.nickname = r.nickname;
+          const r = await api('/api/nickname', { method: 'POST', body: JSON.stringify({ nickname: input.value, avatar }) });
+          this.user.nickname = r.nickname; this.user.avatar = r.avatar;
           if (this.builders != null && !this._counted){ this.builders++; this._counted = true; }
           this.renderNav(); this.renderCounter();
-          this._close(box); resolve(r.nickname);
+          finish(r.nickname);
         } catch (ex){ err.textContent = ex.message; err.hidden = false; }
       });
     });

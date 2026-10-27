@@ -22,6 +22,7 @@ export const flow = {
   _hints: new Set(),
   onComplete: null,
   onProgress: null,     // (nextStepIndex) => … fires each time a step is finished
+  onAnswer: null,       // (stepIndex, cardIndex) => … fires on each live answer (js/reach.js)
 
   get stale(){ return false; },
 
@@ -38,6 +39,7 @@ export const flow = {
       v = await fn(undefined);
       if (ep !== this._epoch) return new Promise(() => {});   // abandoned run: freeze
       this.answers.push(v);
+      if (this.onAnswer) this.onAnswer(this.stepIndex, this.answers.length);   // a live answer: the next card is reached
     }
     if (ep !== this._epoch) return new Promise(() => {});
     this.updateNav();
@@ -189,6 +191,7 @@ export const flow = {
     this.steps = steps;
     this.onComplete = opts.onComplete || null;
     this.onProgress = opts.onProgress || null;
+    this.onAnswer = opts.onAnswer || null;
     this.actLabel = opts.actLabel || 'ACT 1';
     this.baseCost = opts.baseCost || 0;
     this.saved = (opts.saved || []).slice();

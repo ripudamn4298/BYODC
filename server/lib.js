@@ -59,6 +59,11 @@ export async function ensureSchema(env){
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS builders (
       id TEXT PRIMARY KEY, created_at INTEGER NOT NULL)`),
   ]);
+  // Ripu (2026-10-28): the buddy avatar, and how far into each act the builder has reached.
+  // Added to tables that already exist, so each ALTER fails harmlessly once the column is there.
+  for (const col of ['avatar TEXT', 'reach TEXT']){
+    try { await env.DB.prepare(`ALTER TABLE users ADD COLUMN ${col}`).run(); } catch { /* already there */ }
+  }
   schemaReady = true;
 }
 
@@ -66,15 +71,47 @@ export async function currentUser(env, request){
   const t = cookies(request)[SESSION_COOKIE];
   if (!t || !/^[a-f0-9]{64}$/.test(t)) return null;
   return await env.DB.prepare(
-    `SELECT u.id, u.name, u.nickname, u.act, u.step, u.progress_at FROM sessions s
+    `SELECT u.id, u.name, u.nickname, u.avatar, u.reach, u.act, u.step, u.progress_at FROM sessions s
      JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?`
   ).bind(t, Date.now()).first();
 }
 
 export function publicUser(u){
   if (!u) return null;
-  return { nickname: u.nickname || null, name: u.name || null,
+  return { nickname: u.nickname || null, name: u.name || null, avatar: cleanAvatar(u.avatar),
+    reach: parseReach(u.reach),
     progress: Number.isInteger(u.act) ? { act: u.act, step: u.step, at: u.progress_at || 0 } : null };
+}
+
+/* the four buddies (js/companion/buddy.js) */
+export const AVATAR_IDS = ['byte', 'chip', 'pixel', 'nova'];
+export const cleanAvatar = v => AVATAR_IDS.includes(v) ? v : null;
+
+/* How far into each act a builder has reached: { "1": { s, k, done }, … }, where s is the
+   step and k the card inside it. Anything malformed is dropped, never trusted. */
+export function cleanReach(raw){
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const a of ['1', '2', '3', '4', '5']){
+    const r = raw[a];
+    if (!r || !Number.isInteger(r.s) || !Number.isInteger(r.k)) continue;
+    if (r.s < 0 || r.s > 30 || r.k < 0 || r.k > 300) continue;
+    out[a] = { s: r.s, k: r.k, done: r.done === true };
+  }
+  return out;
+}
+export function parseReach(text){
+  try { return cleanReach(JSON.parse(text || '{}')); } catch { return {}; }
+}
+/* keep the further of two positions in every act, so two devices never undo each other */
+export function mergeReach(a, b){
+  const out = { ...a };
+  for (const [act, r] of Object.entries(b)){
+    const o = out[act];
+    if (!o || r.s > o.s || (r.s === o.s && r.k > o.k)) out[act] = { ...r, done: r.done || !!o?.done };
+    else if (r.done) out[act] = { ...o, done: true };
+  }
+  return out;
 }
 
 /* A nickname is 1–24 letters, digits, spaces and . _ ' - (any language). */
