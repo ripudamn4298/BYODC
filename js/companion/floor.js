@@ -1,5 +1,6 @@
-// BYODC — the floor: a strip along the bottom of the game screen where the learner's buddy
-// walks, next to a progress bar of the five acts (Ripu, 2026-10-28).
+// BYODC — the floor: a ground line under the guide card where the learner's buddy walks,
+// above a progress bar of the five acts (Ripu, 2026-10-28). On narrow screens it is a strip
+// fixed to the bottom of the screen instead (css/buddy.css).
 //
 // The buddy reacts to the course through small DOM events, so the engine never needs to know
 // it exists:
@@ -20,16 +21,17 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 let root, lane, say, bar, buddy, stopRoam, sayT, quietT;
 let opts = {};
 
-const small = () => matchMedia('(max-width:700px)').matches;
+const small = () => matchMedia('(max-width:920px)').matches;
 const nameNow = () => account.nickname || 'Builder';
 
 function speak(text){
   clearTimeout(sayT);
   say.textContent = text;
-  // centred over the buddy, but never past either end of the floor
-  const half = say.offsetWidth / 2 + 4;
-  const x = buddy.el.offsetLeft + buddy.el.offsetWidth / 2;
-  say.style.left = `${Math.max(half, Math.min(lane.clientWidth - half, x))}px`;
+  // beside the buddy (right, or left when there is no room), so it never covers the card above
+  const w = say.offsetWidth, el = buddy.el, gap = 2;
+  const right = el.offsetLeft + el.offsetWidth * .78 + gap;
+  const left = el.offsetLeft + el.offsetWidth * .22 - gap - w;
+  say.style.left = `${right + w <= lane.clientWidth ? right : Math.max(0, left)}px`;
   say.classList.add('on');
   sayT = setTimeout(() => say.classList.remove('on'), 2400);
 }
@@ -72,9 +74,10 @@ export const floor = {
     root.id = 'floor';
     root.innerHTML = `<div class="fl-in">
       <div class="fl-lane"><div class="fl-say" aria-live="polite"></div></div>
-      <button class="fl-bar" type="button" aria-label="Your progress through the acts. Opens the index."></button>
-      <button class="fl-hide" type="button"></button></div>`;
-    document.getElementById('game').appendChild(root);
+      <div class="fl-row">
+        <button class="fl-bar" type="button" aria-label="Your progress through the acts. Opens the index."></button>
+        <button class="fl-hide" type="button"></button></div></div>`;
+    document.getElementById('guide-col').appendChild(root);   // under the guide card
     lane = root.querySelector('.fl-lane');
     say = root.querySelector('.fl-say');
     bar = root.querySelector('.fl-bar');

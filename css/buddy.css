@@ -73,38 +73,45 @@
 @keyframes bb-fall{ 0%{ transform:translateY(0); opacity:1 } 100%{ transform:translateY(34px); opacity:0 } }
 @media (prefers-reduced-motion:reduce){ .bb *{ animation:none !important; } }
 
-/* ---------- the floor (js/companion/floor.js): the buddy's strip along the bottom ---------- */
-#floor{position:fixed;left:0;right:0;bottom:0;height:70px;z-index:55;pointer-events:none;
-  background:color-mix(in srgb, var(--paper) 90%, transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  border-top:2px solid var(--brand-ink)}
-#floor .fl-in{position:relative;max-width:1260px;height:100%;margin:0 auto;padding:0 24px;display:flex;align-items:flex-end;gap:16px}
-#floor .fl-lane{position:relative;flex:1;height:100%}
-#floor .fl-lane .bb-wrap{bottom:2px !important}
-#floor.no-buddy .fl-lane{visibility:hidden}
-#floor .fl-say{position:absolute;bottom:76px;z-index:2;background:#fff;color:var(--brand-ink);font:18px/1 var(--font-pixel);letter-spacing:.04em;
+/* ---------- the floor (js/companion/floor.js) ----------
+   Wide screens: under the guide card, in the same sticky column. The buddy walks along a
+   ground line, with the act progress bar and the hide switch below it.
+   Narrow screens (the guide runs down the page): a strip fixed to the bottom of the screen. */
+#floor{position:relative;margin-top:6px;pointer-events:none}
+#floor .fl-in{display:flex;flex-direction:column;gap:8px}
+#floor .fl-lane{position:relative;height:74px;border-bottom:2px solid var(--brand-ink)}
+#floor .fl-lane .bb-wrap{bottom:0 !important}
+#floor.no-buddy .fl-lane{visibility:hidden;height:0;border:0}
+#floor .fl-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#floor .fl-say{position:absolute;bottom:30px;z-index:2;background:#fff;color:var(--brand-ink);font:18px/1 var(--font-pixel);letter-spacing:.04em;
   padding:6px 10px 4px;box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink);white-space:nowrap;
-  transform:translateX(-50%);opacity:0;transition:opacity .15s}
+  opacity:0;transition:opacity .15s}
 #floor .fl-say.on{opacity:1}
-#floor .fl-bar{pointer-events:auto;align-self:center;display:flex;flex-direction:column;gap:5px;align-items:flex-end;
-  background:none;border:0;padding:0;cursor:pointer;color:var(--brand-ink)}
-#floor .fl-bar-h{font:17px/1 var(--font-pixel);letter-spacing:.12em;color:var(--ink-soft)}
+#floor .fl-bar{pointer-events:auto;display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;cursor:pointer;color:var(--brand-ink)}
+#floor .fl-bar-h{font:17px/1 var(--font-pixel);letter-spacing:.12em;color:var(--ink-soft);white-space:nowrap}
 #floor .fl-bar-h b{font-weight:400;color:var(--brand-ink)}
 #floor .fl-segs{display:flex;gap:6px}
-#floor .fl-seg{position:relative;width:40px;height:16px;background:#fff;box-shadow:0 0 0 2px var(--brand-ink);overflow:hidden}
+#floor .fl-seg{position:relative;width:36px;height:16px;background:#fff;box-shadow:0 0 0 2px var(--brand-ink);overflow:hidden}
 #floor .fl-seg i{position:absolute;left:0;top:0;bottom:0;background:var(--brand-ink)}
 #floor .fl-seg.done i{background:var(--green)}
 #floor .fl-seg em{position:absolute;inset:0;display:grid;place-items:center;font:15px/1 var(--font-pixel);font-style:normal;
   color:#fff;mix-blend-mode:difference}
 #floor .fl-bar:hover .fl-seg{box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink)}
-#floor .fl-hide{pointer-events:auto;align-self:center;background:none;border:0;cursor:pointer;padding:4px 2px;
-  font:15px/1 var(--font-pixel);letter-spacing:.1em;color:var(--ink-faint)}
+#floor .fl-hide{pointer-events:auto;background:none;border:0;cursor:pointer;padding:4px 2px;
+  font:15px/1 var(--font-pixel);letter-spacing:.1em;color:var(--ink-faint);white-space:nowrap}
 #floor .fl-hide:hover{color:var(--brand-ink)}
-@media (max-width:700px){
-  #floor{height:56px}
-  #floor .fl-in{padding:0 12px;gap:10px}
+@media (max-width:920px){
+  #floor{position:fixed;left:0;right:0;bottom:0;height:56px;z-index:55;margin:0;
+    background:color-mix(in srgb, var(--paper) 90%, transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border-top:2px solid var(--brand-ink)}
+  #floor .fl-in{flex-direction:row;align-items:flex-end;height:100%;padding:0 12px;gap:10px}
+  #floor .fl-lane{flex:1;height:100%;border:0}
+  #floor.no-buddy .fl-lane{height:100%}
+  #floor .fl-row{align-self:center}
+  #floor .fl-bar{flex-direction:column;align-items:flex-end;gap:4px}
   #floor .fl-seg{width:24px;height:13px}
   #floor .fl-seg em{font-size:12px}
   #floor .fl-bar-h{font-size:14px}
   #floor .fl-hide{display:none}
-  #floor .fl-say{bottom:58px;font-size:16px}
+  #floor .fl-say{bottom:20px;font-size:16px}
 }
