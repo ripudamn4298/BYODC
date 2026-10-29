@@ -4,6 +4,6 @@ import { json, ensureSchema } from '../../server/lib.js';
 
 export async function onRequestGet({ env }){
   await ensureSchema(env);
-  const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM builders').first();
+  const row = await env.DB.prepare(`SELECT n FROM counters WHERE name = 'builders'`).first();
   return json({ builders: row?.n || 0 }, 200, { 'cache-control': 'public, max-age=30' });
 }

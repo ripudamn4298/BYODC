@@ -52,6 +52,8 @@ export const account = {
       api('/api/stats').then(s => { this.builders = s.builders; this.renderCounter(); }).catch(() => {});
     } catch { this.online = false; }
     this.renderNav();
+    addEventListener('pagehide', () => this.flush());
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') this.flush(); });
     return this;
   },
 
@@ -127,17 +129,28 @@ export const account = {
     start();
   },
 
-  /* the Resume place plus the per-act reach. Called at every step end; card-by-card reach
-     changes are batched (saveReachSoon) so a fast reader does not post on every Next. */
-  saveProgress(act, step){
-    clearTimeout(this._reachT);
+  /* The Resume place plus the per-act reach, saved to the account at the end of every step,
+     and when the learner leaves or hides the page with unsaved card progress (2026-10-29: one
+     write per step, not one per card, to stay well inside the database's daily write limit).
+     This browser always has the exact place; the account catches up at those moments. */
+  saveProgress(act, step, { leaving = false } = {}){
+    this._place = { act, step };
     if (!this.online || !this.user) return;
-    api('/api/progress', { method: 'POST', body: JSON.stringify({ act, step, reach: reachStore.all }) }).catch(() => {});
+    const reach = JSON.stringify(reachStore.all);
+    this._sent = reach;
+    const body = JSON.stringify({ act, step, reach: reachStore.all });
+    if (leaving){   // keepalive lets the request finish after the page has gone
+      fetch('/api/progress', { method: 'POST', body, keepalive: true, credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' } }).catch(() => {});
+      return;
+    }
+    api('/api/progress', { method: 'POST', body }).catch(() => {});
   },
-  saveReachSoon(act, step){
-    if (!this.online || !this.user) return;
-    clearTimeout(this._reachT);
-    this._reachT = setTimeout(() => this.saveProgress(act, step), 4000);
+  notePlace(act, step){ this._place = { act, step }; },
+  flush(){
+    if (!this.online || !this.user || !this._place) return;
+    if (JSON.stringify(reachStore.all) === this._sent) return;    // nothing new since the last save
+    this.saveProgress(this._place.act, this._place.step, { leaving: true });
   },
 
   /* ---------- the two dialogs ---------- */

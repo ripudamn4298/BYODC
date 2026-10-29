@@ -64,6 +64,12 @@ export async function ensureSchema(env){
   for (const col of ['avatar TEXT', 'reach TEXT']){
     try { await env.DB.prepare(`ALTER TABLE users ADD COLUMN ${col}`).run(); } catch { /* already there */ }
   }
+  // The builders count is kept in one row, so the landing page reads one row instead of
+  // counting the whole builders table on every visit (2026-10-29). Filled once from the table.
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS counters (name TEXT PRIMARY KEY, n INTEGER NOT NULL)').run();
+  if (!await env.DB.prepare(`SELECT n FROM counters WHERE name = 'builders'`).first()){
+    await env.DB.prepare(`INSERT OR IGNORE INTO counters (name, n) SELECT 'builders', COUNT(*) FROM builders`).run();
+  }
   schemaReady = true;
 }
 
@@ -81,6 +87,12 @@ export function publicUser(u){
   return { nickname: u.nickname || null, name: u.name || null, avatar: cleanAvatar(u.avatar),
     reach: parseReach(u.reach),
     progress: Number.isInteger(u.act) ? { act: u.act, step: u.step, at: u.progress_at || 0 } : null };
+}
+
+/* Add a builder to the count, once per id: the counter only moves when the insert is new. */
+export async function addBuilder(env, id){
+  const r = await env.DB.prepare('INSERT OR IGNORE INTO builders (id, created_at) VALUES (?, ?)').bind(id, Date.now()).run();
+  if (r.meta?.changes) await env.DB.prepare(`UPDATE counters SET n = n + 1 WHERE name = 'builders'`).run();
 }
 
 /* the four buddies (js/companion/buddy.js) */

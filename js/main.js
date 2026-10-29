@@ -45,7 +45,7 @@ function startAct(n, startAt = 0, replay = {}){
     queue: replay.queue,     // dev index only: land on a card mid-step
     saved: replay.saved,
     // Ripu (2026-10-28): every live answer reaches the next card; the index unlocks up to it
-    onAnswer: (s, k) => { reachStore.reached(n, s, k); account.saveReachSoon(n, s); },
+    onAnswer: (s, k) => { reachStore.reached(n, s, k); account.notePlace(n, s); },
     onProgress: step => {
       if (step < act.steps.length) reachStore.reached(n, step, 0);
       progress.save(n, step); account.saveProgress(n, step);
