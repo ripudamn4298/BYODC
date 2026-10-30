@@ -17,6 +17,8 @@ const [act, si, key, card, out = `shot-${key.replace(':', '-')}-${card}.png`] = 
 const seed = JSON.parse(fs.readFileSync(new URL('../js/dev/trail-seed.json', import.meta.url), 'utf8'));
 const t = seed[key];
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+// a saved nickname and buddy, so the start is not held up by the nickname box (2026-10-29)
+await p.addInitScript(() => localStorage.setItem('byodc.profile.v1', JSON.stringify({ nickname: 'Review', avatar: 'byte' })));
 const errs = []; p.on('pageerror', e => errs.push(e.message));
 await p.goto('http://localhost:4821/');
 await p.waitForFunction(() => document.getElementById('dev-index-tab'));

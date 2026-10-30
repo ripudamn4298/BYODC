@@ -244,6 +244,15 @@ export async function step5(){
   stage.focus(docOrder([hallA, hallB]), { label: '28,480 GPUs', at: 'top' });
   await guide.next();
 
+  /* Ripu (2026-10-29): the word "compute". Act 4, step 4 gives the H100 about 990 teraflops
+     with 16-bit numbers (989 dense BF16, H100 SXM datasheet). 28,480 × 989 = 28,166,720
+     teraflops ≈ 28 exaflops. Act 4, step 2 defines FLOPS, teraflop and petaflop. */
+  guide.say(`Each H100 does about 990 teraflops with 16-bit numbers, so your 28,480 GPUs do
+    about 28 exaflops together. An exaflop is a million trillion operations a second. This is
+    what people mean when they say compute: how much maths a company's chips can do.`);
+  stage.focus(docOrder([hallA, hallB]), { label: 'about 28 exaflops', at: 'top' });
+  await guide.next();
+
   /* --- the substation --- */
   stage.clearFocus();
   const sub = building(planG, BUILDINGS.sub);
