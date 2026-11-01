@@ -157,6 +157,7 @@ export function makePlacer({ svg, tiles, slots, validate, onWrong, onPlace }){
   tiles.forEach(tile => {
     const g = tile.g;
     g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button');
+    g.style.touchAction = 'none';     // a finger drags the tile instead of scrolling the page (mobile, 2026-11-02)
     let drag = null;
     g.addEventListener('pointerdown', e => {
       e.preventDefault();

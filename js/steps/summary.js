@@ -49,5 +49,8 @@ export function showSummary(spec, onNext){
 
   guide.title(spec.debrief.eyebrow, spec.debrief.title);
   spec.debrief.paras.forEach(p => guide.say(p));
+  // on phones the summary and its debrief scroll as one page (css/game.css): the debrief's
+  // beats scroll themselves into view, so bring the page back to the summary's top
+  setTimeout(() => { const w = document.getElementById('stage-wrap'); if (w) w.scrollTop = 0; }, 700);
   SFX.success();
 }

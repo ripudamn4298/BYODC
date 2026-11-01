@@ -572,3 +572,56 @@ text[text-anchor="end"],tspan[text-anchor="end"]{text-anchor:end}
 @media (max-width:920px){ #game #stage-wrap{padding-bottom:80px} }
 .acct-google .g{display:inline-grid;place-items:center;width:22px;height:22px;margin-right:10px;background:#fff;
   font-family:var(--font-mono);font-weight:500;font-size:14px;letter-spacing:0;box-shadow:0 0 0 2px var(--brand-ink)}
+
+/* ══════════ Phones (Ripu, 2026-11-02): an app screen, not a long page ══════════
+   Stacked, the picture sat above the fold and the card below it, so every Next changed
+   something the learner could not see. On a phone held upright the course is now one
+   screen that does not scroll: the top bar; the picture pinned under it, full width, with
+   its readouts and slider in a compact block; the card in its own scroll area; the buddy
+   and the act bar in a slim strip at the bottom that never covers anything. */
+@media (max-width:920px) and (orientation:portrait){
+  #game #hud{height:56px;padding:0 14px;gap:10px}
+  #game #stage-wrap{position:fixed;left:0;right:0;top:56px;bottom:0;display:flex;flex-direction:column;
+    align-items:stretch;gap:0;padding:0;margin:0;max-width:none}
+  #game #stage{position:relative;top:0;flex:none;max-height:none;overflow:visible;border:0;
+    border-bottom:1px solid var(--hairline-strong);padding:4px 8px 6px;gap:4px;background:var(--paper-high)}
+  #game #stage:not(:has(svg)):not(:has(.summary)){display:none}   /* an empty stage takes no room */
+  /* the end-of-act summary is drawn in the stage, with its debrief in the guide: there the
+     whole area scrolls as one page (summary, then debrief, then the buddy strip) */
+  #game #stage-wrap:has(.summary){display:block;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #game #stage-wrap:has(.summary) #stage{border-bottom:0;padding:14px 16px 0}
+  #game #stage-wrap:has(.summary) #guide-col{display:block}
+  #game #stage-wrap:has(.summary) #guide{overflow:visible;max-height:none}
+  #game #stage svg.stage-svg{width:100%;height:auto;max-height:38svh;
+    touch-action:none}   /* the screen never scrolls here, so every finger move belongs to the stage (drags, the globe) */
+  #game .stage-controls{gap:5px;padding:0 0 2px;min-height:0}
+  #game .ctl{padding:4px 9px;gap:7px}
+  #game .ctl label{font-size:9px;letter-spacing:.1em}
+  #game .ctl output{font-size:10px;min-width:0}
+  #game .ctl:has(input[type=range]){flex:1 1 100%;justify-content:space-between}
+  #game .stage-controls .chip{font-size:9.5px;padding:3px 7px;letter-spacing:.02em}
+  #game .ctl input[type=range]{flex:1;min-width:0}
+  #game #guide-col{position:relative;top:0;flex:1;min-height:0;display:flex;flex-direction:column}
+  #game #guide{position:relative;flex:1;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;
+    border:0;padding:12px 18px 22px;-webkit-overflow-scrolling:touch}
+  /* Back / Restart sit small on the step label's line, not on a row of their own */
+  #game .nav-row{position:absolute;top:8px;right:14px;margin:0;min-height:0;gap:6px;z-index:2}
+  #game .btn.micro{font-size:13px;padding:5px 9px 4px;letter-spacing:1.4px;box-shadow:0 0 0 2px #2B2118, 0 3px 0 2px #2B2118}
+  #game .step-head .eyebrow{min-height:28px;display:flex;align-items:center}
+  #game .step-head h2{font-size:25px;margin-top:4px;padding-bottom:10px}
+  #game .guide-p{font-size:16.5px}
+  #game .card-actions{margin-top:14px}
+  #game #stage-wrap{padding-bottom:0}
+}
+/* phones on their side: picture left, card right, both fitted to the screen */
+@media (max-width:920px) and (orientation:landscape) and (max-height:520px){
+  #game #hud{height:48px;padding:0 14px}
+  #game #stage-wrap{position:fixed;left:0;right:0;top:48px;bottom:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,42%);
+    gap:0;padding:0;margin:0;max-width:none;align-items:stretch}
+  #game #stage{position:relative;top:0;max-height:none;overflow:hidden;border:0;border-right:1px solid var(--hairline-strong);padding:4px 8px}
+  #game #stage svg.stage-svg{width:100%;height:auto;max-height:calc(100svh - 120px);touch-action:none}
+  #game #guide-col{position:relative;top:0;min-height:0;display:flex;flex-direction:column}
+  #game #guide{flex:1;min-height:0;max-height:none;overflow-y:auto;border:0;padding:10px 16px 16px}
+  #game .step-head h2{font-size:22px}
+  #game .guide-p{font-size:15.5px}
+}

@@ -224,6 +224,7 @@ export async function step4(){
 
     tiles.forEach(tile => {
       let drag = null;
+      tile.g.style.touchAction = 'none';   // drag with a finger without scrolling the page (mobile)
       tile.g.addEventListener('pointerdown', e => {
         if (tile.g.style.display === 'none') return;
         demo.stop();

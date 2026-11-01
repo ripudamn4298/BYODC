@@ -148,7 +148,23 @@ function artifact(){
     drawn = idx;
     const im = imgs[idx];
     ctx.clearRect(0, 0, W, H);
-    // on phones the sketch is a background texture, same as the dot artifact was
+    /* Phones held upright (Ripu, 2026-11-02): the drawing is the picture, not a faded
+       texture. It fills a band across the top of the screen, at full strength, and the
+       copy sits below it (css/landing.css). */
+    if (W <= 880 && H > W){
+      const top = 60, bandH = Math.round(H * .46) - top;
+      const zoom = 1.04 + progress * .02;
+      const s = Math.max(W / im.naturalWidth, bandH / im.naturalHeight) * zoom;
+      const dw = im.naturalWidth * s, dh = im.naturalHeight * s;
+      // the rack fills its frame; the later diagrams sit centre-left, so the frame drifts left
+      const t01 = clamp(current / ANCHORS[1], 0, 1);
+      const fx = .5 - .1 * t01;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, top, W, bandH); ctx.clip();
+      ctx.drawImage(im, W / 2 - dw * fx, top + (bandH - dh) / 2, dw, dh);
+      ctx.restore();
+      return;
+    }
     ctx.globalAlpha = W <= 880 ? .5 : 1;
     // cover-fit with a slow push-in as we go deeper. The rack scene fills its
     // frame edge to edge; the later diagrams sit centre-left with blank paper
@@ -252,7 +268,8 @@ export function initLanding(){
         // so adjacent phases never sit on each other
         const o = clamp((.62 - d) / .28, 0, 1);
         elp.style.opacity = o.toFixed(3);
-        elp.style.transform = `translateY(calc(-50% + ${(P - k) * -56}px))`;
+        // --jbase: -50% centres the phase (desktop); phones pin it to the top of its area
+        elp.style.transform = `translateY(calc(var(--jbase, -50%) + ${(P - k) * -56}px))`;
       });
     },
   });

@@ -579,6 +579,7 @@ export async function step5(){
   [rim, landLayer, arcLayer, hubLayer, yourLayer].forEach(n => { n.style.pointerEvents = 'none'; });
   const grab = svgEl('circle', { cx, cy, r: R, fill: 'transparent' });
   grab.style.cursor = 'grab';
+  grab.style.touchAction = 'none';    // spin the globe with a finger without scrolling the page (mobile)
   gsvg.insertBefore(grab, rim);
   let drag = null;
   grab.addEventListener('pointerdown', e => {

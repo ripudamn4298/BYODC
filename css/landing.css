@@ -265,3 +265,23 @@
   box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink);transition:transform .08s ease-out, box-shadow .08s ease-out, background .2s}
 #lnav .acct-signin:hover{background:#e9846f;transform:translateY(-1px);box-shadow:0 0 0 2px var(--brand-ink), 0 4px 0 2px var(--brand-ink)}
 #lnav .acct-signin:active{transform:translateY(3px);box-shadow:0 0 0 2px var(--brand-ink)}
+
+/* ══════════ Phones held upright (Ripu, 2026-11-02) ══════════
+   The drawing is a band across the top 46% of the screen (js/landing.js draws it there at
+   full strength); the hero and each journey phase sit below it on plain paper. */
+@media (max-width:880px) and (orientation:portrait){
+  #landing>#scrim{background:linear-gradient(180deg, transparent 0%, transparent 44%, var(--paper) 50%, var(--paper) 100%)}
+  .hero-inner{padding-top:calc(46svh + 18px);align-items:start}
+  #hero{justify-content:flex-start}
+  .hero-copy .microlabel{margin-bottom:12px}
+  .hero-copy h1{font-size:clamp(40px,11.5vw,58px)}
+  .hero-copy .lede{margin-top:14px;font-size:17px}
+  .scroll-cue{margin-top:22px}
+  .hero-strip{display:none}
+  .journey-pin{align-items:flex-start;padding-top:calc(46svh + 14px)}
+  .journey-copy{width:100%;max-width:none;height:calc(54svh - 40px)}
+  .jphase{top:0;--jbase:0%;transform:translateY(0);background:none;backdrop-filter:none;padding:0;margin:0}
+  .jphase .jcue{margin-bottom:10px}
+  .jphase h3{font-size:clamp(34px,9.6vw,48px)}
+  .jphase p{margin-top:12px;font-size:16.5px;line-height:1.45}
+}
