@@ -271,7 +271,9 @@
    full strength); the hero and each journey phase sit below it on plain paper. */
 @media (max-width:880px) and (orientation:portrait){
   #landing>#scrim{background:linear-gradient(180deg, transparent 0%, transparent 44%, var(--paper) 50%, var(--paper) 100%)}
-  .hero-inner{padding-top:calc(46svh + 18px);align-items:start}
+  .hero-inner{padding-top:calc(46svh + 4px);align-items:start}
+  .builders{font-size:15px;line-height:1.25;letter-spacing:.06em;padding:6px 10px;margin-bottom:12px;gap:8px}
+  .builders b{font-size:17px}
   #hero{justify-content:flex-start}
   .hero-copy .microlabel{margin-bottom:12px}
   .hero-copy h1{font-size:clamp(40px,11.5vw,58px)}
