@@ -32,20 +32,32 @@ const ACTS = {
   5: { steps: ACT5, summary: ACT5_SUMMARY, label: 'ACT 5', baseCost: ACT5_BASE_COST, nextAct: null },
 };
 
+/* Ripu (2026-11-03): land on an exact card, by replaying the recorded path through the step
+   (the same record-and-replay the Back button and the index use). The card is capped at the
+   step's last one, the button into the next step. */
+function replayTo(n, s, k){
+  const trail = reachStore.trail(n, s);
+  return {
+    queue: trail.a.slice(0, Math.min(k, Math.max(0, trail.a.length - 1))),
+    saved: ACTS[n].steps.slice(0, s).map((_, i) => reachStore.trail(n, i).a.slice()),
+  };
+}
+
 let currentAct = 1;
 function startAct(n, startAt = 0, replay = {}){
   const act = ACTS[n];
   if (!act) return;
   currentAct = n;
+  if (replay.queue) progress.save(n, startAt, replay.queue.length);   // opened on a card: that is the place now
   $('#game').dataset.act = String(n);   // Ripu (2026-10-25): per-act styling, retro buttons in Act 1 first
   flow.run(act.steps, {
     actLabel: act.label,
     baseCost: act.baseCost,
     startAt,
-    queue: replay.queue,     // dev index only: land on a card mid-step
+    queue: replay.queue,     // land on a card mid-step (Resume, the index)
     saved: replay.saved,
     // Ripu (2026-10-28): every live answer reaches the next card; the index unlocks up to it
-    onAnswer: (s, k) => { reachStore.reached(n, s, k); account.notePlace(n, s); },
+    onAnswer: (s, k) => { reachStore.reached(n, s, k); progress.save(n, s, k); account.notePlace(n, s); },
     onProgress: step => {
       if (step < act.steps.length) reachStore.reached(n, step, 0);
       progress.save(n, step); account.saveProgress(n, step);
@@ -121,7 +133,11 @@ document.querySelectorAll('[data-begin]').forEach(b =>
 (function initResume(){
   // a signed-in builder's saved place wins when it is newer than this browser's
   const local = progress.load(), remote = account.user?.progress;
-  if (remote && (!local || (remote.at || 0) > (local.at || 0))) progress.save(remote.act, remote.step);
+  if (remote && (!local || (remote.at || 0) > (local.at || 0))){
+    // the account keeps the step; the card comes from how far it has reached in that step
+    const r = reachStore.get(remote.act);
+    progress.save(remote.act, remote.step, r.s === remote.step ? r.k : 0);
+  }
   const saved = progress.load();
   if (!saved) return;
   const act = ACTS[saved.act];
@@ -129,8 +145,8 @@ document.querySelectorAll('[data-begin]').forEach(b =>
 
   document.querySelectorAll('[data-resume]').forEach(el => {
     el.hidden = false;
-    el.textContent = `Resume — ${act.label} · step ${saved.step + 1} / ${act.steps.length} ▸`;
-    el.addEventListener('click', () => account.gate(() => startGame(saved.act, saved.step), { act: saved.act, step: saved.step }));
+    el.textContent = `Resume at ${saved.act}.${saved.step + 1}.${saved.card + 1} ▸`;   // the index's numbering
+    el.addEventListener('click', () => account.gate(() => startGame(saved.act, saved.step, replayTo(saved.act, saved.step, saved.card)), { act: saved.act, step: saved.step }));
   });
   document.querySelectorAll('[data-new-visitor]').forEach(el => { el.hidden = true; });   // N-136
   document.querySelectorAll('[data-forget]').forEach(el => {
@@ -151,7 +167,10 @@ document.querySelectorAll('[data-begin]').forEach(b =>
     return;
   }
   const act = Math.min(5, Math.max(1, +q.get('act') || 1)), step = Math.max(0, +q.get('step') || 0);
-  account.afterSignIn(() => startGame(act, step));
+  // resuming through sign-in: this browser still knows the card
+  const place = progress.load();
+  const card = place && place.act === act && place.step === step ? place.card : 0;
+  account.afterSignIn(() => startGame(act, step, card ? replayTo(act, step, card) : {}));
 })();
 
 // one mute, two buttons (landing nav + game HUD): silences music AND effects together
