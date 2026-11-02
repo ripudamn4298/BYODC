@@ -157,7 +157,7 @@ export const account = {
   askSignIn(){
     return this.modal(`<div class="acct-kicker">BEFORE YOU START</div>
       <h3 class="acct-title">SIGN IN TO START BUILDING</h3>
-      <p class="acct-copy">Sign in and your progress follows you to any device. Or play as a guest, and it stays in this browser.</p>`,
+      <p class="acct-copy">Sign in with Google to save your progress for later.</p>`,
       [{ label: 'Sign in with Google', value: 'google', primary: true, google: true },
        { label: 'Play as a guest', value: 'guest' }]);
   },
