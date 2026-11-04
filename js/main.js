@@ -17,6 +17,7 @@ import { account } from './account.js';
 import { reachStore } from './reach.js';
 import { courseIndex } from './course-index.js';
 import { floor } from './companion/floor.js';
+import { tour } from './engine/tour.js';
 
 guide.init();
 hud.init();
@@ -75,10 +76,13 @@ function startAct(n, startAt = 0, replay = {}){
 window.__byodcStartAct = startAct;   // debug/verification hook (harmless)
 
 let started = false;
-function startGame(actId = 1, startAt = 0, replay = {}){
-  if (started) return;
-  started = true;
+let starting = false;
+async function startGame(actId = 1, startAt = 0, replay = {}){
+  if (started || starting) return;
+  starting = true;
   SFX.init(); SFX.click();
+  await tour.landing();      // the first time only: a look round the top bar before the course opens
+  started = true;
   teardownLanding();
   $('#landing').style.display = 'none';
   $('#game').classList.add('active');
@@ -86,6 +90,7 @@ function startGame(actId = 1, startAt = 0, replay = {}){
   Music.start();   // idempotent — already playing if the landing kicked it off
   floor.show();
   startAct(actId, startAt, replay);
+  tour.watchCourse();
 }
 
 /* ---- dev index (localhost only) ----------------------------------------

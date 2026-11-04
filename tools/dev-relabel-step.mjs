@@ -19,7 +19,10 @@ const seed = JSON.parse(fs.readFileSync(P, 'utf8'));
 const t = seed[key];
 const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
 // a saved nickname and buddy, so the start is not held up by the nickname box (2026-10-29)
-await p.addInitScript(() => localStorage.setItem('byodc.profile.v1', JSON.stringify({ nickname: 'Review', avatar: 'byte' })));
+await p.addInitScript(() => {
+  localStorage.setItem('byodc.profile.v1', JSON.stringify({ nickname: 'Review', avatar: 'byte' }));
+  localStorage.setItem('byodc.tour.v1', JSON.stringify({ landing: 1, spend: 1, info: 1 }));   // no guided tour in the way
+});
 const errs = []; p.on('pageerror', e => errs.push(e.message));
 await p.goto('http://localhost:4821/');
 await p.waitForFunction(() => document.getElementById('dev-index-tab'));
