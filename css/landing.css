@@ -260,6 +260,20 @@
   box-shadow:0 0 0 2px var(--brand-ink), 0 3px 0 2px var(--brand-ink);transition:transform .08s ease-out, box-shadow .08s ease-out, background .2s}
 #lnav .acct-signin:hover{background:#e9846f;transform:translateY(-1px);box-shadow:0 0 0 2px var(--brand-ink), 0 4px 0 2px var(--brand-ink)}
 #lnav .acct-signin:active{transform:translateY(3px);box-shadow:0 0 0 2px var(--brand-ink)}
+#lnav .acct-signin,#lnav .acct-link{white-space:nowrap;flex-shrink:0}
+/* the button stays on one line on a phone, so the bar gives up its spare room */
+@media (max-width:700px){
+  #lnav .acct{margin-right:0}
+  #lnav .acct-hi{display:none}   /* a nickname can be 24 letters: signed in, a phone shows only SIGN OUT */
+  #lnav .acct-link{line-height:1.2}
+  #lnav .acct-signin{letter-spacing:2px;padding:7px 10px 6px}
+}
+@media (max-width:380px){
+  #lnav{gap:8px;padding:10px 10px}
+  #lnav .wordmark{font-size:26px}
+  #lnav .links{gap:10px}
+  #lnav .acct-signin{font-size:17px;letter-spacing:1px;padding:6px 8px 5px}
+}
 
 /* ══════════ Phones held upright (Ripu, 2026-11-02) ══════════
    The drawing is a band across the top 46% of the screen (js/landing.js draws it there at
