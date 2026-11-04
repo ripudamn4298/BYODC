@@ -27,12 +27,12 @@
 import { svgEl, el, waitFor, slug, RM } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makeTopoBoard } from '../../engine/dc.js';
 import { mulberry32 } from '../../engine/fab.js';
-import { slideInPanel } from '../../engine/components.js';
+import { slideInPanel, labExplore } from '../../engine/components.js';
 import { networkLab } from './lab.js';
 import { ringsMap } from '../../art/rings.js';
 
@@ -125,25 +125,17 @@ export async function step4(){
   svg.appendChild(ringsG);
   await fadeIn([ringsG], 360);
 
-  guide.say(`Here is the map of where numbers wait, from Act 4. Rings 1 to 4 are all inside
-    one GPU. Now each GPU is the lane, and the numbers it needs from other GPUs wait in two
-    new rings.`);
-  await guide.next();
-
+  // critic pass (2026-11-04): four cards are two
   drawRings('node');
-  guide.say(`Ring 5 is the other GPUs in the same node, reached over NVLink. Adding GPUs to
-    this ring is called <b>scale-up</b>. NVIDIA's GB200 NVL72 makes ring 5 a whole rack: 72
-    GPUs on one NVLink.`);
+  guide.say(`Here is Act 4's map of where numbers wait, and now each GPU is the lane. Ring 5 is the other GPUs
+    in the same node, reached over NVLink. Adding GPUs to this ring is called <b>scale-up</b>.${info(`NVIDIA's
+    GB200 NVL72 makes ring 5 a whole rack: 72 GPUs on one NVLink.`)}`);
   await guide.next();
 
   drawRings('net');
-  guide.say(`Ring 6 is every other node, in your rack and in every other rack, reached through
-    switches at about a ninth of NVLink's speed. Adding racks here is called
-    <b>scale-out</b>, and it runs on InfiniBand or Ethernet.`);
-  await guide.next();
-
-  guide.say(`As in Act 4, the slower of the maths and the delivery sets the speed. Across your
-    site, the slowest delivery is ring 6, the network you wire in this step.`);
+  guide.say(`Ring 6 is every other node, reached through switches at about a ninth of NVLink's speed. Adding
+    racks here is called <b>scale-out</b>, on InfiniBand or Ethernet. The slowest delivery sets the speed, and
+    across your site that is ring 6, the network you wire in this step.`);
   await guide.next();
 
   /* ============ CARD 5 — the switch (racks and switches arrive together) ==========
@@ -156,44 +148,11 @@ export async function step4(){
   const switchNodes = board.nodes.filter(n => n.kind === 'switch');
   await fadeIn([board.g], 360);
 
-  guide.say(`Racks never connect directly to each other. Each rack connects up to a switch,
-    a device that passes data between whatever plugs into it. This is a network switch, not
-    the transistor switch from Act 1.`);
-  stage.focus(switchNodes.map(n => n.el), { label: 'switch', at: 'top' });
-  await guide.next();
-
-  /* ============ CARD 6 — a hop ==================================================== */
-
-  stage.clearFocus();
-  const demo = svgEl('g');
-  svg.appendChild(demo);
-  const seg = (x1, y1, x2, y2) => {
-    const l = svgEl('line', { x1, y1, x2, y2, class: 'topo-link' });
-    l.style.strokeDasharray = '5 5';
-    l.style.opacity = '.55';
-    demo.appendChild(l);
-  };
-  seg(280, 340, 240, 130);
-  seg(240, 130, 440, 340);
-  text(demo, 244, 238, '1', 'lbl-strong');
-  text(demo, 356, 238, '2', 'lbl-strong');
-  await fadeIn([demo], 300);
-
-  guide.say(`One trip through a switch is called a hop. Going up from a rack to a switch,
-    then down to another rack, is two hops.`);
-  stage.focus(demo, { label: 'two hops', at: 'left' });
-  await guide.next();
-
-  /* ============ CARD 7 — leaf-spine =============================================== */
-
-  stage.clearFocus();
-  await fadeOut([demo], 240);
-  demo.remove();
-
-  // Course restructure (2026-10-25): the "(not the interconnect spine…)" note is dropped,
-  // because step 1 now calls that part simply the interconnect
-  guide.say(`Racks along the bottom, switches across the top. This shape is called
-    leaf-spine: the racks are the leaves and the switches are the spine.`);
+  // critic pass (2026-11-04): the switch and the shape are one card
+  guide.say(`Racks never connect directly to each other. Each connects up to a <b>switch</b>,${info(`A network
+    switch passes data between whatever plugs into it. It is not the transistor switch from Act 1.`)} with racks
+    along the bottom and switches across the top. This shape is called <b>leaf-spine</b>: the racks are the
+    leaves and the switches are the spine.`);
   stage.focus(board.g, { label: 'leaf-spine', at: 'top', ring: false });
   await guide.next();
 
@@ -211,8 +170,9 @@ export async function step4(){
   }
   refreshCables();
 
-  guide.say(`<b>Your goal is for every rack to reach every other in at most two hops.</b>
-    Click a rack, then a switch, to run a link. Every rack needs one link to each switch.`);
+  guide.say(`One trip through a switch is a <b>hop</b>, so up from a rack and down to another is two.
+    <b>Your goal is for every rack to reach every other in at most two hops.</b> Click a rack, then a
+    switch: every rack needs one link to each switch.`);
 
   const cancelHint1 = hintLater(15000, hintLine, 'CLICK A RACK, THEN A SWITCH');
 
@@ -239,11 +199,6 @@ export async function step4(){
 
   const cables = board.links.map(l => l.el);
 
-  guide.say(`All this wiring together is called the fabric. The racks do the computing, and
-    the fabric carries the data between them.`);
-  stage.focus(cables, { label: 'fabric', at: 'top' });
-  await guide.next();
-
   /* ============ CARD 10 — count the links, and the trade, both counts on the stage ===
      Course restructure (2026-10-25): the "count the links" card and the trade card are one
      card. The table fades in with it, and the focus holds the links and the table. */
@@ -263,9 +218,9 @@ export async function step4(){
   text(table, T.colB, T.r2, '8,000', 'lbl-strong');
   await fadeIn([table], 340);
 
-  guide.say(`Count the links: there are eight, one from every rack to each switch. That stays
-    two per rack, however many racks there are. Forty racks need 80 links, against 780
-    all-to-all, and 4,000 racks need 8,000, against 7,998,000.`);
+  // critic pass (2026-11-04): the name and the count are one card
+  guide.say(`All this wiring is called the <b>fabric</b>. It takes two links per rack, however many racks there
+    are: forty racks need 80, against 780 all-to-all, and 4,000 racks need 8,000, against 7,998,000.`);
   stage.focus(docOrder([...cables, table]), { label: 'links needed', at: 'left' });
   await guide.next();
 
@@ -279,11 +234,6 @@ export async function step4(){
   // behind it have nothing left.
   const LEAN = [['r0', 's0'], ['r1', 's0'], ['r2', 's1'], ['r3', 's1'], ['s0', 's1']];
   LEAN.forEach(([a, b]) => board2.drawLink(a, b));
-
-  guide.say(`Here is a second hall, built cheaper: one link up per rack, and the two
-    switches linked to each other. Every rack still reaches every other.`);
-  stage2.focus(board2.links.map(l => l.el), { label: 'one link per rack', at: 'top' });
-  await guide.next();
 
   /* ============ CARD 12 — the training job ======================================== */
 
@@ -311,13 +261,6 @@ export async function step4(){
   setProgress(0);
   await fadeIn([barWrap, barFill], 300);
 
-  guide.say(`A training job (one model being trained across all these racks) is running. The
-    bar shows its progress, and it moves only while every rack can reach every other.`);
-  // no focus label here: the bar's own TRAINING JOB caption fades in with this card, so a
-  // second copy of the same words on a leader line would just be noise
-  stage2.focus(docOrder([barWrap, barFill]), { ring: true });
-  await guide.next();
-
   /* ============ CARD 13 — the seed, on a card boundary of its own ================= */
 
   stage2.clearFocus();
@@ -326,7 +269,10 @@ export async function step4(){
      its own Next and the ask is a visible Back stop. */
   const seed = await flow.ask(async replay => {
     const s = replay !== undefined ? replay : Math.floor(Math.random() * 1e9);
-    guide.say(`In a hall this size, hardware fails several times a day. Start the job.`);
+    // critic pass (2026-11-04): the cheaper hall, the job and the start are one card
+    guide.say(`Here is a second hall, built cheaper: one link up per rack, and the switches linked to each
+      other. A <b>training job</b> runs across it, and its bar moves only while every rack can reach every
+      other. In a hall this size, hardware fails several times a day. Start the job.`);
     const b = el('button', { class: 'btn primary', 'data-label': slug('Start the job ▸') }, 'Start the job ▸');
     guide.beat(el('div', { class: 'btn-row' }), 'actions').appendChild(b);
     if (replay !== undefined){ b.disabled = true; b.classList.add('used'); return s; }
@@ -405,15 +351,9 @@ export async function step4(){
 
   /* ============ CARD 15 — it finished ============================================= */
 
-  guide.say(`The bar filled. The job paused while you rewired, then carried on from where
-    it stopped.`);
-  stage2.focus(docOrder([barWrap, barFill]), { label: 'job complete', at: 'left' });
-  await guide.next();
-
-  /* ============ CARD 16 — design for failure ====================================== */
-
+  // critic pass (2026-11-04): the result and what it means are one card
   stage2.clearFocus();
-  guide.aha(`The cheaper hall stalled because each rack had only one way out. The fabric you
+  guide.aha(`The bar filled. The cheaper hall stalled because each rack had only one way out. The fabric you
     wired first gives every rack two, so either switch can fail and the job keeps running.`,
     `The name for that is design for failure.`);
   await guide.next();
@@ -423,32 +363,22 @@ export async function step4(){
   stage2.clearFocus();
   const lab = slideInPanel(svg2, networkLab(), { lab: true });
   const failG = lab.g.querySelector('[data-k="fail"]');
-  lab.focus('leaf');
+  const failCord = lab.g.querySelector('[data-cord="fail"]');
   await lab.show();
-
-  guide.lab(`Each of your racks linked up to the switches above it. Here is a real leaf
-    switch, one rack unit tall. Its 32 sockets carry 64 links, each running at 400 gigabits a
-    second.`, { intro: true });
-  await guide.next();
-
-  lab.focus(['leaf', 'down', 'up']);
-  guide.lab(`The bottom row of cables runs down to the servers in this rack, on short copper
-    cables. The top row runs up to the spine switches on fibre, because the spine can stand
-    tens of metres away.`);
-  await guide.next();
-
-  lab.focus(['up', 'patch', 'spine']);
-  guide.lab(`Each long fibre ends at a patch panel, a board of sockets. Short cords join each
-    socket to a spine switch, often the same model as the leaf, so staff can move a link
-    without touching the long fibres.`);
-  await guide.next();
-
-  failG.style.display = '';
-  lab.g.querySelector('[data-cord="fail"]').style.display = 'none';   // the red dashed cord replaces it
-  lab.focus(['patch', 'spine', 'fail']);
-  guide.lab(`When a link fails, its port light goes out and the data goes over the other
-    links, as it did in your two-link fabric. A technician then swaps the faulty module or
-    cable while the switch keeps running.`);
+  // critic pass (2026-11-04): one card to explore, instead of four to read
+  labExplore(lab, {
+    text: `Each of your racks linked up to the switches above it. Here is what that looks like for real.`,
+    prompt: 'Tap a part to read about it.',
+    items: [
+      { k: 'leaf', label: 'Leaf switch', html: `A real leaf switch is one rack unit tall. Its 32 sockets carry 64 links, each running at 400 gigabits a second.` },
+      { k: ['leaf', 'down', 'up'], hit: 'down', label: 'Cables', html: `The bottom row of cables runs down to the servers in this rack, on short copper cables. The top row runs up to the spine switches on fibre, because the spine can stand tens of metres away.` },
+      { k: ['up', 'patch', 'spine'], hit: 'patch', label: 'Patch panel', html: `Each long fibre ends at a patch panel, a board of sockets. Short cords join each socket to a spine switch, so staff can move a link without touching the long fibres.` },
+      { k: ['patch', 'spine', 'fail'], hit: 'spine', label: 'A failed link',
+        on: () => { failG.style.display = ''; failCord.style.display = 'none'; },
+        off: () => { failG.style.display = 'none'; failCord.style.display = ''; },
+        html: `When a link fails, its port light goes out and the data goes over the other links, as it did in your two-link fabric. A technician then swaps the faulty part while the switch keeps running.` },
+    ],
+  });
   await guide.next();
   await lab.hide();
 }

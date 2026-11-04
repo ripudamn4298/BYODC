@@ -19,13 +19,13 @@
 import { svgEl, sleep, clamp, waitFor } from '../engine/util.js';
 import { Anim } from '../engine/anim.js';
 import { SFX } from '../engine/sfx.js';
-import { guide } from '../engine/guide.js';
+import { guide, info } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
 import { CurrentFlow } from '../engine/pathflow.js';
 import { makeLamp, makeBattery, makeSlider, makeChip, makePlacer, cornerTicks, slideInPanel } from '../engine/components.js';
 import { iso, PAL, SHEEN, to92 } from '../engine/reallife.js';
-import { circuitNMOS, setLabState } from '../engine/labcircuits.js';
+import { labBench, BENCHES } from '../engine/labbench.js';
 
 /* ---------------- how it looks in real life (HANDOFF_NEXT.md §1, approved for 1.4) --------
    Three columns on one slide-in panel: the NMOS as a part you can buy (a 2N7000 in its
@@ -219,10 +219,6 @@ export async function step4(){
   });
   await fadeIn([subRect, holeLayer], 380);
 
-  guide.say(`Start with a block of P-type silicon. It is full of holes and has no spare
-    electrons anywhere.`);
-  stage.focus([subRect, holeLayer], { label: 'p-type silicon', at: 'bottom' });
-  await guide.next();
 
   /* --- B2. two N regions, placed --- */
   stage.clearFocus();
@@ -266,8 +262,9 @@ export async function step4(){
     validate: v => v.every(x => x === 'N'),
   });
 
-  guide.say(`Now dope a patch at each end into N-type silicon, so that each patch is packed
-    with spare electrons. Drag them in.`);
+  // critic pass (2026-11-03): the block and the first job are one card (first action on card 3)
+  guide.say(`Start with a block of P-type silicon, full of holes. <b>Drag an N patch onto each
+    end</b>, so that each end is packed with spare electrons.`);
   stage.focus([...nTiles.map(t => t.g), ...wellSlots.map(s => s.rect)], { label: 'two n regions', at: 'top', ring: false });
 
   await flow.ask(async replay => {
@@ -413,10 +410,6 @@ export async function step4(){
   svg.appendChild(names);
   await fadeIn([names], 280);
 
-  guide.say(`The two N regions have names. Electrons enter at the source and leave at the
-    drain.`);
-  stage.focus([...wells, names], { label: 'source and drain', at: 'bottom', ring: false });
-  await guide.next();
 
   /* --- C3. wire it up and push --- */
   stage.clearFocus();
@@ -435,8 +428,9 @@ export async function step4(){
   svg.appendChild(blockedRoute);
   const chipFlow = makeChip(controls, 'current: <b>?</b>');
 
-  guide.say(`Now wire a battery across them, with plus at the drain and minus at the source,
-    and try to push a current through.`);
+  // critic pass (2026-11-03): the two names and the test are one card
+  guide.say(`Electrons enter at the <b>source</b> and leave at the <b>drain</b>. Wire a battery
+    across them, plus at the drain and minus at the source, and try to push a current through.`);
   // 'left' would run the label off the stage: the rig's box starts at x=80
   stage.focus(rig, { label: 'battery and lamp', at: 'bottom', ring: false });
   await guide.button('Push current through ▸');
@@ -467,16 +461,14 @@ export async function step4(){
   /* ============ SCENE D — metal, glass, silicon is a capacitor ============ */
 
   stage.clearFocus();
-  guide.say(`Metal, then glass, then silicon: these three layers form a capacitor (two
-    conducting plates with an insulator between them).`);
-  stage.focus([subRect, oxide, gateRect], { label: 'capacitor', at: 'left' });
-  await guide.next();
-
   const chipI = makeChip(controls, 'into gate: <b>0 A</b>');
 
-  guide.say(`Charging the top plate costs no steady current, because the glass blocks any
-    flow. What does reach the silicon below is the plate's electric field.`);
-  stage.focus([gateRect, gateStem], { label: 'into gate: 0 A', at: 'top' });
+  // critic pass (2026-11-03): one card. What the capacitor is, and what it costs to charge.
+  guide.say(`Metal, glass and silicon form a capacitor (two conducting plates with an insulator
+    between them). Charging the top plate costs no steady current, because the glass blocks any
+    flow.${info(`A brief current does flow while the plate charges, and another while it empties.
+    Once it is charged, nothing flows. You will meet those brief currents in step 5.`)} What reaches the silicon is the plate's electric field.`);
+  stage.focus([subRect, oxide, gateRect, gateStem], { label: 'capacitor', at: 'left' });
   await guide.next();
 
   /* ============ SCENE E — the channel, one card per thing that happens ====== */
@@ -647,19 +639,15 @@ export async function step4(){
 
   /* ============ SCENE H — the names ============ */
 
-  guide.say(`The three layers you stacked give the device its name: metal, oxide,
-    semiconductor. Oxide is the glass. It is called a MOSFET (metal-oxide-semiconductor
-      field-effect transistor).`);
-  // 'left' would push this long label off the stage: the box starts at x=140
-  stage.focus([subRect, oxide, gateRect], { label: 'metal · oxide · semiconductor', at: 'top' });
-  await guide.next();
-
   stage.clearFocus();
   await rampTo(2.4);            // put it back on, so the channel is there to point at
 
-  guide.say(`Yours is an <b>NMOS</b>. A high gate voltage fills the channel with electrons
-    (the N in NMOS). If you drop the gate voltage, the channel empties.`);
-  stage.focus(chLayer, { label: 'n-channel', at: 'bottom', ring: false });
+  // critic pass (2026-11-03): the two names are one card
+  guide.say(`The three layers name the device: metal, oxide (the glass),${info(`The glass is silicon dioxide, the same compound as sand and
+    window glass, grown in a thin layer on the silicon.`)} semiconductor. It is called
+    a <b>MOSFET</b>, and yours is an <b>NMOS</b>, because a high gate voltage fills its channel with
+    electrons, which are negative.`);
+  stage.focus([subRect, oxide, gateRect, chLayer], { label: 'metal · oxide · semiconductor', at: 'top' });
   await guide.next();
   stage.clearFocus();
 
@@ -670,7 +658,7 @@ export async function step4(){
   await real.show();
 
   guide.lab(`Here is the same kind of NMOS you just built, sold as a part you can buy. This one
-    is a 2N7000, about 5 mm across. Its three legs are the source, the gate and the drain.`, { intro: true });
+    is a 2N7000, about 5 mm across. Its three legs are the source, the gate and the drain.`);
   await guide.next();
 
   // Course restructure (2026-10-25): the IRF540N card is cut, and the part is gone from
@@ -681,6 +669,14 @@ export async function step4(){
     channel is a thin upright wall of silicon called a <b>fin</b>, and the gate wraps over its
     top and both sides.`);
   await guide.next();
+
+  // Course restructure (2026-10-25): the transistor count, with the same chip and number as
+  // the 1.3 numbers box. The A17 Pro is built with fins, not sheets.
+  guide.lab(`Apple's A17 Pro, the chip in a 2023 iPhone, holds 19 billion transistors. Each
+    one is a fin like this, with a source, a drain and a gate, as in your NMOS.`);
+  // critic pass (2026-11-03): the part, the fin and the iPhone show. Leakage, gate-all-around and
+  // the breadboard are there on request.
+  if (!await guide.labMore()){ await real.hide(); return; }
 
   // Course restructure (2026-10-25): rewritten to name leakage properly.
   guide.lab(`A transistor that is off still lets a tiny current through. This is called
@@ -700,25 +696,5 @@ export async function step4(){
   real.focus(null);
   await guide.next();
 
-  // Course restructure (2026-10-25): the transistor count, with the same chip and number as
-  // the 1.3 numbers box. The A17 Pro is built with fins, not sheets, so the focus goes back
-  // to the FinFET.
-  real.focus('finfet');
-  guide.lab(`Apple's A17 Pro, the chip in a 2023 iPhone, holds 19 billion transistors. Each
-    one is a fin like this, with a source, a drain and a gate, as in your NMOS.`);
-  await guide.next();
-
-  const board = slideInPanel(svg, circuitNMOS(), { lab: true });
-  setLabState(board, true);
-  await real.swapTo(board);      // N-053: no flash of the stage between panels
-  guide.lab(`Here is your NMOS test on a breadboard. The LED and its resistor sit between the +
-    rail and the drain, and the source goes to ground. The gate wire is on the + rail, so the
-    LED is on.`);
-  await guide.next();
-
-  setLabState(board, false);
-  guide.lab(`Move the gate wire to ground, and the LED goes out. In both positions no current
-    flows into the gate: it only holds a voltage, as yours did.`);
-  await guide.next();
-  await board.hide();
+  await labBench(svg, real, BENCHES.nmos);
 }

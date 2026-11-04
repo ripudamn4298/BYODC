@@ -17,7 +17,8 @@
 import { svgEl, el, sleep, waitFor } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
+import { recapPanel, nandShape, smallText, INK } from '../../engine/recap.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { CurrentFlow } from '../../engine/pathflow.js';
@@ -53,6 +54,38 @@ async function fadeOut(nodes, dur = 260){
   await Anim.tween(dur, p => list.forEach(n => { n.style.opacity = String(1 - p); }));
   list.forEach(n => { n.style.display = 'none'; });
 }
+
+/* N-150: what you built in Act 2, one rung per step */
+const ACT2_RECAP = {
+  title: 'WHAT YOU BUILT IN ACT 2',
+  sub: 'FROM ONE GATE TO A MACHINE THAT RUNS BY ITSELF',
+  rungs: [
+    { tag: 'STEP 2.1', name: 'A NAND GATE', lines: ['FOUR TRANSISTORS', 'ANY LOGIC BUILDS ON IT'],
+      art: (x, y) => `${nandShape(x + 34, y + 40, 1.1)}
+        <path d="M${x + 14} ${y + 48} H${x + 34} M${x + 14} ${y + 62} H${x + 34} M${x + 75} ${y + 55} H${x + 104}" ${INK}/>
+        ${smallText(x + 10, y + 51, 'A')}${smallText(x + 10, y + 65, 'B')}` },
+    { tag: 'STEP 2.2', name: 'A RIPPLE ADDER', lines: ['FOUR COLUMNS', 'THE CARRY MOVES LEFT'],
+      art: (x, y) => [0, 1, 2, 3].map(i => {
+        const bx = x + 10 + i * 25;
+        return `<rect x="${bx}" y="${y + 52}" width="23" height="34" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.1"/>
+          ${smallText(bx + 11.5, y + 72, 'FA')}
+          ${i < 3 ? `<path d="M${bx + 36} ${y + 52} C${bx + 36} ${y + 34} ${bx + 12} ${y + 34} ${bx + 12} ${y + 50}" fill="none" stroke="var(--blue)" stroke-width="1.3"/>` : ''}`;
+      }).join('') },
+    { tag: 'STEP 2.3', name: 'AN SR LATCH', lines: ['A LOOP THAT', 'HOLDS ONE BIT'],
+      art: (x, y) => `${nandShape(x + 36, y + 20, .9)}${nandShape(x + 36, y + 72, .9)}
+        <path d="M${x + 70} ${y + 33} H${x + 84} V${y + 58} H${x + 26} V${y + 79} H${x + 36} M${x + 70} ${y + 85} H${x + 94} V${y + 66} H${x + 18} V${y + 39} H${x + 36}" fill="none" stroke="var(--blue)" stroke-width="1.3"/>
+        <path d="M${x + 10} ${y + 27} H${x + 36} M${x + 10} ${y + 91} H${x + 36}" ${INK}/>
+        ${smallText(x + 7, y + 24, 'S')}${smallText(x + 7, y + 105, 'R')}` },
+    { tag: 'STEP 2.4', name: 'A CPU LOOP', lines: ['FETCH, COMPUTE, STORE', 'ON EVERY BEAT'],
+      art: (x, y) => `<rect x="${x + 8}" y="${y + 22}" width="46" height="26" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.1"/>
+        <rect x="${x + 64}" y="${y + 22}" width="46" height="26" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.1"/>
+        ${smallText(x + 31, y + 38, 'REG')}${smallText(x + 87, y + 38, 'ADD')}
+        <path d="M${x + 54} ${y + 35} H${x + 64} M${x + 87} ${y + 48} V${y + 62} H${x + 31} V${y + 48}" fill="none" stroke="var(--blue)" stroke-width="1.4"/>
+        <rect x="${x + 34}" y="${y + 78}" width="50" height="24" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.1"/>
+        ${smallText(x + 59, y + 93, 'CLOCK')}
+        <path d="M${x + 44} ${y + 78} V${y + 66}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="3 3"/>` },
+  ],
+};
 
 export async function step4(){
   // Course restructure (2026-10-25): retitled to name the CPU.
@@ -137,22 +170,13 @@ export async function step4(){
   });
   const [regTile, addTile, nandTile] = tiles;
 
-  /* ================= CARD 1 — the bench, and the register =================
-     Course restructure (2026-10-25): the bench recap (old card 1) folds in here. */
+  /* ================= CARD 1 — the bench =================
+     Critic pass (2026-11-04): one card for the three parts, so the student acts on card 2. */
 
-  guide.say(`Three parts are on the bench, one from each step so far. This is the register
-    from step 3: four SR latches that hold a four-bit number until something tells them to
-    change.`);
-  stage.focus(regTile.g, { label: 'register · step 3', at: 'top' });
-  await guide.next();
-
-  /* ================= CARD 2 — the ripple adder, and the NAND =================
-     Course restructure (2026-10-25): the NAND card (old card 4) folds in here. */
-
-  guide.say(`This is the ripple adder from step 2: two four-bit numbers go in, and their sum
-    comes out. Beside it is the NAND gate from step 1, which forgets its answer when its
-    inputs change.`);
-  stage.focus([addTile.g, nandTile.g], { label: 'adder (step 2) · nand (step 1)', at: 'top' });
+  guide.say(`Three parts are on the bench, one from each step so far: the <b>NAND gate</b>, the
+    <b>ripple adder</b>, and the <b>register</b>, which holds a four-bit number until something
+    tells it to change.`);
+  stage.focus([regTile.g, addTile.g, nandTile.g], { label: 'one part from each step', at: 'top' });
   await guide.next();
 
   /* ================= CARD 3 — place them in the loop =================
@@ -182,24 +206,17 @@ export async function step4(){
   tiles.forEach(t => { t.g.style.transition = 'none'; });
   await fadeOut([nandTile.g, slotsG], 300);
 
-  /* ================= CARD 4 — the loop wires =================
-     Course restructure (2026-10-25): the forward and return wire cards merged into one. */
-
-  guide.say(`The top wire carries the number out of the register and into the adder. The
-    adder's output comes back along the lower wire into the register's input, so the two parts
-    form one closed loop.`);
-  stage.focus(wiresG, { label: 'one closed loop', at: 'bottom', ring: false });
-  await guide.next();
-
-  /* ================= CARD 5 — the addend ================= */
+  /* ================= CARD 4 — the loop wires, and the addend =================
+     Critic pass (2026-11-04): two cards are one. */
 
   stage.clearFocus();
   await fadeIn([addendG], 300);
   const addBits = makeToggleBits(controls, { n: 4, label: 'ADDEND' });
 
-  guide.say(`The adder needs a second number, the <b>addend</b> (the number being added on).
-    This wire brings it up from the switches under the stage.`);
-  stage.focus(addendG, { label: 'addend', at: 'left' });
+  guide.say(`The top wire carries the number from the register into the adder, and the lower wire
+    brings the answer back, in a closed loop. A third wire brings up the <b>addend</b>, the number
+    being added on, from the switches under the stage.`);
+  stage.focus([wiresG, addendG], { label: 'a loop and an addend', at: 'bottom', ring: false });
   await guide.next();
 
   /* ================= CARD 6 — the clock, and what a cycle is ================= */
@@ -207,16 +224,11 @@ export async function step4(){
   stage.clearFocus();
   await fadeIn([clockG, clockWire], 300);
 
-  guide.say(`The <b>clock</b> is a signal that pulses at a steady rate. <b>One cycle is one
-    pulse, or beat:</b> every part does its job once, then waits for the next beat.`);
-  stage.focus(clockG, { label: 'one cycle = one beat', at: 'bottom' });
-  await guide.next();
-
-  /* ================= CARD 7 — why the clock is there ================= */
-
-  guide.say(`The register only takes a new value on a beat. Without that rule, the adder's
-    output would flow straight back into its own input and never settle.`);
-  stage.focus([clockWire, regTile.g], { label: 'changes only on a beat', at: 'right' });
+  // critic pass (2026-11-04): the beat, and the rule it enforces, are one card
+  guide.say(`The <b>clock</b> is a signal that pulses at a steady rate, and <b>one cycle is one
+    beat</b>. The register only takes a new value on a beat.${info(`Without that rule, the adder's
+    output would flow straight back into its own input, change the answer, and never settle.`)}`);
+  stage.focus([clockG, clockWire, regTile.g], { label: 'one cycle = one beat', at: 'bottom' });
   await guide.next();
 
   /* the clock is its own circuit; its beat is chosen to fit the slowest path */
@@ -230,9 +242,9 @@ export async function step4(){
 
   /* REVIEW_NOTES N-023: the clock is the right place to say how fast real clocks beat. */
   // Course restructure (2026-10-25): reworded in spec-sheet words.
-  guide.say(`A clock's speed is counted in <b>hertz</b> (Hz), one beat per second. For now,
-    your clock beats once each time you press its button. When a laptop chip is sold as
-    4.7 <b>GHz</b> (gigahertz), its clock beats 4.7 billion times a second.`);
+  guide.say(`A clock's speed is counted in <b>hertz</b> (Hz), one beat per second. When a laptop
+    chip is sold as 4.7 <b>GHz</b> (gigahertz), its clock beats 4.7 billion times a second. For
+    now, yours beats once each time you press its button.`);
   stage.focus(clockG, { label: 'beats per second', at: 'bottom' });
   await guide.next();
 
@@ -333,16 +345,11 @@ export async function step4(){
   setPhase(null);
   await fadeIn([phaseG], 300);
 
-  guide.say(`Each cycle has three phases: fetch the number out of the register, compute the
-    sum, and store it back.`);
-  stage.focus(phaseG, { label: 'one cycle, three phases', at: 'bottom', ring: false });
-  await guide.next();
+  /* ================= CARD 11 — the phases, and run it =================
+     Critic pass (2026-11-04): the phases are named on the card that runs them. */
 
-  /* ================= CARD 11 — run it ================= */
-
-  stage.clearFocus();
-  guide.say(`Set an addend on the switches, then run three cycles. The register goes up by
-    the addend on every beat.`);
+  guide.say(`Each cycle has three phases: fetch the number out of the register, compute the sum,
+    and store it back. Set an addend on the switches, then run three cycles.`);
 
   await flow.ask(async replay => {
     if (replay !== undefined){
@@ -508,8 +515,9 @@ export async function step4(){
   /* ================= CARD 18 — a core =================
      Course restructure (2026-10-25): new. Act 4 step 1 talks about "a real CPU core". */
 
-  guide.say(`One copy of this loop, with the parts that steer it, is called a <b>core</b>. A
-    laptop chip with 8 cores runs 8 of these loops side by side.`);
+  guide.say(`One copy of this loop, with the parts that steer it,${info(`The parts that steer it
+    read each instruction and decide which numbers go where. Your hands did that job here.`)} is
+    called a <b>core</b>. A laptop chip with 8 cores runs 8 of these loops side by side.`);
   stage.focus(machine, { label: 'one loop = one core', at: 'top' });
   await guide.next();
 
@@ -529,8 +537,14 @@ export async function step4(){
      sheet equations give 0.48 s high, 0.47 s low), then a breadboard 8-bit computer and a
      Raspberry Pi Pico. Sources are listed in js/acts/act2/lab.js. */
 
+  const recap = recapPanel(svg, ACT2_RECAP);
+  await recap.show();
+  guide.say(`Here is everything you built in this act, from one NAND gate to a machine that runs by
+    itself.`);
+  await guide.next();
+
   const clock = slideInPanel(svg, lab24Clock(), { lab: true });
-  await clock.show();
+  await recap.swapTo(clock);
   /* the LED blinks at the circuit's own timing for 40 s, then rests lit; Anim.tween makes a
      replay land straight on the lit end state */
   const ledOn = clock.g.querySelector('.blink-on'), ledOff = clock.g.querySelector('.blink-off');
@@ -547,18 +561,19 @@ export async function step4(){
   await guide.next();
 
   const real = slideInPanel(svg, lab24Computers(), { lab: true });
-  real.focus('computer');
-  await clock.swapTo(real);      // N-053: no flash of the stage between panels
-  guide.lab(`Students and hobbyists build whole computers from chips like these. Each
-    breadboard holds one part, such as the 555 clock, a register or the adder. LEDs on each
-    part show every bit, so you can watch a program run one cycle at a time.`);
-  await guide.next();
-
   real.focus('pico');
+  await clock.swapTo(real);      // N-053: no flash of the stage between panels
   // Course restructure (2026-10-25): "two CPUs" is now "two cores", the word defined above.
+  // Critic pass (2026-11-04): the Pico shows, the breadboard computers are there on request.
   guide.lab(`Today a whole computer fits on a board 51 mm long. On this Raspberry Pi Pico, the
     square RP2040 chip holds two cores, and each runs at up to 133 million cycles a second.
     Your clock ran about one cycle a second.`);
+  if (!await guide.labMore()){ await real.hide(); return; }
+
+  real.focus('computer');
+  guide.lab(`Students and hobbyists also build whole computers from chips like these. Each
+    breadboard holds one part, such as the 555 clock, a register or the adder. LEDs on each part
+    show every bit, so you can watch a program run one cycle at a time.`);
   await guide.next();
   await real.hide();
 }

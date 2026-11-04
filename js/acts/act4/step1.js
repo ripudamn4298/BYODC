@@ -19,7 +19,7 @@
 import { sleep, svgEl } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { slideInPanel } from '../../engine/components.js';
@@ -102,23 +102,16 @@ export async function step1(){
     <path d="M328 263 H364 V318 H36 V263 H70" class="wire"/>`;
   cpu.appendChild(loop);
   box(cpu, 136, 326, 126, 32, 'CLOCK');
-  await fade([cpu], 1, 320);
-
-  guide.say(`This is the machine you built in Act 2: a register, an adder and a clock in one
-    loop. Running that loop billions of times a second makes it a <b>CPU</b>.`);
-  stage.focus(cpu, { label: 'your act 2 machine', at: 'right' });
-  await guide.next();
-
-  stage.clearFocus();
   const control = box(cpu, 70, 96, 258, 112, 'CONTROL UNIT', 'decides what to do next');
   const ctlWire = svgEl('path', { d: 'M199 208 V236', class: 'wire' });
   cpu.appendChild(ctlWire);
-  control.style.opacity = '0'; ctlWire.style.opacity = '0';
-  await fade([control, ctlWire], 1, 340);
-  guide.say(`A real CPU core has one more part, the biggest of all: the <b>control unit</b>. It
-    reads each instruction of a program and decides what to do next, which is why one CPU can
-    run any program.`);
-  stage.focus(control, { label: 'control unit', at: 'right' });
+  await fade([cpu], 1, 320);
+
+  // critic pass (2026-11-04): the machine and its control unit are one card
+  guide.say(`This is your Act 2 machine, a register, an adder and a clock in one loop, run billions
+    of times a second as a <b>CPU</b>. A real CPU core adds the biggest part of all, the <b>control
+    unit</b>, which reads each instruction and decides what to do next.`);
+  stage.focus(cpu, { label: 'one cpu core', at: 'right' });
   await guide.next();
 
   /* ============ B — a game job, done by the CPU one corner per beat ==================== */
@@ -153,22 +146,15 @@ export async function step1(){
   await fade([screen], 1, 360);
   await fade([ghost], 1, 260);
 
-  guide.say(`Here is a job from a game. This shape has 16 corners, and every corner has to
-    move 3 steps to the right, to the dashed outline. That is the same sum, <b>+3</b>, done
-    sixteen times.`);
-  stage.focus(screen, { label: '16 corners, each +3', at: 'bottom', ring: false });
-  await guide.next();
-
-  /* the CPU run: one corner per beat, a counter, and the shape bent while it works */
+  // critic pass (2026-11-04): the job and the run are one card, so the student acts on card 3
   stage.clearFocus();
   const counter = svgEl('text', { x: 186, y: 322, class: 'lbl-strong' });
   counter.textContent = 'CPU: 0 CYCLES';
   svg.appendChild(counter);
-  // Course restructure (2026-10-25): the step used "beat" and "cycle" for the same thing;
-  // this card ties them once (as Act 2 step 4 did), and the step says "cycle" from here.
-  guide.say(`Give the job to your CPU. Its control unit sends <b>+3</b> to the adder once per
-    cycle, one corner at a time. As in Act 2, one cycle is one beat of the clock.`);
-  stage.focus([cpu, screen], { label: 'one corner per cycle', at: 'top', ring: false });
+  guide.say(`Here is a job from a game. This shape has 16 corners, and each one has to move 3 steps
+    right, to the dashed outline. Your CPU's control unit sends <b>+3</b> to the adder once per cycle,
+    one corner at a time.`);
+  stage.focus(screen, { label: '16 corners, each +3', at: 'bottom', ring: false });
   await guide.button('Run it on the CPU ▸');
   stage.clearFocus();
   const addRect = add.querySelector('rect');
@@ -221,17 +207,11 @@ export async function step1(){
   patches.style.opacity = '0';
   await fade([patches], 1, 380);
 
-  guide.say(`Here is one patch of silicon, filled two ways. On the left are two whole CPU
-    cores, each with its own control unit. On the right are sixteen small adders and one
-    <b>scheduler</b>: a simpler control that sends the same instruction to all of them.`);
+  // critic pass (2026-11-04): the two fillings and the lane are one card
+  guide.say(`Here is one patch of silicon, filled two ways: two whole CPU cores, or sixteen small adders
+    and one <b>scheduler</b>, a simpler control that sends the same instruction to all of them. Each
+    small adder, holding its own number, is a <b>lane</b>.`);
   stage.focus(patches, { label: 'same area', at: 'bottom', ring: false });
-  await guide.next();
-
-  // Course restructure (2026-10-25): the card above already says the scheduler sends one
-  // instruction to all of them, so this card no longer repeats it.
-  guide.say(`Each of those small adders, holding its own number, is a <b>lane</b>. A lane has
-    no control unit of its own.`);
-  stage.focus(patches.querySelector('.pb'), { label: 'lane = one adder + its own number', at: 'bottom', ring: false });
   await guide.next();
 
   /* ============ D — one instruction, sixteen lanes, one cycle ========================= */
@@ -257,28 +237,21 @@ export async function step1(){
   /* ============ IN THE LAB — a real GPU, and where its schedulers sit ============ */
   stage.clearFocus();
   const lab = slideInPanel(svg, labGpuDie(), { lab: true });
-  lab.focus(['die', 'off']);
+  lab.focus(['die', 'sm']);
+  lab.g.querySelectorAll('.a4-q0, .a4-q1, .a4-q2, .a4-q3').forEach(q => q.classList.add('a4-lit'));
   await lab.show();
 
-  guide.lab(`This is the die of NVIDIA's H100 GPU. Each small square on it is an <b>SM</b>
-    (streaming multiprocessor): a group of 128 lanes like yours. Of its 144 SMs, the 12
-    dashed ones are switched off, like the faulty cores in Act 3 step 5.`, { intro: true });
-  await guide.next();
+  // critic pass (2026-11-04): the die and the spec-sheet count are one card
+  guide.lab(`This is the die of NVIDIA's H100 GPU. Each small square is an <b>SM</b> (streaming
+    multiprocessor), a group of 128 lanes like yours.${info(`Of its 144 SMs, the 12 dashed ones are
+    switched off, like the faulty cores in Act 3 step 5.`)} NVIDIA calls each lane a <b>CUDA core</b>, so
+    the H100's 16,896 CUDA cores are 132 SMs of 128 lanes.`, { intro: true });
+  if (!await guide.labMore()){ await lab.hide(); return; }
 
   lab.focus('sm');
-  lab.g.querySelector('.a4-q0').classList.add('a4-lit');
-  guide.lab(`Inside one SM are four groups of 32 lanes. Each group has its own scheduler, like
-    the one you just used: it sends one instruction to all 32 lanes at once. Ignore the boxes
-    marked REGISTER FILE for now: you will learn what they are in step 3.`);
-  await guide.next();
-
-  // Course restructure (2026-10-25): a new lab card, on the same panel, that names the lane
-  // as NVIDIA's CUDA core and ties the H100's spec-sheet count to the die and the SM above
-  // (132 SMs switched on × 128 lanes = 16,896). The card above's "4.3.3" became "step 3".
-  lab.focus(['die', 'sm']);
-  lab.g.querySelectorAll('.a4-q1, .a4-q2, .a4-q3').forEach(q => q.classList.add('a4-lit'));
-  guide.lab(`NVIDIA calls each lane a <b>CUDA core</b>. When a spec sheet lists the H100's
-    16,896 CUDA cores, it means 132 SMs of 128 lanes, like the ones you just saw.`);
+  guide.lab(`Inside one SM are four groups of 32 lanes. Each group has its own scheduler, like the one
+    you just used: it sends one instruction to all 32 lanes at once. Ignore the boxes marked REGISTER
+    FILE for now: you will learn what they are in step 3.`);
   await guide.next();
   await lab.hide();
 }

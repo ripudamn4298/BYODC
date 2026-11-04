@@ -112,6 +112,9 @@ export const flow = {
       try {
         await step.run();
         // Ripu (2026-10-25): the last card gives way to an "END OF STEP X.Y" label
+        // N-149: the step's buttons are finished with, so they do not stay under the end screen
+        const leftover = document.querySelector('#stage .stage-controls');
+        if (leftover) leftover.style.visibility = 'hidden';
         guide.stepEnd(`END OF STEP ${(String(this.actLabel).match(/\d+/) || ['1'])[0]}.${this.stepIndex + 1}`);
         guide.endCards();     // premise / CTA always append normally
       } catch (err){

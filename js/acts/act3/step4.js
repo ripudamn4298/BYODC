@@ -24,10 +24,10 @@
 import { el, slug, sleep, svgEl } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makePlacer, makeRaisedTiles, slideInPanel } from '../../engine/components.js';
+import { makePlacer, makeRaisedTiles, slideInPanel, labExplore } from '../../engine/components.js';
 import { makeWaferMap } from '../../engine/fab.js';
 import { packagesHTML } from './lab.js';
 
@@ -208,12 +208,6 @@ export async function step4(){
   svg.appendChild(tally);
   await fadeIn([tally], 260);
 
-  guide.say(`This is the wafer map from step 3. Each square is one die, and the
-    ${stats.defect} red ones failed their test.`);
-  stage.focus(wafer.dies.filter(d => d.state === 'defect').map(d => d.rect),
-    { label: 'failed the test', at: 'top', ring: false });
-  await guide.next();
-
   /* the saw, parked above the wafer and named before it moves */
   stage.clearFocus();
   const sawG = svgEl('g');
@@ -226,9 +220,11 @@ export async function step4(){
   svg.appendChild(sawG);
   await fadeIn([sawG], 240);
 
-  guide.say(`A diamond blade cuts along the gaps between the dies. It makes one pass
-    across the wafer, then a second pass at right angles to the first.`);
-  stage.focus(sawG, { label: 'diamond saw', at: 'top' });
+  // critic pass (2026-11-04): the map and the saw are one card, so the student acts on card 2
+  guide.say(`This is the wafer map from step 3, and the ${stats.defect} red dies failed their test. A
+    diamond blade cuts along the gaps between the dies, one pass across the wafer, then a second at
+    right angles to the first.`);
+  stage.focus([wafer.g, sawG], { label: 'diamond saw', at: 'top' });
   await guide.button('Cut the wafer ▸');
 
   stage.clearFocus();
@@ -281,14 +277,10 @@ export async function step4(){
   });
   SFX.success();
 
-  guide.say(`The wafer is diced (cut apart), and every die is loose. Nothing was ever
-    printed in the gaps, because the blade was always going to come through them.`);
-  stage.focus(wafer.g, { label: 'diced', at: 'top' });   // 'bottom' collides with the tally
-  await guide.next();
-
-  stage.clearFocus();
-  guide.say(`Every stage from here on costs money for each die that goes through it, so
-    the red dies and the part dies at the edge stop here.`);
+  // critic pass (2026-11-04): diced and scrap are one card
+  guide.say(`The wafer is diced (cut apart), and every die is loose.${info(`Nothing was ever printed in
+    the gaps, because the blade was always going to come through them.`)} Every stage from here on
+    costs money for each die, so the red dies and the part dies at the edge stop here.`);
   stage.focus(scrap.map(d => d.rect), { label: 'scrap', at: 'top', ring: false });
   await guide.button('Sweep out the scrap ▸');
 
@@ -362,27 +354,17 @@ export async function step4(){
   await fadeIn([zoomG], 360);
   const zq = c => zoomG.querySelector(c);
 
-  guide.say(`Here is one die, cut through and seen from the side. It is drawn much taller than
-    it really is, so that you can see its layers.`);
-  stage.focus(zoomG, { label: 'one die', at: 'right', ring: false });
-  await guide.next();
-
-  // Course restructure (2026-10-25): three cards (plain silicon, transistors, wiring) were
-  // the act's third cross-section after step 2's, so they are now one card that points back.
-  guide.say(`It has the same layers as the slice from step 2. Plain silicon at the bottom only
-    holds the die up, a thin layer of transistors sits on top of it, and the wiring layers above
-    join the transistors.`);
+  // critic pass (2026-11-04): four cards are two
+  guide.say(`Here is one die, cut through and drawn much taller than it really is. It has the layers
+    from step 2: plain silicon that only holds it up, a thin layer of transistors, and wiring that
+    joins them.`);
   stage.focus([zq('.z-body'), zq('.z-tr'), zq('.z-wire')], { label: 'same as step 2', at: 'left' });
   await guide.next();
 
-  guide.say(`On the very top surface are the <b>pads</b>: small, flat squares of metal. Every
-    signal that enters or leaves the die goes through a pad.`);
-  stage.focus(zq('.z-pads'), { label: 'pads', at: 'top' });
-  await guide.next();
-
-  guide.say(`So the die is the whole block. Its working side, the thin band of transistors,
-    wiring and pads, is only about a hundredth of a millimetre thick, on a die about three
-    quarters of a millimetre thick. That working side is called the <b>active side</b>.`);
+  guide.say(`On the very top are the <b>pads</b>: small, flat squares of metal that every signal goes
+    through. The thin band of transistors, wiring and pads is called the <b>active side</b>.${info(`It
+    is only about a hundredth of a millimetre thick, on a die about three quarters of a millimetre
+    thick.`)}`);
   stage.focus([zq('.z-tr'), zq('.z-wire'), zq('.z-pads')], { label: 'active side', at: 'right' });
   await guide.next();
 
@@ -456,17 +438,11 @@ export async function step4(){
   subG.style.display = 'none';
   await fadeIn([subG], 320);
 
-  guide.say(`This is the adapter, called a <b>substrate</b>: a small, very fine circuit board.
-    On top it has pads that line up exactly under the die's bumps.`);
-  stage.focus([subBody, subPads], { label: 'substrate', at: 'left' });
-  await guide.next();
-
-  // Course restructure (2026-10-25): the solder-ball card was cut (it repeated the board
-  // spacings), so the balls are named here, at the end of the wiring they lead to.
-  guide.say(`Inside the substrate, copper wiring carries every connection outward to larger
-    <b>solder balls</b> underneath. They are spaced as widely as the board needs, and later they
-    connect the finished chip to it.`);
-  stage.focus([traces, balls], { label: 'wiring out to solder balls', at: 'left' });
+  // critic pass (2026-11-04): the adapter and its wiring are one card
+  guide.say(`This is the adapter, called a <b>substrate</b>: a small, very fine circuit board. Pads on
+    top line up under the die's bumps, and copper wiring inside carries each connection out to larger
+    <b>solder balls</b> underneath, spaced as widely as the board needs.`);
+  stage.focus([subBody, traces, subPads, balls], { label: 'substrate', at: 'left' });
   await guide.next();
 
   /* 1 — flux */
@@ -476,17 +452,10 @@ export async function step4(){
   pkg.insertBefore(flux, dieG);
   flux.style.display = 'none';
   await fadeIn([flux], 320);
-  guide.say(`Now the flip-chip steps, in order. First, a sticky liquid called <b>flux</b> is
-    spread over the substrate's pads. It cleans the metal so the solder will bond, and it holds
-    the die in place.`);
-  stage.focus(flux, { label: 'flux', at: 'left' });
-  await guide.next();
-
-  /* 2 — flip */
-  stage.clearFocus();
-  guide.say(`The bumps are on top of the die, but they have to face down onto the substrate.
-    So the die is turned upside down. This flip is why the method is called
-    <b>flip-chip</b>.`);
+  /* 2 — flip. Critic pass (2026-11-04): flux and the flip are one card */
+  guide.say(`Now the steps, in order. First a sticky liquid called <b>flux</b> cleans the substrate's
+    pads and will hold the die in place. Then the die turns upside down, so its bumps face the
+    substrate. This flip is why the method is called <b>flip-chip</b>.`);
   stage.focus(dieG, { label: 'active side is on top', at: 'top' });
   await guide.button('Turn the die over ▸');
 
@@ -536,6 +505,12 @@ export async function step4(){
 
   /* 4 — reflow. Course restructure (2026-10-25): the "flux is washed out" card was cut; the
      flux now fades as the bumps melt, so the gap is clear for the underfill. */
+  // critic pass (2026-11-04): the student runs the oven and the underfill
+  guide.say(`Next the assembly goes through an oven. Every bump melts at the same moment, joins the pad
+    below it, and sets as it cools. This step is called <b>reflow</b>.`);
+  stage.focus(dieG, { label: 'every joint made at once', at: 'top' });
+  await guide.button('Run the oven ▸');
+  stage.clearFocus();
   await fadeIn([flame], 240);
   SFX.flow();
   await Anim.tween(620, p => {
@@ -549,10 +524,6 @@ export async function step4(){
   flux.style.display = 'none';
   bumps.forEach(b => { b.style.fill = 'var(--ink)'; });
   SFX.success();
-  guide.say(`Next the assembly goes through an oven. Every bump melts at the same moment,
-    joins the pad below it, and sets as it cools. This step is called <b>reflow</b>.`);
-  stage.focus(dieG, { label: 'every joint made at once', at: 'top' });
-  await guide.next();
 
   /* 5 — underfill, then cure. Course restructure (2026-10-25): the underfill card and the
      curing card are now one card, shown after both happen on the stage. */
@@ -566,16 +537,14 @@ export async function step4(){
   });
   pkg.insertBefore(underfill, dieG);
   underfill.style.display = 'none';
+  guide.say(`A liquid glue called <b>underfill</b> soaks into the gap around every bump, and a second,
+    gentler heating hardens it.${info(`The die and the substrate grow by different amounts when warm,
+    and the hardened underfill stops the joints cracking.`)}`);
+  await guide.button('Add the underfill ▸');
   await fadeIn([underfill], 520);
   await fadeIn([flame], 220);
   await Anim.tween(520, p => { underfill.setAttribute('fill', `rgba(29,33,23,${(0.32 + p * 0.26).toFixed(3)})`); });
   await fadeOut([flame], 200);
-  guide.say(`A liquid glue called <b>underfill</b> soaks into the gap around every bump, and a
-    second, gentler heating hardens it. The die and the substrate grow by different amounts when
-    warm, and the hardened underfill stops the joints cracking.`);
-  stage.focus(underfill, { label: 'underfill', at: 'left' });
-  await guide.next();
-
   /* one signal, out through the whole package */
   stage.clearFocus();
   const routeI = 5;
@@ -673,16 +642,13 @@ export async function step4(){
   await fadeIn([topG], 380);
   const tq = c => topG.querySelector(c);
 
-  guide.say(`Now look down on the package from above, with the lid lifted off. The green
-    square is the substrate, and the grey rectangle in the middle is the die. You are looking
-    at the back of the die, which is plain silicon, because its active side faces down onto the
-    bumps.`);
+  // critic pass (2026-11-04): shorter, and the student puts the lid on
+  guide.say(`Now look down from above, with the lid off. The green square is the substrate. The grey
+    rectangle is the back of the die, which is plain silicon, because its active side faces down onto
+    the bumps.`);
   stage.focus([tq('.t-sub'), tq('.t-die')], { label: 'die on its substrate', at: 'right', ring: false });
-  await guide.next();
+  await guide.button('Put the lid on ▸');
 
-  // Course restructure (2026-10-25): the capacitor card was cut; nothing later uses it.
-
-  /* REVIEW_NOTES N-051: the lid goes on, and the chip is finished */
   stage.clearFocus();
   const L = { x: T.x + 14, y: T.y + 14, s: T.s - 28 };
   const lidTop = svgEl('g');
@@ -706,8 +672,8 @@ export async function step4(){
   lidTop.removeAttribute('transform');
   SFX.dope();
 
-  guide.say(`Last, the lid goes back on, printed with the chip's name and a batch number. This is
-    the finished chip, in the form every chip is sold in.`);
+  guide.say(`The lid is printed with the chip's name and a batch number. This is the finished chip, in
+    the form every chip is sold in.`);
   stage.focus(lidTop, { label: 'the finished chip', at: 'right', ring: false });
   await guide.next();
 
@@ -726,8 +692,8 @@ export async function step4(){
   await fadeIn([J], 380);
 
   guide.say(`A die cannot be bigger than one field from step 3, because one flash prints one
-    field. A field is at most 26 by 33 mm, about 858 mm². This is the <b>reticle limit</b>
-    (reticle is another name for the mask).`);
+    field. A field is at most 26 by 33 mm, about 858 mm². This is the <b>reticle limit</b>.${info(`Reticle is another name
+    for the mask.`)}`);
   stage.focus([jq('.jd-field1'), jq('.jd-big'), jq('.jd-over')], { label: 'one field: 858 mm²', at: 'left', ring: false });
   await guide.next();
 
@@ -783,78 +749,41 @@ export async function step4(){
     `A chip bigger than one field is several chiplets on one interposer, sealed in one package.`);
   await guide.next();
 
-  /* In the Lab (DESIGN.md §6d rule 8): the three package shapes a student handles, each
-     from above and from the side, before the six real chips. The flip-chip package just
-     built is a BGA, so the section starts from it.
-     Course restructure (2026-10-25): four package cards (intro, DIP, QFP, BGA) are now two. */
-  stage.clearFocus();
-  const shapes = slideInPanel(svg, packagesHTML(), { lab: true });
-  shapes.focus('bga');
-  await shapes.show();
-  guide.lab(`You will meet three package shapes in a lab. The one you built is on the right: a
-    <b>BGA</b> (ball grid array), with solder balls in a grid underneath. The chip on a Basys 3
-    board has 236 balls under a 10 mm square.`, { intro: true });
-  await guide.next();
-
-  shapes.focus(['dip', 'qfp']);
-  guide.lab(`On the left is a <b>DIP</b> (dual in-line package), whose two rows of legs fit a
-    breadboard. In the middle is a <b>QFP</b> (quad flat package), with legs on all four sides
-    soldered onto the board. Both hold the ATmega328P, the chip on an Arduino.`);
-  await guide.next();
-
-  /* REVIEW_NOTES N-051: real chips, side by side, and how their packages differ */
+  /* In the Lab (DESIGN.md §6d rule 8). Critic pass (2026-11-04): six real chips, side by side, as
+     one card to explore instead of eight to read (REVIEW_NOTES N-051). The three package shapes a
+     student handles are behind See more. The Ryzen's chiplets are joined through its substrate (no
+     interposer); the H100 uses CoWoS-S and the B200 CoWoS-L, both with an interposer. */
   stage.clearFocus();
   const lineup = chipLineup(svg);
-  await shapes.swapTo(lineup);      // N-053: no flash of the stage between panels
+  await lineup.show();
+  labExplore(lineup, {
+    text: `Every chip you can buy is packaged this way, and the device decides the package. A phone
+      needs a small, cool chip. An AI chip needs its memory as close to its dies as possible.`,
+    prompt: 'Tap a chip to read about it.',
+    items: [
+      { k: 'rp2040', label: 'RP2040', html: `A microcontroller from Raspberry Pi. It controls small gadgets, such as a thermostat, on well under a watt. Its die is about 2 mm², in a plastic package 7 mm square, and it costs about a dollar.` },
+      { k: 'a18', label: 'A18 Pro', html: `The main chip in the iPhone 16 Pro. Its memory chip is stacked right on top of it to save space, and it works on a few watts, because a phone has no fan.` },
+      { k: 'm4', label: 'M4', html: `Used in the MacBook Air and iPad Pro, with 28 billion transistors on one grey die. Its two dark memory chips sit beside the die. It uses about 5 W in an iPad and up to about 40 W in a Mac mini.` },
+      { k: '9950x', label: 'Ryzen 9 9950X', html: `A desktop processor. Under its metal lid are three chiplets, shown dashed: two holding eight cores each, and one linking them to the rest of the PC. The substrate wires them together, with no interposer.` },
+      { k: 'h100', label: 'H100', html: `A GPU for AI data centres. Its one die is 814 mm², just under the reticle limit. Six memory stacks sit beside it on an interposer, packaged with CoWoS. It draws up to 700 W.` },
+      { k: 'b200', label: 'B200', html: `The H100's successor joins two chiplets of about 800 mm² each on one interposer, also with CoWoS, with eight memory stacks around them. It draws about 1,000 W, more than the other five chips here put together.` },
+    ],
+  });
+  if (!await guide.labMore()){ await lineup.hide(); return; }
 
-  guide.lab(`Every chip you can buy is packaged in this way, but the package changes with the
-    device the chip goes into. Here are six real ones, drawn roughly to scale.`);
+  const shapes = slideInPanel(svg, packagesHTML(), { lab: true });
+  await lineup.swapTo(shapes);      // N-053: no flash of the stage between panels
+  labExplore(shapes, {
+    text: `You will meet three package shapes in a lab.`,
+    prompt: 'Tap a shape to read about it.',
+    items: [
+      { k: 'bga', label: 'BGA', html: `A ball grid array, the one you built, with solder balls in a grid underneath. The chip on a Basys 3 board has 236 balls under a 10 mm square.` },
+      { k: 'dip', label: 'DIP', html: `A dual in-line package, whose two rows of legs fit a breadboard. It holds the ATmega328P, the chip on an Arduino.` },
+      { k: 'qfp', label: 'QFP', html: `A quad flat package, with legs on all four sides soldered onto the board. It also holds the ATmega328P.` },
+    ],
+  });
   await guide.next();
-
-  lineup.focus('rp2040');
-  guide.lab(`The smallest is the RP2040, a microcontroller from Raspberry Pi. It controls small
-    gadgets, such as a thermostat, on well under a watt. Its die is about 2 mm², in a plastic
-    package 7 mm square, and it costs about a dollar.`);
-  await guide.next();
-
-  lineup.focus('a18');
-  guide.lab(`The A18 Pro is the main chip in the iPhone 16 Pro. Its memory chip is stacked right
-    on top of it to save space, and it works on a few watts, because a phone has no fan.`);
-  await guide.next();
-
-  lineup.focus('m4');
-  guide.lab(`The M4, used in the MacBook Air and iPad Pro, has 28 billion transistors on one
-    grey die. Its two dark memory chips sit beside the die on the same package. It uses about
-    5 W in an iPad and up to about 40 W in a Mac mini.`);
-  await guide.next();
-
-  /* Course restructure (2026-10-25): the last three chips are now named with the terms from
-     the joining-dies cards. The Ryzen's chiplets are joined through its substrate (no
-     interposer); the H100 uses CoWoS-S and the B200 CoWoS-L, both with an interposer. */
-  lineup.focus('9950x');
-  guide.lab(`The Ryzen 9 9950X is a desktop processor. Under its metal lid are three chiplets,
-    shown dashed: two holding eight cores each, and one linking them to the rest of the PC. The
-    substrate wires them together, with no interposer.`);
-  await guide.next();
-
-  lineup.focus('h100');
-  guide.lab(`The H100 is a GPU for AI data centres. Its one die is 814 mm², just under the
-    reticle limit. Six memory stacks sit beside it on an interposer, packaged with CoWoS. It
-    draws up to 700 W.`);
-  await guide.next();
-
-  lineup.focus('b200');
-  guide.lab(`The B200 that followed it joins two chiplets of about 800 mm² each on one
-    interposer, also with CoWoS, with eight memory stacks around them. It draws about 1,000 W,
-    more than the other five chips here put together.`);
-  await guide.next();
-
-  lineup.focus(null);
-  guide.lab(`So the device decides the package. A phone needs a chip that is small and stays
-    cool. A desktop has room for a lid and a big cooler. An AI chip needs its memory as close to
-    its dies as possible.`);
-  await guide.next();
-  await lineup.hide();
+  await shapes.hide();
 }
 
 /* ---------- Course restructure (2026-10-25): the joining-dies drawing ----------

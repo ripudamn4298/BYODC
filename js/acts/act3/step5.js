@@ -18,7 +18,8 @@
 import { el, svgEl, slug, sleep } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
+import { recapPanel, smallText } from '../../engine/recap.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { cornerTicks, slideInPanel } from '../../engine/components.js';
@@ -95,6 +96,45 @@ function askButton(label, value){
     }));
   });
 }
+
+/* N-150: what you built in Act 3, one rung per step */
+const ACT3_RECAP = {
+  title: 'WHAT YOU BUILT IN ACT 3',
+  sub: 'FROM MELTED SAND TO A CHIP YOU CAN SELL',
+  rungs: [
+    { tag: 'STEP 3.1', name: 'A CRYSTAL', lines: ['ONE UNBROKEN LATTICE', 'SLICED INTO WAFERS'],
+      art: (x, y) => `<rect x="${x + 16}" y="${y + 18}" width="34" height="80" rx="3" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.2"/>
+        ${[34, 50, 66, 82].map(d => `<line x1="${x + 16}" y1="${y + d}" x2="${x + 50}" y2="${y + d}" stroke="var(--ink-soft)" stroke-width=".8"/>`).join('')}
+        <circle cx="${x + 80}" cy="${y + 40}" r="17" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.2"/>
+        <circle cx="${x + 84}" cy="${y + 78}" r="17" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.2"/>` },
+    { tag: 'STEP 3.2', name: 'A PRINTED LAYER', lines: ['COAT, EXPOSE, DEVELOP', 'ETCH, DOPE'],
+      art: (x, y) => `${[[12, 20], [42, 34], [86, 20]].map(([a, w]) => `<rect x="${x + a}" y="${y + 26}" width="${w}" height="7" fill="var(--ink)" opacity=".82"/>`).join('')}
+        ${[36, 80].map(a => [0, 1].map(k => `<line x1="${x + a + k * 3}" y1="${y + 14}" x2="${x + a + k * 3}" y2="${y + 66}" stroke="var(--ink-soft)" stroke-width=".8"/>`).join('')).join('')}
+        <rect x="${x + 10}" y="${y + 68}" width="98" height="32" rx="2" class="p-region"/>
+        <rect x="${x + 28}" y="${y + 68}" width="20" height="12" rx="1.5" class="n-region"/>
+        <rect x="${x + 72}" y="${y + 68}" width="20" height="12" rx="1.5" class="n-region"/>` },
+    { tag: 'STEP 3.3', name: 'GOOD DIES', lines: ['DUST KILLS SOME', 'SMALL COSTS LESS'],
+      art: (x, y) => {
+        let d = '';
+        const dead = new Set(['1,2', '3,1', '2,3']);
+        for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++){
+          if ((r === 0 || r === 4) && (c === 0 || c === 4)) continue;
+          const bad = dead.has(`${c},${r}`);
+          d += `<rect x="${x + 22 + c * 15}" y="${y + 22 + r * 15}" width="14" height="14" rx="1" fill="${bad ? 'var(--red-soft)' : 'var(--blue-soft)'}" stroke="${bad ? 'var(--red)' : 'var(--blue)'}" stroke-width=".8"/>`;
+        }
+        return `<circle cx="${x + 59}" cy="${y + 59}" r="47" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.2"/>${d}`;
+      } },
+    { tag: 'STEP 3.4', name: 'A PACKAGED CHIP', lines: ['A DIE ON A SUBSTRATE', 'SEALED UNDER A LID'],
+      art: (x, y) => `<path d="M${x + 14} ${y + 72} V${y + 22} H${x + 104} V${y + 72}" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.2"/>
+        <rect x="${x + 34}" y="${y + 40}" width="50" height="16" rx="1.5" fill="#d3d5d0" stroke="var(--ink)" stroke-width="1"/>
+        ${[0, 1, 2, 3, 4].map(i => `<circle cx="${x + 40 + i * 9.5}" cy="${y + 60}" r="2.6" fill="var(--ink)"/>`).join('')}
+        <rect x="${x + 10}" y="${y + 64}" width="98" height="15" rx="2" fill="rgba(92,107,69,.24)" stroke="var(--green)" stroke-width="1.2"/>
+        ${[0, 1, 2, 3, 4, 5, 6].map(i => `<circle cx="${x + 18 + i * 13.7}" cy="${y + 85}" r="4" fill="rgba(168,116,31,.22)" stroke="var(--amber)" stroke-width="1"/>`).join('')}` },
+    { tag: 'STEP 3.5', name: 'THREE GRADES', lines: ['TESTED AND SORTED', 'BY SPEED'],
+      art: (x, y) => [['FAST', 34], ['TYPICAL', 60], ['SLOW', 86]].map(([n, b]) => `<rect x="${x + 12}" y="${y + b - 14}" width="94" height="20" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.1"/>
+        ${smallText(x + 59, y + b - 1, n)}`).join('') },
+  ],
+};
 
 export async function step5(){
   guide.title('STEP 5 / 5', 'Why does the same chip <em>sell at three prices?</em>');
@@ -211,52 +251,29 @@ export async function step5(){
   stage.clearFocus();
   await fadeIn([zoomG], 380);
 
-  /* ======================= CARD 2 — the same design, twice ======================= */
+  /* ======================= CARD 2 — the same design, printed short =======================
+     Critic pass (2026-11-04): three cards are two, and the reasons are behind i buttons. */
 
-  guide.say(`Here is one transistor from each of two of these chips, magnified and seen from
-    the side. Both were printed from the same part of the same mask.`);
-  stage.focus([dieA, dieB], { label: 'the same design, twice', at: 'top' });
-  await guide.next();
-
-  /* Course restructure (2026-10-25): the two meanings of "gate" and the gate-length
-     definition moved up to step 2 (next to 3.2.7, where the word is first used). This step
-     points back to it. The two scale cards (REVIEW_NOTES N-040: make the scale felt, then
-     say why it varies) are merged into one. */
-
-  /* ======================= CARD 3 — the narrow one ======================= */
-
-  guide.say(`The gate length from step 2 is only about 15 to 20 nm, fewer than a hundred
-    silicon atoms. Even a polished wafer rises and dips by tens of nanometres, which puts some
-    fields slightly out of focus. This chip's gates printed a few atoms short, and a short gate
-    switches faster.`);
+  guide.say(`Here is one transistor from each of two of these chips, printed from the same part of
+    the same mask. The gate length from step 2 is only about 15 to 20 nm. This chip's gates printed a
+    few atoms short,${info(`That length is fewer than a hundred silicon atoms. Even a polished wafer
+    rises and dips by tens of nanometres, which puts some fields slightly out of focus.`)} and a short
+    gate switches faster.`);
   stage.focus(dieA, { label: 'short gates', at: 'left' });
   await guide.next();
 
-  /* ======================= CARD 5 — the wide one ======================= */
+  /* ======================= CARD 3 — the long one ======================= */
 
-  guide.say(`This one's gates came out long. It is from the same wafer and the same mask,
-    but its transistors take longer to switch.`);
-  stage.focus(dieB, { label: 'long gates', at: 'right' });
-  await guide.next();
-
-  /* why a longer gate is slower: the Act 1 picture of a transistor filling the next plate */
-  guide.say(`Why is a longer gate slower? Each transistor's job is to charge or empty the next
-    gate's plate, as you saw in Act 1. In a longer gate, electrons have a longer path from
-    source to drain, so less current flows and the next plate fills more slowly. A longer gate
-    is also a bigger plate, so the transistor before it has more charge to fill. Both make
-    each switch take longer.`);
-  stage.focus([paths[1], dieBars[1]], { label: 'longer path, bigger plate', at: 'right' });
+  guide.say(`This one's gates came out long. It is from the same wafer and the same mask, but its
+    transistors take longer to switch.${info(`Each transistor's job is to charge or empty the next
+    gate's plate, as you saw in Act 1. In a longer gate, electrons have a longer path from source to
+    drain, so less current flows and the next plate fills more slowly. A longer gate is also a bigger
+    plate, so the transistor before it has more charge to fill.`)}`);
+  stage.focus(dieB, { label: 'longer path, bigger plate', at: 'bottom' });
   await guide.next();
 
   /* Course restructure (2026-10-25): the process-node card ("3 nm" is a name, not a size)
      moved to step 2, where it is split into two node cards and a Moore's-law card. */
-
-  /* ======================= CARD 6 — the aim ======================= */
-
-  guide.say(`Sealed in their packages, all six look identical. <b>Your goal is to measure
-    how fast each chip runs, then sort the six by what you measured.</b>`);
-  stage.focus(chipLayer, { label: 'six sealed chips', at: 'top' });
-  await guide.next();
 
   /* ======================= the tester ======================= */
 
@@ -313,28 +330,23 @@ export async function step5(){
   await fadeOut([zoomG], 260);
   await fadeIn([testG], 340);
 
-  /* ======================= CARD 7 — define the tester ======================= */
+  /* ======================= CARD 4 — the aim and the tester =======================
+     Critic pass (2026-11-04): one card for what you will do and what does it. */
 
-  guide.say(`The tester holds one chip and feeds it sums it already knows the answers to.
-    This one is 7 + 5.`);
+  guide.say(`Sealed in their packages, all six look identical. <b>Your goal is to measure how fast
+    each chip runs, then sort the six.</b> The tester holds one chip and feeds it sums it already
+    knows the answers to. This one is 7 + 5.`);
   stage.focus(testG, { label: 'speed tester', at: 'bottom' });
   await guide.next();
 
-  /* ======================= CARD 8 — define the clock climb ======================= */
+  /* ======================= CARD 5 — the clock climb, pass and fail ======================= */
 
-  /* Course restructure (2026-10-25): trimmed from 61 words. The last sentence repeats Act 2
-     step 4's own words for the clock, so the failure the tester finds is one already met. */
-  guide.say(`The tester starts the clock slowly and raises it one notch, a small fixed step, at
-    a time. Each notch shortens every beat, and as in Act 2, if a beat arrives before the sum
-    is finished, the register stores a wrong one.`);
-  stage.focus(clockG, { label: 'clock speed', at: 'right' });
-  await guide.next();
-
-  /* ======================= CARD 9 — define pass and fail ======================= */
-
-  guide.say(`While the answer comes back as 12, the chip passes that notch. If one answer
-    comes back wrong, the chip fails that notch.`);
-  stage.focus(resultG, { label: 'pass or fail', at: 'right' });
+  /* The last sentence repeats Act 2 step 4's own words for the clock, so the failure the tester
+     finds is one already met. */
+  guide.say(`The tester raises the clock one notch at a time, and each notch shortens every beat. As
+    in Act 2, if a beat arrives before the sum is finished, the register stores a wrong one. The
+    chip passes a notch while the answer comes back as 12.`);
+  stage.focus([clockG, resultG], { label: 'clock speed, pass or fail', at: 'right' });
   await guide.next();
 
   /* ======================= CARD 10 — run the first chip =======================
@@ -366,22 +378,16 @@ export async function step5(){
   if (!flow.instant) SFX.click();
   await sleep(420);
 
-  /* ======================= CARD 11 — read the failure ======================= */
-
-  guide.say(`At ${(top + NOTCH).toFixed(1)} GHz the answer came back 4 instead of 12. The
-    carry ran out of time before it reached the top bit.`);
-  stage.focus(resultG, { label: 'wrong answer', at: 'right' });
-  await guide.next();
-
-  /* ======================= CARD 12 — define the rating ======================= */
+  /* ======================= CARD 7 — the failure and the rating ======================= */
 
   setClock(top);
   setResult('pass');
   stamp(chips[0], top);
   if (!flow.instant) SFX.success();
 
-  guide.say(`So the tester backs off one notch and writes that speed on the chip. Chip 1
-    is rated ${top.toFixed(1)} GHz, the last clock speed at which it got the sum right.`);
+  guide.say(`At ${(top + NOTCH).toFixed(1)} GHz the answer came back 4 instead of 12, because the
+    carry ran out of time before it reached the top bit. So the tester backs off one notch: chip 1 is
+    rated ${top.toFixed(1)} GHz.`);
   stage.focus(clockG, { label: 'rating', at: 'right' });
   await guide.next();
 
@@ -452,19 +458,14 @@ export async function step5(){
   await fadeOut([testG], 260);
   await fadeIn([binG], 340);
 
-  /* ======================= CARD 15 — define a bin ======================= */
-
-  guide.say(`A bin is a grade. This chip sells in three grades, and the lines between them
-    sit at 3.0 and 4.5 GHz.`);
-  stage.focus(binG, { label: 'three bins', at: 'bottom', ring: false });
-  await guide.next();
-
-  /* ======================= CARD 16 — file the six ======================= */
+  /* ======================= CARD 10 — what a bin is, and file the six =======================
+     Critic pass (2026-11-04): one card. */
 
   stage.clearFocus();      // focus re-parents what it raises; this card needs live clicks
 
-  const card = guide.say(`<b>Your goal is to put every chip in the bin its rating falls
-    in.</b> Click a chip, then click the bin.
+  const card = guide.say(`A bin is a grade. This chip sells in three, and the lines between them sit
+    at 3.0 and 4.5 GHz. <b>Your goal is to put every chip in the bin its rating falls in.</b> Click a
+    chip, then click the bin.
     <span class="bin-fb" style="display:block;margin-top:10px;color:var(--ink-soft)"></span>`);
   const fb = card.querySelector('.bin-fb');
   const feedback = html => { if (fb) fb.innerHTML = html; };
@@ -651,6 +652,12 @@ export async function step5(){
      Course restructure (2026-10-25): the handler and socket cards are merged into one, and
      the Ryzen cards point back to the cut-down theory card instead of teaching it again. */
   const hd = handlerHTML();
+  const recap = recapPanel(svg, ACT3_RECAP);
+  await recap.show();
+  guide.say(`Here is everything you did in this act, from melted sand to chips sorted by speed and
+    ready to sell.`);
+  await guide.next();
+
   const lab = slideInPanel(svg, hd.html, { lab: true });
   lab.focus(['handler', 'socket']);
   /* the head and the chip it carries belong to the handler, so they dim with it */
@@ -667,7 +674,7 @@ export async function step5(){
     placeHead(headG, x, y);
   };
   place(...hd.route[0]);
-  await lab.show();
+  await recap.swapTo(lab);
   guide.lab(`In a factory, the testing you just did is done by a machine called a
     <b>handler</b>. It presses each chip into a test socket, down onto a spring-loaded pin under
     each solder ball, then drops it into the tray for its grade.`, { intro: true });
@@ -684,16 +691,12 @@ export async function step5(){
   await guide.next();
 
   const dies = slideInPanel(svg, harvestHTML(), { lab: true });
-  dies.focus('die');
+  dies.focus(['die', 'p5950', 'p5900', 'p5800', 'p5600', 'legend']);
   await lab.swapTo(dies);      // N-053: no flash of the stage between panels
-  guide.lab(`AMD's Ryzen 5000 desktop processors are a real example of the cut-down chips
-    from earlier in this step. All four are built from one design of die that holds eight
-    cores.`);
-  await guide.next();
-
-  dies.focus(['p5950', 'p5900', 'p5800', 'p5600', 'legend']);
-  guide.lab(`Two full dies make the 16-core Ryzen 9 5950X, launched at $799. Two cut-down
-    dies, each with two cores switched off, make the 12-core 5900X, at $549.`);
+  // critic pass (2026-11-04): one card for the die and two of the products made from it
+  guide.lab(`AMD's Ryzen 5000 desktop processors are real cut-down chips, all built from one design
+    of die with eight cores. Two full dies make the 16-core Ryzen 9 5950X, launched at $799. Two
+    cut-down dies, each with two cores off, make the 12-core 5900X, at $549.`);
   await guide.next();
   await dies.hide();
 }

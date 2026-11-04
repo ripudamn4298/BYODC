@@ -1,8 +1,7 @@
 // ACT 2 — drawings for the "In the Lab" sections (DESIGN.md §6d rule 8).
 // Each builder returns an SVG string for slideInPanel(svg, html, { lab: true }). Parts a card
-// talks about are wrapped in <g data-k="…"> so panel.focus(key) lights one of them; parts that
-// change between two cards sit in <g class="st-on"> / <g class="st-off">, switched by
-// setLabState() from js/engine/labcircuits.js.
+// talks about are wrapped in <g data-k="…"> so panel.focus(key) lights one of them. The working
+// breadboards for 2.1 and 2.3 are in js/engine/labbench.js.
 //
 // The breadboards are built the way a student builds them: a 5 V bench supply on the top rails
 // (the − rail is ground), two long wires at the right-hand end carrying + and ground down to
@@ -83,19 +82,6 @@ const toRail = (a, b, plus) => jumper(a, b, plus ? 'var(--amber)' : 'var(--ink)'
 /* a 3 mm LED lying across two holes (anode first), lit glows amber */
 const led3 = (an, ca, lit) => ledTop(an, ca, { lit, p: 10, label: '' });
 
-/* a 6 mm push button straddling the centre channel: its left legs sit in column c (rows e
-   and f), its right legs in column c + 2; pressing it joins the two columns */
-function buttonOn(b, c){
-  const h = b.hole;
-  const [x1, ye] = h(c, 'e'), [x2, yf] = [h(c + 2, 'f')[0], h(c, 'f')[1]];
-  const cx = (x1 + x2) / 2, cy = (ye + yf) / 2, s = 6 / 2.54 * P;
-  const legs = [[x1, ye], [x2, ye], [x1, yf], [x2, yf]].map(([x, y]) =>
-    `<line x1="${f(x)}" y1="${f(y)}" x2="${f(x + (x < cx ? 3 : -3))}" y2="${f(y + (y < cy ? 4 : -4))}" stroke="${LEAD_DARK}" stroke-width="2.2"/>
-     <circle cx="${f(x)}" cy="${f(y)}" r="2.2" fill="${LEAD_DARK}"/>`).join('');
-  return legs + `<rect x="${f(cx - s / 2)}" y="${f(cy - s / 2)}" width="${f(s)}" height="${f(s)}" rx="2" fill="#2f322b" stroke="#55594d"/>
-    <rect x="${f(cx - s / 2 + 3)}" y="${f(cy - s / 2 + 3)}" width="${f(s - 6)}" height="${f(s - 6)}" rx="1.5" fill="${LEAD}" stroke="${LEAD_DARK}" stroke-width=".8"/>
-    <circle cx="${f(cx)}" cy="${f(cy)}" r="${f(s * .3)}" fill="#1f211c" stroke="#45483e"/>`;
-}
 
 /* an electrolytic capacitor from above: a black can with a silver top, a grey stripe on its
    negative side, standing in two holes */
@@ -176,30 +162,6 @@ export function lab21Part(){
     + caption('THE NAND GATE, SOLD AS A PART');
 }
 
-/* gate 1 on a breadboard: 74HC00 in columns 9 to 15. Pin 14 to +, pin 7 to ground, inputs
-   1A (pin 1) and 1B (pin 2) by wire to + or ground, output 1Y (pin 3) along row g to a 3 mm
-   LED and a 1 kΩ resistor to ground. On: both inputs on +, output 0, LED dark. Off: 1B moved
-   to ground, output 1, LED lit. */
-export function lab21Board(){
-  const b = board(), h = b.hole, c = chipOn(b, 9, 14, '74HC00');
-  const both = (on, off) => `<g class="st-on">${on}</g><g class="st-off" style="display:none">${off}</g>`;
-  const [ax, bx] = [h(9, 'j')[0], h(10, 'j')[0]];
-  return `${b.svg}
-    ${toRail(h(9, 'a'), h(9, 'T+'), true)}
-    ${toRail(h(15, 'j'), h(15, 'B-'), false)}
-    ${c.svg}
-    ${toRail(h(9, 'j'), h(9, 'B+'), true)}
-    ${both(toRail(h(10, 'j'), h(10, 'B+'), true), toRail(h(10, 'j'), h(10, 'B-'), false))}
-    ${flat([h(11, 'g'), h(18, 'g')])}
-    ${both(led3(h(18, 'i'), h(19, 'i'), false), led3(h(18, 'i'), h(19, 'i'), true))}
-    ${resistorTop(h(19, 'j'), h(19, 'B-'), { p: P })}
-    ${txt(ax, 392, 'A', { size: 9 })}${txt(bx, 392, 'B', { size: 9 })}
-    ${txt((ax + bx) / 2, 406, 'INPUT WIRES', { size: 7.5 })}
-    ${txt(h(14.5, 'g')[0], h(14.5, 'g')[1] - 8, 'FROM PIN 3', { size: 7.5, halo: true })}
-    ${txt(h(19, 'i')[0] + 18, h(19, 'i')[1] + 3, 'LED', { anchor: 'start', size: 8, halo: true })}
-    ${txt(h(19, 'j')[0] + 10, h(19, 'B-')[1] - 8, '1 kΩ', { anchor: 'start', size: 8, halo: true })}
-    ${caption('GATE 1 OF THE 74HC00, ON A BREADBOARD')}`;
-}
 
 /* ================= 2.2 — the 74HC283 ================= */
 
@@ -265,34 +227,6 @@ export function lab23Register(){
     + caption('A FOUR-BIT REGISTER, SOLD AS A PART');
 }
 
-/* latch 2 of a 74HC279 on a breadboard, chip in columns 10 to 17: R̄ pin 5 (col 14), S̄ pin 6
-   (col 15), Q pin 7 (col 16), GND pin 8 (col 17), VCC pin 16 (col 10). A 10 kΩ resistor from
-   each input to the + rail holds it at 5 V. Each button straddles the channel: one side is
-   wired to its input, the other to ground, so a press pulls that input to 0 V. Q runs along
-   row i to a 3 mm LED and a 1 kΩ resistor to ground. On: a 1 is stored, LED lit. Off: a 0. */
-export function lab23Board(){
-  const b = board(), h = b.hole, c = chipOn(b, 10, 16, '74HC279');
-  const both = (on, off) => `<g class="st-on">${on}</g><g class="st-off" style="display:none">${off}</g>`;
-  const pull = cc => resistorTop(h(cc, 'j'), h(cc, 'B+'), { p: P });
-  return `${b.svg}
-    ${toRail(h(10, 'a'), h(10, 'T+'), true)}
-    ${toRail(h(17, 'j'), h(17, 'B-'), false)}
-    ${c.svg}
-    ${pull(14)}${pull(15)}
-    ${flat([h(14, 'h'), h(3, 'h')])}
-    ${buttonOn(b, 3)}${toRail(h(5, 'j'), h(5, 'B-'), false)}
-    ${flat([h(15, 'g'), h(20, 'g')])}
-    ${buttonOn(b, 20)}${toRail(h(22, 'j'), h(22, 'B-'), false)}
-    ${flat([h(16, 'i'), h(25, 'i')], SIG2)}
-    ${both(led3(h(25, 'g'), h(26, 'g'), true), led3(h(25, 'g'), h(26, 'g'), false))}
-    ${resistorTop(h(26, 'i'), h(26, 'B-'), { p: P })}
-    ${txt(h(4, 'd')[0], h(4, 'd')[1] + 2, 'R BUTTON, PIN 5', { size: 8, halo: true })}
-    ${txt(h(21, 'd')[0], h(21, 'd')[1] + 2, 'S BUTTON, PIN 6', { size: 8, halo: true })}
-    ${txt(h(14.5, 'j')[0], 392, '10 kΩ TO +5 V', { size: 7.5 })}
-    ${txt(h(25.5, 'g')[0], h(25, 'g')[1] - 16, 'LED (Q)', { size: 8, halo: true })}
-    ${txt(h(26, 'i')[0] + 10, h(26, 'B-')[1] - 12, '1 kΩ', { anchor: 'start', size: 8, halo: true })}
-    ${caption('LATCH 2 OF THE 74HC279, ON A BREADBOARD')}`;
-}
 
 /* ================= 2.4 — a 555 clock, a breadboard computer, a Pico ================= */
 

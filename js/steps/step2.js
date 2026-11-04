@@ -13,13 +13,13 @@
 import { svgEl, sleep, waitFor, clamp } from '../engine/util.js';
 import { Anim } from '../engine/anim.js';
 import { SFX } from '../engine/sfx.js';
-import { guide } from '../engine/guide.js';
+import { guide, info } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
 import { CurrentFlow } from '../engine/pathflow.js';
 import { makeLamp, makeBattery, makeSlider, makeChip, makePlacer, slideInPanel } from '../engine/components.js';
 import { axialDiode, led } from '../engine/reallife.js';
-import { circuitDiode, setLabState } from '../engine/labcircuits.js';
+import { labBench, BENCHES } from '../engine/labbench.js';
 import { makeCarrierGrid, makeDepletionBands, hopElectrons, makeBarrierHill } from '../engine/junction.js';
 
 /* ---- geometry (720 x 480 stage user units) --------------------------------
@@ -257,12 +257,6 @@ export async function step2(){
   // Course restructure (2026-10-25): the N card and the P card are one card now. Step 1
   // has just taught both, so this only recalls which block carries which.
   await fadeIn([nGrid.el, pGrid.el], 340);
-  guide.say(`The N block, doped with phosphorus, has <span class="e-blue">free
-    electrons</span>. The P block, doped with boron, has <span class="e-red">holes</span>,
-    drawn as rings. Both drift around their block.`);
-  stage.focus([pBlock, nTile], { label: 'holes and free electrons', at: 'top' });
-  await guide.next();
-
   /* ============ SCENE B — the player presses them flush ==================== */
 
   /* no focus on this card: stage.focus re-parents raised nodes, and the placer
@@ -276,8 +270,10 @@ export async function step2(){
     onWrong: () => {},
   });
 
-  guide.say(`Press the two blocks together: drag the N block onto the dashed outline, or tap
-    the block and then the outline.`);
+  // critic pass (2026-11-03): the recall and the action are one card, first action on card 2
+  guide.say(`The N block has <span class="e-blue">free electrons</span>. The P block has
+    <span class="e-red">holes</span>, drawn as rings. <b>Press them together:</b> drag the N block
+    onto the dashed outline, or tap the block and then the outline.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ placer.autoPlace(); return replay; }
     await placer.done;
@@ -327,39 +323,24 @@ export async function step2(){
   for (let r = 0; r < 5; r++) pairs.push({ from: nGrid.at(0, r), to: pGrid.at(4, r) });
   for (let r = 0; r < 5; r++) pairs.push({ from: nGrid.at(1, r), to: pGrid.at(3, r) });
   await hopElectrons(svg, { pairs });
-  /* Collected in DOCUMENT order, not hop order. stage.clearFocus restores raised
-     nodes back to front and each one is put back before the sibling it recorded,
-     so a list that jumps around the tree asks it to insert before a node that is
-     itself still raised, and the restore throws. */
-  const ionNodes = [...pGrid.dots, ...nGrid.dots].filter(d => d.state === 'ion').map(d => d.node);
 
   // REVIEW_NOTES N-001: say WHY they crossed. Not a voltage (both blocks start neutral):
   // diffusion, many to few. The voltage is the result, and card "stopped on its own" says so.
-  guide.say(`The electrons nearest the junction crossed over and filled the nearest holes.
-    No battery pushed them. The N side is crowded with free electrons and the P side has
-    almost none, so electrons spread from where there are many to where there are few. This
-    spreading is called <b>diffusion</b>.`);
+  guide.say(`The electrons nearest the junction crossed over and filled the nearest holes. No
+    battery pushed them: electrons spread from where there are many to where there are few.
+    This is called <b>diffusion</b>.`);
   stage.focus(seam, { label: 'electrons crossed here', at: 'top' });
-  await guide.next();
-
-  stage.clearFocus();
-  guide.say(`Each electron that crossed left behind a charged atom that is locked in the
-    crystal and cannot move.`);
-  stage.focus(ionNodes, { label: 'fixed ions', at: 'top' });
   await guide.next();
 
   stage.clearFocus();
   const bands = makeDepletionBands(svg, { cx: SEAM, y: BY, h: BH, wNeg: DEPL, wPos: DEPL });
   await fadeIn([bands.el], 420);
 
-  guide.say(`The region around the junction now has no free electrons and no free holes.
-    This region is called the <b>depletion layer</b> (a layer depleted of carriers).`);
+  // critic pass (2026-11-03): the fixed atoms and the layer they leave are one card
+  guide.say(`Each electron that crossed left behind a charged atom, locked in the crystal. The
+    region around the junction now has no free carriers. It is called the <b>depletion
+    layer</b>.`);
   stage.focus(bands.el, { label: 'depletion layer', at: 'top' });
-  await guide.next();
-
-  guide.say(`The crossing stopped on its own, because the P side is now slightly negative
-    and the N side slightly positive, and that pushes the next electron back.`);
-  stage.focus(bands.el, { label: 'built-in push', at: 'top' });
   await guide.next();
 
   /* ============ SCENE D — the strip stands up into a hill ================== */
@@ -378,8 +359,11 @@ export async function step2(){
   hill.setBias(0);
   hill.start();
 
-  guide.say(`Here is that same push, drawn as a hill. An electron has to climb this hill to
-    get across the depletion layer. Watch it slide back down.`);
+  guide.say(`The crossing then stopped on its own: the P side is now slightly negative,${info(`P-type silicon starts out neutral. Each electron
+    that crosses fills a hole and stays, so the P side near the join gains negative charge. The N
+    side it left gains positive charge.`)} and that
+    pushes the next electron back. Here is that push, drawn as a hill. Watch an electron slide
+    back down it.`);
   stage.focus(hill.el, { label: 'barrier', at: 'top' });
   await guide.next();
 
@@ -415,11 +399,6 @@ export async function step2(){
   const chevOut = new CurrentFlow(routeOut, { n: 8, layer: flowLayer });
 
   await fadeIn([wireIn, wireOut, battG, lamp.g], 360);
-
-  guide.say(`Now a battery is wired across the junction so that it pushes the carriers
-    toward the depletion layer. The lamp shows whether any current gets through.`);
-  stage.focus([wireIn, wireOut, battG, lamp.g], { label: 'battery and lamp', at: 'bottom' });
-  await guide.next();
 
   stage.clearFocus();
   const chipBarrier = makeChip(controls, 'barrier: <b>standing</b>');
@@ -471,8 +450,9 @@ export async function step2(){
   slider.on(apply);
   apply(0);
 
-  guide.say(`<b>Your goal is to raise the voltage until current flows.</b> Each step up in
-    voltage lowers the hill.`);
+  guide.say(`A battery now pushes the carriers toward the depletion layer, and the lamp shows
+    whether current gets through. <b>Your goal is to raise the voltage until current flows.</b>
+    Each step up lowers the hill.`);
   await flow.ask(async replay => {
     if (replay !== undefined){ slider.set(replay); apply(replay); return replay; }
     const cancel = flow.hintAfter(16000, `Keep raising the voltage. The hill gets shorter with every step up.`);
@@ -509,7 +489,8 @@ export async function step2(){
   svg.append(ghost, measure);
   await fadeIn([ghost, measure], 340);
 
-  guide.say(`The hill is 0.7 V tall. Below that voltage the electron slid back every time;
+  guide.say(`The hill is 0.7 V tall.${info(`That figure is for silicon. Other materials have other
+    heights: an LED's hill is about 2 to 3 V, so an LED needs more voltage than a silicon diode.`)} Below that voltage the electron slid back every time;
     above it, current flows.`);
   stage.focus([ghost, measure], { label: 'hill height', at: 'right' });
   await guide.next();
@@ -520,17 +501,17 @@ export async function step2(){
   await zoom.show();
   // Course restructure (2026-10-25): the push-in card and the thinning card are one card.
   // The text lands first, then both animations play under it in order.
-  guide.say(`Inside, the battery's − end pushes electrons into the N side, and its + end
-    pulls electrons out of the P side, leaving holes. These new carriers cancel the charged
-    atoms at the depletion layer's edges, so the layer thins and the hill drops.`);
+  guide.say(`Inside, the battery pushes electrons into the N side and pulls electrons out of the
+    P side, leaving holes. These cancel the charged atoms at the layer's edges, so the layer
+    thins and the hill drops.`);
   await zoom.pushIn();
   await zoom.thin();
   await guide.next();
 
   zoom.stream();
-  guide.say(`At 0.7 V the layer is too thin to hold them back. Electrons cross the junction and
-    fill holes on the P side, giving off a little heat, while the battery keeps sending more.
-    That steady stream is the current.`);
+  guide.say(`At 0.7 V the layer is too thin to hold them back. Electrons cross and fill holes on
+    the P side, giving off a little heat, while the battery sends more. That steady stream is
+    the current.`);
   await guide.next();
   zoom.stop();
   await zoom.hide();
@@ -571,8 +552,7 @@ export async function step2(){
   stage.clearFocus();
   // Course restructure (2026-10-25): the payoff now answers the step's premise, which asked
   // what silicon gives us that a copper wire does not.
-  guide.aha(`You have built a <b>diode</b>: a one-way street for current. It passes current
-    in one direction and blocks it in the other.`,
+  guide.aha(`You have built a <b>diode</b>: a one-way street for current.`,
     `A voltage raises or lowers the barrier. That control is the basis of every switch in a chip. Copper cannot do this.`);
   await guide.next();
 
@@ -584,27 +564,16 @@ export async function step2(){
   real.focus('1n4001');
   await real.show();
   guide.lab(`Here is the diode you built, sold as a part: the 1N4001. The grey band marks the
-    N side, called the <b>cathode</b>. The P side is the <b>anode</b>. Like yours, it lets
-    current through from P to N once about 0.7 V is applied, up to 1 amp.`, { intro: true });
+    N side, called the <b>cathode</b>. The P side is the <b>anode</b>. Like yours, it conducts
+    from P to N above about 0.7 V.`);
   await guide.next();
 
   real.focus('led');
   guide.lab(`An LED is a diode too, made from other materials, such as gallium nitride. When an
     electron crosses its junction and fills a hole, it gives off light. Its longer leg is the
     anode.`);
-  await guide.next();
+  // critic pass (2026-11-03): the part and the LED show, the breadboard is there on request
+  if (!await guide.labMore()){ await real.hide(); return; }
 
-  const board = slideInPanel(svg, circuitDiode(), { lab: true });
-  setLabState(board, true);
-  await real.swapTo(board);      // N-053: no flash of the stage between panels
-  guide.lab(`Here is your diode test on a breadboard. Current leaves the + rail, passes through
-    the 1N4001 with its band towards the LED, then through a resistor and the LED to ground.
-    The LED lights.`);
-  await guide.next();
-
-  setLabState(board, false);
-  guide.lab(`Turn the diode round, band towards the supply, and the LED goes out, just as your
-    lamp did when you flipped the battery.`);
-  await guide.next();
-  await board.hide();
+  await labBench(svg, real, BENCHES.diode);    // N-142
 }

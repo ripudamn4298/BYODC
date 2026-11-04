@@ -10,14 +10,14 @@
 import { svgEl, sleep } from '../engine/util.js';
 import { Anim } from '../engine/anim.js';
 import { SFX } from '../engine/sfx.js';
-import { guide } from '../engine/guide.js';
+import { guide, info } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
 import { Field } from '../engine/field.js';
 import { PathFlow, CurrentFlow } from '../engine/pathflow.js';
 import { buildLattice, wiggleBonds, dopeN, dopeP, setHoleBias, destroyLattice } from '../engine/lattice.js';
 import { makeLamp, makeBattery, slideInPanel } from '../engine/components.js';
-import { circuitBasic } from '../engine/labcircuits.js';
+import { labBench, BENCHES } from '../engine/labbench.js';
 
 const HERO = 7;            // atom (row 1, col 2) — interior, so all four bonds are real
 
@@ -116,28 +116,19 @@ async function realLife(svg){
   // Course restructure (2026-10-25): the pointer to step 2 is gone; step 2 never returns to solar
   guide.lab(`Solar panels are made of the same doped silicon. Each cell is a square about 18 cm
     across, doped one type all through, with a thin layer of the other type on top.`);
-  await guide.next();
+  // critic pass (2026-11-03): the best two Lab cards show, the breadboard is there on request
+  if (!await guide.labMore()){ await real.hide(); return; }
 
-  /* the test circuit on a breadboard, where ground is named */
-  const board = slideInPanel(svg, circuitBasic(), { lab: true });
-  await real.swapTo(board);      // N-053: no flash of the stage between panels
-  guide.lab(`In a lab, your battery-and-lamp test is built on a <b>breadboard</b>. The bench
-    supply's + lead goes to the rail marked +, and its 0 V lead goes to the − rail, called
-    <b>ground</b>.`);
-  await guide.next();
-
-  guide.lab(`Ground is the 0 V that every other voltage is measured from. Current leaves the +
-    rail, passes through a resistor, which keeps it small, and a small light called an LED,
-    then returns to ground.`);
-  await guide.next();
-  await board.hide();
+  /* the working breadboard, where ground is named (N-141) */
+  await labBench(svg, real, BENCHES.led);
 }
 
 export async function step1(){
   guide.title('STEP 1 / 5', 'How do you make sand <em>conduct electricity?</em>');
   guide.cards();
 
-  let pass = 0;               // 0 = first crystal, 1 = the retry with the other element
+  let pass = 0;               // 0 = first crystal, 1 = the second crystal, other element
+  let first = 'N';            // the element picked for the first crystal
   let shownConvention = false;
 
   while (true){
@@ -172,12 +163,10 @@ export async function step1(){
          only what the course builds and why it starts at the bottom. They run on pass 0
          only: the retry after melting the crystal down does not replay them. No focus on
          either one, deliberately. Nothing on the stage has been named yet. */
+      // critic pass (2026-11-03): the opening is two cards, and the learner touches the crystal
+      // on card 5 (it was card 7). No focus on these two: nothing on the stage is named yet.
       guide.story(`Your goal is to build your own data centre: a building full of computers,
-        the kind that trains AI models.`);
-      await guide.next();
-
-      guide.story(`You could buy the machines when the day comes. You would rather know what
-        is inside them, so you are building every layer yourself, starting at sand.`);
+        the kind that trains AI models. You will build every layer yourself, starting at sand.`);
       await guide.next();
 
       // Course restructure (2026-10-25): the scale this act works at, before the lattice
@@ -187,13 +176,8 @@ export async function step1(){
       await guide.next();
 
       /* ---------- what silicon is ---------- */
-      guide.say(`This is a zoomed-in silicon crystal lattice, refined from sand. By the end
-        of this step, you will learn how to drive a current through it.`);
-      stage.focus(lat.g, { label: 'silicon lattice', at: 'top' });
-      await guide.next();
-
-      guide.say(`Every silicon atom holds four bonds, one to each neighbour. The whole
-        crystal is that one pattern, repeated.`);
+      guide.say(`This is a silicon crystal, refined from sand and zoomed in. Every atom holds
+        four bonds, one to each neighbour.`);
       stage.focus([hero.pos, ...heroBonds], { label: 'four bonds', at: 'top' });
       await guide.next();
 
@@ -213,50 +197,41 @@ export async function step1(){
       });
       mode = 'off'; onTap = null;
 
-      guide.say(`When you tapped it, the bond electrons wobbled and settled back where they
-        were. None of them came loose.`);
-      stage.focus([hero.pos, ...heroBonds], { label: 'still four full bonds', at: 'top' });
-      await guide.next();
-
       /* ---------- the aim (DESIGN_MAKEOVER.md §2 rule 7) ---------- */
-      guide.say(`Because every electron is locked in a bond, nothing can move, so nothing
-        can carry a current. <b>Your goal is to make it conduct electricity.</b>`);
+      guide.say(`The electrons wobbled and settled back. Every electron is locked in a bond, so
+        nothing can carry a current. <b>Your goal is to make this crystal conduct.</b>`);
       stage.focus(lat.g, { label: 'no free electrons', at: 'top' });
       await guide.next();
 
-      guide.say(`To do that, we dope the crystal (swap a few silicon atoms for a different
-        element, such as phosphorus or boron, which bring extra electrons or holes). Pick
-        one:`);
-    } else {
-      guide.say(`Here is a fresh crystal, with every bond full again. Now dope it with the
-        other element:`);
+      guide.say(`To do that, you dope the crystal: you swap a few silicon atoms for a different
+        element. Pick one:`);
     }
 
     /* ---------- choose the element ---------- */
-    stage.focus(lat.g, { label: 'pure silicon', at: 'top' });
-    const choice = await guide.choose([
-      { label: 'Add phosphorus', value: 'N', hint: 'five outer electrons, one too many' },
-      { label: 'Add boron', value: 'P', hint: 'three outer electrons, one bond short' },
-    ]);
+    let choice;
+    if (pass === 0){
+      stage.focus(lat.g, { label: 'pure silicon', at: 'top' });
+      choice = first = await guide.choose([
+        { label: 'Add phosphorus', value: 'N', hint: 'five outer electrons, one too many' },
+        { label: 'Add boron', value: 'P', hint: 'three outer electrons, one bond short' },
+      ]);
+    } else {
+      choice = first === 'N' ? 'P' : 'N';     // the second crystal is the other element
+    }
 
     /* ---------- the element, named and drawn, before any doping ---------- */
     const specimen = makeSpecimen(svg, choice);
     await fadeIn([specimen]);
-    guide.say(choice === 'N'
-      ? `Phosphorus brings five outer electrons. A silicon site has four bonds waiting, so
-         one of those electrons has nowhere to go.`
-      : `Boron brings three outer electrons. A silicon site has four bonds to fill, so one
-         bond will be left short.`);
-    stage.focus(specimen, { label: choice === 'N' ? 'phosphorus' : 'boron', at: 'left' });
-    await guide.next();
-
-    /* ---------- hands-on doping (recorded as the list of clicked atoms) ---------- */
+    // critic pass (2026-11-03): the element and the doping are one card, so the learner acts at once
     stage.clearFocus();
+    const fresh = pass === 0 ? '' : 'Here is a fresh crystal. ';
     guide.say(choice === 'N'
-      ? `<b>Click any three dashed atoms.</b> Each click swaps a silicon for a phosphorus.
-         Watch where the fifth electron goes.`
-      : `<b>Click any three dashed atoms.</b> Each click swaps a silicon for a boron. Watch
-         what the missing electron leaves behind.`);
+      ? `${fresh}Phosphorus brings five outer electrons, but a silicon site has only four bonds.
+         <b>Click any three dashed atoms</b> to swap them for phosphorus, and watch where the
+         fifth electron goes.`
+      : `${fresh}Boron brings three outer electrons, but a silicon site has four bonds to fill.
+         <b>Click any three dashed atoms</b> to swap them for boron, and watch what the missing
+         electron leaves behind.`);
 
     await flow.ask(async replay => {
       const dope = a => (choice === 'N' ? dopeN(lat, a, field) : dopeP(lat, a));
@@ -295,18 +270,16 @@ export async function step1(){
       // the arrival animation scales the circle about the SVG origin, so a box measured
       // while it is still running lands nowhere near the electron (VERIFY_HARNESS §4a)
       field.parts.forEach(p => p.c.classList.remove('pop-in'));
-      guide.say(`Phosphorus has five outer electrons. Four of them fill the four bonds, but
-        the fifth has no bond to sit in, so it is free to move. This loose electron is
-        called a <span class="e-blue"><b>free electron</b></span>.`);
+      guide.say(`The fifth electron has no bond to sit in, so it is free to move. It is called a
+        <span class="e-blue"><b>free electron</b></span>.`);
       stage.focus(field.parts[0]?.c || field.layer, { label: 'free electron', at: 'top' });
       await guide.next();
       Anim.add(field.ticker);
     } else {
       const held = lat.vacancies.splice(0);
       held.forEach(v => v.ring.classList.remove('pop-in'));
-      guide.say(`Boron has only three outer electrons, so three bonds are filled and the
-        fourth is one electron short. This missing electron is drawn as a red ring and is
-        called a <span class="e-red"><b>hole</b></span>.`);
+      guide.say(`The fourth bond is one electron short. This gap, drawn as a red ring, is called a
+        <span class="e-red"><b>hole</b></span>.`);
       stage.focus(held[0]?.ring, { label: 'hole', at: 'top' });
       await guide.next();
       lat.vacancies.push(...held);
@@ -323,7 +296,9 @@ export async function step1(){
       ? `Three phosphorus atoms, three free electrons. Silicon carrying spare electrons is
          called <b>N-type</b>. The N is for negative.`
       : `Three boron atoms, three holes. Silicon carrying holes is called <b>P-type</b>. A
-         hole moves the way a positive charge would.`);
+         hole moves the way a positive charge would.${info(`A hole is not a particle. It is a place where an
+         electron is missing. As electrons hop one way, the gap moves the other way, so it behaves
+         like a positive charge moving.`)}`);
     // the free electrons live outside the lattice group, so N keeps them lit as well
     stage.focus(choice === 'N' ? [lat.g, field.layer] : lat.g,
       { label: choice === 'N' ? 'n-type silicon' : 'p-type silicon', at: 'top' });
@@ -354,13 +329,9 @@ export async function step1(){
     // crystal only; the second pass goes straight to the test
     if (pass === 0){
       guide.say(`A battery pushes electrons out of its <b>−</b> terminal and pulls them back
-        in at <b>+</b>.`);
-      stage.focus(batt, { label: 'battery', at: 'bottom' });
-      await guide.next();
-
-      guide.say(`The wires connect to the left and right faces of the crystal, so any current
-        has to pass through the silicon to reach the lamp.`);
-      stage.focus([wireL, wireR, contactL, contactR], { label: 'contacts', at: 'bottom' });
+        in at <b>+</b>. The wires reach both faces of the crystal, so any current has to pass
+        through the silicon to reach the lamp.`);
+      stage.focus([batt, wireL, wireR, contactL, contactR], { label: 'battery and contacts', at: 'bottom' });
       await guide.next();
     }
 
@@ -412,16 +383,12 @@ export async function step1(){
       eFlow.setSpeed(0);
       iFlow.setSpeed(-120);
       SFX.blip();
-      // Course restructure (2026-10-25): three convention cards merged into two
-      guide.say(`Electric current was described before electrons were discovered, and people
-        drew it flowing from <b>+</b> to <b>−</b>. These arrows show that direction, called
-        <b>conventional current</b>.`);
-      stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
-      await guide.next();
-
-      guide.say(`The electrons really flow from <b>−</b> to <b>+</b>, but the drawing
-        convention never changed. Every circuit from here on uses these <b>+</b> to <b>−</b>
-        arrows, as real schematics do.`);
+      // critic pass (2026-11-03): one card. The step has just paid off, so the detour stays short.
+      guide.say(`People drew current flowing from <b>+</b> to <b>−</b> before electrons were
+        discovered, and real schematics still do. These arrows show that direction, called
+        <b>conventional current</b>. Every circuit from here on uses them.${info(`Both descriptions give the
+        same current. Electrons move one way, the arrows are drawn the other way, and every
+        calculation comes out the same.`)}`);
       stage.focus(iLayer, { label: 'conventional current', at: 'bottom', ring: false });
       await guide.next();
     } else {
@@ -434,19 +401,15 @@ export async function step1(){
     if (pass === 0){
       stage.clearFocus();
       // Course restructure (2026-10-25): the old "cannot be re-doped" claim was wrong (step 4
-      // dopes N patches into P); the fresh crystal is only so each element is seen alone
-      guide.say(`You will need both kinds of silicon later in this act. The next crystal is
-        a fresh one, so you can see the other element on its own.`);
-      const again = await guide.choose([
-        { label: 'Start a fresh crystal with the other element ↺', value: 'again', hint: 'fresh crystal, other dopant. Recommended.' },
-        { label: 'Move on with this wafer ▸', value: 'continue', hint: 'you can always come back' },
-      ]);
-      if (again === 'again'){
-        pass = 1;
-        stage.clearFocus();
-        destroyLattice(lat);
-        continue;
-      }
+      // dopes N patches into P); the fresh crystal is only so each element is seen alone.
+      // critic pass (2026-11-03): no "move on" option. Step 2 needs both kinds, so it was a false choice.
+      guide.say(`You will need both kinds of silicon later in this act, so now you will make the
+        other kind, on a fresh crystal.`);
+      await guide.button('Try the other element ▸');
+      pass = 1;
+      stage.clearFocus();
+      destroyLattice(lat);
+      continue;
     }
     stage.clearFocus();
     await realLife(svg);

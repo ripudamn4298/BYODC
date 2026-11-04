@@ -25,11 +25,11 @@
 import { waitFor, svgEl } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makePowerLadder } from '../../engine/dc.js';
-import { makeSlider, makeSeg, slideInPanel } from '../../engine/components.js';
+import { makeSlider, makeSeg, slideInPanel, labExplore } from '../../engine/components.js';
 import { powerLab } from './lab.js';
 
 /* ---------- the power model, in tenths of a megawatt so nothing rounds twice ---------- */
@@ -107,7 +107,7 @@ export async function step3(){
   guide.say(`Your hall will hold about ${HALL.racks} racks, each drawing ${HALL.kw} kW all day.
     Together they will draw about ${TASK_IT} MW.`);
   stage.focus(hallG, { label: 'your hall', at: 'top' });
-  await guide.next();
+  await guide.next('Split that draw ▸');
 
   /* ==================== SCENE B — the power ladder ==================== */
 
@@ -210,13 +210,6 @@ export async function step3(){
 
   await fadeIn([ladder.g], 360);
 
-  /* ---- card 2: the bar is the hall's whole draw ---- */
-  guide.say(`Every watt this hall draws goes into one of three parts. The bar is the whole
-    draw, split between them. <b>Your goal is to keep the bar under the line you are
-    given.</b>`);
-  stage.focus(frameRect, { label: "the hall's draw", at: 'top' });
-  await guide.next();
-
   /* ---- card 3: IT load ---- */
   stage.clearFocus();
   const slider = makeSlider(controls, {
@@ -225,47 +218,33 @@ export async function step3(){
   slider.input.disabled = true;
   await moveTo({ it: START_IT, cool: 0, loss: 0 }, 520);
 
-  guide.say(`IT load is the power the computers themselves draw: the servers in the racks,
-    the machines that hold the GPUs. It is the only part of the draw that does any computing.`);
+  // critic pass (2026-11-04): the bar and its first part are one card
+  guide.say(`Every watt this hall draws goes into one of three parts, and this bar is the whole draw. The first
+    is <b>IT load</b>, the power the servers themselves draw. It is the only part that does any computing.`);
   stage.focus([itRect, rungLab.it.g], { label: 'it load', at: 'top' });
-  await guide.next();
+  await guide.next('Add the other two ▸');
 
-  /* ---- card 4: cooling ---- */
+  /* ---- cooling and losses. Critic pass (2026-11-04): one card ---- */
   stage.clearFocus();
   const air12 = budget(START_IT, 'air');
-  await moveTo({ it: air12.it, cool: air12.cool, loss: 0 }, 460);
-
-  guide.say(`All of that power leaves the racks as heat. Cooling is the power you spend
-    carrying that heat back out of the building.`);
-  stage.focus([coolRect, rungLab.cool.g], { label: 'cooling', at: 'top' });
-  await guide.next();
-
-  /* ---- card 5: losses ---- */
-  stage.clearFocus();
-  await moveTo({ it: air12.it, cool: air12.cool, loss: air12.loss }, 420);
-
-  guide.say(`Losses are the power that warms the transformers and power supplies feeding the
-    hall. About 4 percent never reaches a rack.`);
-  stage.focus([lossRect, rungLab.loss.g], { label: 'losses', at: 'top' });
+  await moveTo({ it: air12.it, cool: air12.cool, loss: air12.loss }, 460);
+  guide.say(`All of that power leaves the racks as heat. <b>Cooling</b> is the power you spend carrying that
+    heat out of the building. <b>Losses</b> warm the transformers and power supplies feeding the hall: about 4
+    percent never reaches a rack.`);
+  stage.focus([coolRect, lossRect, rungLab.cool.g, rungLab.loss.g], { label: 'cooling and losses', at: 'top' });
   await guide.next();
 
   /* ---- card 6: the line ---- */
   stage.clearFocus();
   await fadeIn([limitLine, limitTxt, headT], 340);
 
-  guide.say(`One power line feeds the hall from the grid, and the utility rated it at
-    ${LIMIT} MW. Nothing you build changes that number. Everything on the bar has to fit
-    under it.`);
-  stage.focus([limitLine, limitTxt], { label: 'the grid line', at: 'top' });
-  await guide.next();
-
-  /* ---- card 7: the line in the news ---- */
-  // Course restructure (2026-10-25): a light-bulb card tying the fixed line to the news.
-  // Well reported: Microsoft's 2024 deal with Constellation to restart a Three Mile Island
-  // reactor, and Amazon's 2024 deal with Talen for power from the Susquehanna nuclear plant.
-  guide.say(`When the news says power is the bottleneck, it means this line. A large new
-    line can take years to get from the grid, so AI companies now sign deals with power
-    plants, nuclear ones included.`);
+  /* the line, and the line in the news. Critic pass (2026-11-04): one card. Well reported:
+     Microsoft's 2024 deal with Constellation to restart a Three Mile Island reactor, and Amazon's
+     2024 deal with Talen for power from the Susquehanna nuclear plant. */
+  guide.say(`One power line feeds the hall, and the utility rated it at ${LIMIT} MW. Nothing you build changes
+    that, and everything on the bar has to fit under it. When the news says power is the bottleneck, it means
+    this line.${info(`A large new line can take years to get from the grid, so AI companies now sign deals with
+    power plants, nuclear ones included.`)}`);
   stage.focus([limitLine, limitTxt], { label: 'the grid line', at: 'top' });
   await guide.next();
 
@@ -287,18 +266,14 @@ export async function step3(){
   const segEnabled = on => { segLive = on; segBtns.forEach(b => { b.disabled = !on; }); };
   segEnabled(false);
 
-  guide.say(`Air cooling blows cold air through the racks. Shifting heat that way takes a
-    lot of fan power, which is why the cooling part of the bar is
-    ${air12.cool.toFixed(1)} MW.`);
-  stage.focus([coolRect, rungLab.cool.g], { label: 'air cooling', at: 'top' });
-  await guide.next();
-
   /* ---- card 9: liquid cooling, and the switch ---- */
   stage.clearFocus();
   segEnabled(true);
 
-  guide.say(`Liquid cooling pumps water through plates sitting on the chips. Water carries
-    heat far better than air. Switch to it and watch the cooling part of the bar.`);
+  // critic pass (2026-11-04): air and liquid are one card
+  guide.say(`Air cooling takes a lot of fan power, which is why cooling on the bar is ${air12.cool.toFixed(1)} MW.
+    <b>Liquid cooling</b> pumps water through plates on the chips, and water carries heat far better. Switch to
+    it and watch the bar.`);
 
   await flow.ask(async replay => {
     if (replay !== undefined){
@@ -313,17 +288,11 @@ export async function step3(){
 
   /* ---- card 10: the two overheads, side by side ---- */
   const liq12 = budget(START_IT, 'liquid');
-  guide.say(`Same ${START_IT} MW of IT load. Air spent ${air12.cool.toFixed(1)} MW carrying
-    the heat out. Liquid spends ${liq12.cool.toFixed(1)} MW.`);
+  // critic pass (2026-11-04): the saving and where the water goes are one card
+  guide.say(`Air spent ${air12.cool.toFixed(1)} MW carrying the heat out, and liquid spends
+    ${liq12.cool.toFixed(1)} MW. The water in those plates goes round a closed loop. The water use you read about
+    in the news is water evaporated in cooling towers.`);
   stage.focus([coolRect, rungLab.cool.g], { label: 'liquid cooling', at: 'top' });
-  await guide.next();
-
-  /* ---- card 11: where the water goes ---- */
-  // Course restructure (2026-10-25): the step never shows evaporation, so the water card
-  // rides on the liquid rung and names the cooling tower in words.
-  guide.say(`The water in those plates goes round a closed loop and is not used up. The water
-    use you read about in the news is water evaporated in cooling towers.`);
-  stage.focus([coolRect, rungLab.cool.g], { label: 'a closed loop', at: 'right' });
   await guide.next();
 
   /* ---- card 12: the task ---- */
@@ -379,21 +348,13 @@ export async function step3(){
   slider.input.disabled = true;
   segEnabled(false);
 
-  guide.say(`It holds: ${held.total.toFixed(1)} MW on a ${LIMIT} MW line. The computers get
-    ${held.it.toFixed(1)} MW of it, and cooling and losses take the other
-    ${(held.cool + held.loss).toFixed(1)} MW.`);
-  // the sum and the headroom ride along, or the scrim dims the two figures the card quotes
+  // critic pass (2026-11-04): the read-back and the PUE are one card
+  guide.say(`It holds: ${held.total.toFixed(1)} MW on a ${LIMIT} MW line, and the computers get
+    ${held.it.toFixed(1)} MW. The whole draw divided by the IT load is called the <b>PUE</b> (power usage
+    effectiveness). Yours is ${(held.total / held.it).toFixed(2)}, and at 1.0 every watt would reach the computers.`);
   stage.focus([itRect, coolRect, lossRect, totalTxt,
     rungLab.it.g, rungLab.cool.g, rungLab.loss.g, headT],
-    { label: 'the three parts', at: 'top', ring: false });
-  await guide.next();
-
-  /* ---- card 14: PUE ---- */
-  // Course restructure (2026-10-25): PUE is now defined on a card. 29.4 ÷ 25 = 1.176.
-  guide.say(`The whole draw divided by the IT load is called the PUE (power usage
-    effectiveness). Your hall's is ${held.total.toFixed(1)} ÷ ${held.it.toFixed(0)} =
-    ${(held.total / held.it).toFixed(2)}. At 1.0, every watt would reach the computers.`);
-  stage.focus([itRect, rungLab.it.g, totalTxt], { label: 'whole draw ÷ it load', at: 'right', ring: false });
+    { label: 'whole draw ÷ it load', at: 'top', ring: false });
   await guide.next();
 
   /* ---- card 15: the aha, handing on to the site ---- */
@@ -407,31 +368,18 @@ export async function step3(){
 
   stage.clearFocus();
   const lab = slideInPanel(svg, powerLab(), { lab: true });
-  lab.focus('pdu');
   await lab.show();
-
-  // Course restructure (2026-10-25): step 1 no longer defines PDUs, so the clause here does.
-  guide.lab(`The IT load on your bar reaches each rack through its power distribution units
-    (PDUs), the upright strips of sockets at the back that feed each server. The amber display shows the current
-    the strip is carrying, in amps.`, { intro: true });
-  await guide.next();
-
-  lab.focus('psu');
-  guide.lab(`Power supplies inside each server turn that AC into the DC the chips use. This
-    label is from one in a DGX H100. A good supply delivers over 90 percent as DC, and the
-    rest becomes heat in the server.`);
-  await guide.next();
-
-  lab.focus('plate');
-  guide.lab(`Here are the plates from the step, as installed. A copper cold plate sits on the
-    GPU in place of a heat sink, and coolant, mostly water with some glycol, flows through
-    fine channels inside it.`);
-  await guide.next();
-
-  lab.focus(['plate', 'cdu']);
-  guide.lab(`The hoses run to a coolant distribution unit (CDU). Its pump pushes the coolant
-    round the racks, and a heat exchanger passes the heat to the building's water without the
-    two mixing. This is part of the cooling on your bar.`);
+  // critic pass (2026-11-04): one card to explore, instead of four to read
+  labExplore(lab, {
+    text: `Here is what the power and the cooling on your bar look like, as installed.`,
+    prompt: 'Tap a part to read about it.',
+    items: [
+      { k: 'pdu', label: 'PDU', html: `The IT load reaches each rack through its power distribution units (PDUs), the upright strips of sockets at the back that feed each server. The amber display shows the current the strip is carrying, in amps.` },
+      { k: 'psu', label: 'Power supply', html: `Power supplies inside each server turn that AC into the DC the chips use. This label is from one in a DGX H100. A good supply delivers over 90 percent as DC, and the rest becomes heat in the server.` },
+      { k: 'plate', label: 'Cold plate', html: `A copper cold plate sits on the GPU in place of a heat sink, and coolant, mostly water with some glycol, flows through fine channels inside it.` },
+      { k: ['plate', 'cdu'], hit: 'cdu', label: 'CDU', html: `The hoses run to a coolant distribution unit (CDU). Its pump pushes the coolant round the racks, and a heat exchanger passes the heat to the building's water without the two mixing.` },
+    ],
+  });
   await guide.next();
   await lab.hide();
 }

@@ -22,11 +22,11 @@
 import { el, svgEl, waitFor } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makeTopoBoard } from '../../engine/dc.js';
-import { slideInPanel } from '../../engine/components.js';
+import { slideInPanel, labExplore } from '../../engine/components.js';
 import { interconnectLab } from './lab.js';
 
 /* ---------- geometry, in the stage's 720×480 user units ---------- */
@@ -104,14 +104,10 @@ export async function step2(){
   // Course restructure (2026-10-25): the old opening card only restated the need. These two
   // cards give Act 5 its spine: GPUs split training the way Act 4's lanes split the corners,
   // so they have to swap results after every pass. "Pass" is Act 4 step 6's word for it.
-  guide.say(`In Act 4, each lane held one corner and ran the same instruction at the same
-    moment. Training is split across the eight GPUs in this node the same way: each GPU takes
-    its own share of the data and runs the same pass.`);
-  stage.focus(dies, { label: 'one share each', at: 'top' });
-  await guide.next();
-
-  guide.say(`After every pass, each GPU sends its results to every other GPU before the next
-    pass starts. So every GPU in the node has to reach every other one.`);
+  // critic pass (2026-11-04): the split and the swap are one card
+  guide.say(`Training is split across the eight GPUs in this node, the way Act 4 split corners across
+    lanes: each GPU runs the same pass on its own share of the data. After every pass, each GPU sends its
+    results to every other, so each one has to reach all the others.`);
   stage.focus(sled, { label: 'your node', at: 'bottom' });
   await guide.next();
 
@@ -170,28 +166,13 @@ export async function step2(){
   addLink(0, 1);
   const first = drawn.get(1);
 
-  guide.say(`Here are four of them, spread out so you can see the wiring. This line is one
-    <b>link</b>: a wire from GPU 1 to GPU 2, with nothing in between.`);
-  // document order: the link layer sits below the node layer inside board.g, and nums
-  // was appended after board.g. clearFocus restores back to front and needs that order.
-  stage.focus([first.line, board.nodes[0].el, board.nodes[1].el, first.numeral],
-    { label: 'one link', at: 'top' });
-  await guide.next();
-
-  guide.say(`Now every pair gets a link of its own. That is called <b>all-to-all</b>. No
-    message passes through anything in between.`);
-  stage.focus(boardParts(), { label: 'all-to-all', at: 'bottom' });
-  await guide.next();
-
-  /* ================= SCENE B — wire it, and count what it took ================= */
-
-  /* no focus during the interaction: stage.focus re-parents what it raises, and the
-     wiring listeners live on the node groups it would move (VERIFY_HARNESS.md §4b) */
+  /* no focus during the interaction: stage.focus re-parents what it raises, and the wiring
+     listeners live on the node groups it would move (VERIFY_HARNESS.md §4b).
+     Critic pass (2026-11-04): the link, all-to-all and the task are one card. */
   stage.clearFocus();
-
-  guide.say(`Click a GPU, then click a second one, to link them. <b>Your goal is to leave no
-    pair without a link.</b>`);
-
+  guide.say(`Here are four of them. This line is one <b>link</b>: a wire from GPU 1 to GPU 2. When every
+    pair has a link of its own, it is called <b>all-to-all</b>. Click a GPU, then a second one, to link
+    them. <b>Your goal is to leave no pair without a link.</b>`);
   const settle = () => {
     PAIRS.forEach(p => addLink(p.a, p.b));
     hint.textContent = '';
@@ -208,11 +189,6 @@ export async function step2(){
     hint.textContent = '';
     return true;
   });
-
-  guide.say(`Every link is numbered. Count them on the drawing: four GPUs took
-    <b>six</b> links.`);
-  stage.focus(boardParts(), { label: 'six links', at: 'bottom' });
-  await guide.next();
 
   /* ================= SCENE C — the same count for 40, then 4,000 ================= */
 
@@ -251,8 +227,9 @@ export async function step2(){
 
   await fadeIn([rowG[0]], 300);
 
-  guide.say(`Now take five of those nodes, which is forty GPUs, and wire them all-to-all.
-    How many links is that?`);
+  // critic pass (2026-11-04): the count and the next question are one card
+  guide.say(`Every link is numbered, so you can count them: four GPUs took <b>six</b> links. Now take five
+    of those nodes, which is forty GPUs, and wire them all-to-all. How many links is that?`);
   stage.focus(rowG[0], { label: '4 gpus', at: 'left' });
   const guess = await guide.choose([
     { label: '60 links', value: 'sixty', hint: 'ten times the GPUs' },
@@ -262,17 +239,11 @@ export async function step2(){
 
   stage.clearFocus();
   await fadeIn([rowG[1]], 300);
-  guide.say(guess === 'right'
-    ? `780, yes. Ten times as many GPUs, but 130 times as many links.`
-    : `780. Ten times as many GPUs, but 130 times as many links.`);
-  stage.focus(rowG[1], { label: '40 gpus', at: 'left' });
-  await guide.next();
-
-  stage.clearFocus();
   await fadeIn([rowG[2]], 300);
-  guide.say(`Four thousand GPUs is a little over sixty of the racks you built. All-to-all
-    would need <b>7,998,000</b> links.`);
-  stage.focus(rowG[2], { label: '4,000 gpus', at: 'left' });
+  // critic pass (2026-11-04): 40 and 4,000 are one card
+  guide.say(`${guess === 'right' ? '780, yes.' : '780.'} Ten times as many GPUs, but 130 times as many
+    links. Four thousand GPUs, a little over sixty of your racks, would need <b>7,998,000</b>.`);
+  stage.focus([rowG[1], rowG[2]], { label: 'links', at: 'left', ring: false });
   await guide.next();
 
   /* ================= SCENE D — only now, the rule ================= */
@@ -288,16 +259,12 @@ export async function step2(){
   rule.append(ruleT, checkT);
   await fadeIn([rule], 300);
 
-  // Course restructure (2026-10-25): the two rule cards are now one.
-  guide.say(`Now the rule. Each of n GPUs links to the other n−1, which counts every link
-    twice, once from each end. So n GPUs need n(n−1)/2 links.`);
-  stage.focus(rule, { label: 'the rule', at: 'top' });
-  await guide.next();
-
+  // critic pass (2026-11-04): the rule and what it means are one card
   stage.clearFocus();
-  guide.aha(`The link count grows far faster than the GPU count. Four GPUs need 6 links.
-    Four thousand need <b>7,998,000</b>.`,
-    `All-to-all stops at the edge of one node. Connecting all the racks in a data hall (the room in a data centre where the racks stand) needs a different shape of wiring.`);
+  guide.aha(`The link count grows far faster than the GPU count: n GPUs need n(n−1)/2 links.${info(`Each of n
+    GPUs links to the other n−1, which counts every link twice, once from each end.`)}`,
+    `All-to-all stops at the edge of one node. Connecting all the racks in a data hall (the room in a data
+     centre where the racks stand) needs a different shape of wiring.`);
   stage.focus([table, rule], { label: 'all-to-all links', at: 'bottom' });
   await guide.next();
 
@@ -305,31 +272,18 @@ export async function step2(){
 
   stage.clearFocus();
   const lab = slideInPanel(svg, interconnectLab(), { lab: true });
-  lab.focus('board');
   await lab.show();
-
-  guide.lab(`In this step you drew links between GPUs. Inside a real server they are copper traces
-    in the circuit board, called NVLink. This is a board of eight GPUs with their heat sinks
-    lifted off.`, { intro: true });
-  await guide.next();
-
-  lab.focus(['board', 'nvswitch', 'path']);
-  guide.lab(`The GPUs are not linked straight to each other. Each one connects to four
-    NVSwitch chips, which pass data between the GPUs, so any GPU reaches any other through
-    one chip.`);
-  await guide.next();
-
-  lab.focus('ports');
-  // Course restructure (2026-10-25): names the two networks the cables carry.
-  guide.lab(`Data that leaves the server goes over cables. They carry InfiniBand or Ethernet,
-    the two kinds of network AI clusters use. In a DGX H100, four OSFP sockets carry eight
-    links of 400 gigabits a second, one for each GPU.`);
-  await guide.next();
-
-  lab.focus(['dac', 'optic']);
-  guide.lab(`A copper cable, called a DAC (direct-attach copper), reaches only about 3 metres,
-    so it stays within a rack. For longer runs, an optical module turns the signal into light
-    and sends it down fibre. This kind reaches up to 50 metres.`);
+  // critic pass (2026-11-04): one card to explore, instead of four to read
+  labExplore(lab, {
+    text: `Inside a real server, links are copper traces in the circuit board, called <b>NVLink</b>. This is
+      a board of eight GPUs with their heat sinks lifted off.`,
+    prompt: 'Tap a part to read about it.',
+    items: [
+      { k: ['board', 'nvswitch', 'path'], hit: 'nvswitch', label: 'NVSwitch', html: `The GPUs are not linked straight to each other. Each one connects to four NVSwitch chips, which pass data between the GPUs, so any GPU reaches any other through one chip.` },
+      { k: 'ports', label: 'Network sockets', html: `Data that leaves the server goes over cables carrying InfiniBand or Ethernet, the two kinds of network AI clusters use. In a DGX H100, four OSFP sockets carry eight links of 400 gigabits a second, one for each GPU.` },
+      { k: ['dac', 'optic'], hit: 'dac', label: 'Cables', html: `A copper cable, called a DAC (direct-attach copper), reaches only about 3 metres, so it stays within a rack. For longer runs, an optical module turns the signal into light and sends it down fibre, up to 50 metres.` },
+    ],
+  });
   await guide.next();
   await lab.hide();
 }

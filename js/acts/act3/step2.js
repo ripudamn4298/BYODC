@@ -24,10 +24,10 @@
 import { svgEl, el, waitFor, sleep } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makePlacer, makeChip, makeRaisedTiles, slideInPanel } from '../../engine/components.js';
+import { makePlacer, makeChip, makeRaisedTiles, slideInPanel, labExplore } from '../../engine/components.js';
 import { makeMaskAlign, processTile, mulberry32 } from '../../engine/fab.js';
 import { lithoLabHTML } from './lab.js';
 
@@ -181,16 +181,17 @@ export async function step2(){
   stage.focus([wafer, waferT], { label: 'the wafer you sliced', at: 'bottom' });
   await guide.next();
 
+  // critic pass (2026-11-04): the student runs the loop, one press per step
   stage.clearFocus();
+  guide.say(`First the wafer is coated with <b>photoresist</b> (resist for short), a thin film
+    whose chemistry changes wherever light lands on it. This is the coat step.`);
+  await guide.button('Coat the wafer ▸');
+
   const resist = put('rect', { x: PLATE.x, y: RESIST_Y, width: PLATE.w, height: RESIST_H },
     { fill: 'rgba(29,33,23,.07)', stroke: 'var(--hairline-strong)', strokeWidth: '1' });
   resist.style.display = 'none';
   await fadeIn([resist], 320);
-
-  guide.say(`First the wafer is coated with <b>photoresist</b> (resist for short), a thin
-    film whose chemistry changes wherever light lands on it. This is the coat step.`);
-  stage.focus(resist, { label: 'photoresist', at: 'left' });
-  await guide.next();
+  SFX.dope();
 
   /* the mask: a clear plate carrying the layer's pattern in opaque metal */
   stage.clearFocus();
@@ -318,21 +319,16 @@ export async function step2(){
   lensG.setAttribute('transform', `translate(${lensC.x} ${lensC.y})`);
 
   guide.say(`Zoom into one tiny spot of that pattern, and its shapes are the parts of
-    transistors like the NMOS you built in Act 1: a source and a drain, with a gate sitting on
-    glass between them. The masks for a modern chip hold these shapes for billions of
-    transistors.`);
+    transistors like the NMOS you built in Act 1: a source and a drain, with a gate${info(`The word
+    gate has two meanings in chip writing. Here it is the transistor's gate from Act 1, the metal
+    pad whose voltage switches it on and off. Your NAND gate from Act 2 was a logic gate, built from
+    several transistors.`)} sitting on glass between them.`);
   await guide.next();
 
-  /* Course restructure (2026-10-25): the two meanings of "gate" and the gate's length, moved
-     up from step 5 (its old cards 3 and 4) to sit beside the first card that says "gate".
-     Step 5 now points back here. No stage.focus on these two: dimming the slide-in panel
-     lets the cross-section behind it show through, so the lens labels the gate itself. */
+  /* Course restructure (2026-10-25): the gate's length, moved up from step 5 to sit beside the
+     first card that says "gate". Critic pass (2026-11-04): its two meanings are behind the i
+     above. No stage.focus here: dimming the slide-in panel lets the cross-section show through. */
   const lensLen = lensG.querySelector('.lens-len');
-  guide.say(`The word <b>gate</b> has two meanings in chip writing. Here it is the transistor's
-    gate from Act 1, the metal pad whose voltage switches it on and off. Your NAND gate from
-    Act 2 was a logic gate, built from several transistors.`);
-  await guide.next();
-
   await fadeIn([lensLen], 280);
   guide.say(`A gate's <b>length</b> is how far it stretches from the source side to the drain
     side, the distance electrons cross under it. The mask sets this length for every gate it
@@ -355,7 +351,7 @@ export async function step2(){
   guide.say(`The machine flashes light down at the mask. Whatever gets through carries the
     pattern to the resist below.`);
   stage.focus(srcG, { label: 'light source', at: 'top' });
-  await guide.next();
+  await guide.button('Flash the light ▸');
 
   stage.clearFocus();
 
@@ -403,33 +399,39 @@ export async function step2(){
   // Course restructure (2026-10-25): the "Why use resist at all?" card is cut (an unasked why).
 
   /* develop: the changed resist washes away, leaving openings */
+  guide.say(`Next comes <b>develop</b>: the wafer is rinsed in an alkaline (basic) liquid. The
+    soluble patches dissolve away and the solid resist stays, which leaves openings in exactly the
+    mask's pattern.`);
+  await guide.button('Rinse in developer ▸');
   stage.clearFocus();
   await fadeOut([raysTop, raysThrough], 220);
   await fadeOut(exposed, 300);
   const openings = OPEN.map(([ox, ow]) => put('rect',
     { x: ox, y: RESIST_Y, width: ow, height: RESIST_H },
     { fill: 'var(--paper-high)', stroke: 'none' }));
-  guide.say(`Next comes <b>develop</b>: the wafer is rinsed in an alkaline (basic) liquid,
-    and the soluble patches dissolve away. The solid resist stays. The resist now has
-    openings in exactly the mask's pattern, with silicon showing through them.`);
-  stage.focus(openings, { label: 'uncovered silicon', at: 'bottom' });
-  await guide.next();
+  if (!flow.instant) SFX.flow();
+  await sleep(360);
 
   /* etch: cut down into the uncovered silicon */
+  // REVIEW_NOTES N-032: develop only patterns the resist; etch is what shapes the silicon.
+  guide.say(`Developing removed only resist, so the silicon under each opening has not changed yet.
+    Next comes <b>etch</b>: a gas or liquid eats away the silicon through each opening, while the
+    resist protects the rest.`);
+  stage.focus(openings, { label: 'uncovered silicon', at: 'bottom' });
+  await guide.button('Etch the silicon ▸');
   stage.clearFocus();
   const trenches = OPEN.map(([ox, ow]) => put('rect',
     { x: ox, y: WAFER_Y, width: ow, height: 14 },
     { fill: 'var(--paper-high)', stroke: 'var(--ink)', strokeWidth: '1.1', display: 'none' }));
   await fadeIn(trenches, 320);
-  // REVIEW_NOTES N-032: develop only patterns the resist; etch is what shapes the silicon.
-  // Course restructure (2026-10-25): trimmed from about 70 words.
-  guide.say(`Developing removed only resist, so the silicon under each opening has not changed
-    yet. Next comes <b>etch</b>: a gas or liquid eats away the silicon through each opening,
-    while the resist protects the rest.`);
-  stage.focus(trenches, { label: 'etched', at: 'bottom' });
-  await guide.next();
+  await sleep(360);
 
   /* dope: atoms reach the silicon only through the openings */
+  guide.say(`Then <b>dope</b>: phosphorus atoms, a doping element from Act 1, are fired at the wafer.
+    They reach the silicon only through the openings, so only the pattern turns N-type.${info(`A
+    real pass usually etches or dopes, not both. This wafer does both so you can see each one.`)}`);
+  stage.focus(trenches, { label: 'etched', at: 'bottom' });
+  await guide.button('Fire the atoms ▸');
   stage.clearFocus();
   const atoms = put('g');
   for (const [ox, ow] of OPEN){
@@ -446,18 +448,18 @@ export async function step2(){
   await Anim.tween(520, q => atoms.setAttribute('transform', `translate(0 ${q * 58})`));
   await fadeOut([atoms], 160);
   await fadeIn(doped, 300);
-  // Course restructure (2026-10-25): trimmed from 65 words.
-  guide.say(`Then <b>dope</b>: phosphorus atoms, a doping element from Act 1, are fired at the
-    wafer. They reach the silicon only through the openings, so only the pattern turns N-type.
-    A real pass usually etches or dopes, not both.`);
-  stage.focus(doped, { label: 'n-type patches', at: 'bottom' });
-  await guide.next();
+  await sleep(360);
 
   /* strip: the leftover resist comes off, and the layer is finished */
+  guide.say(`Last, the leftover resist is stripped off, which leaves the silicon with this layer's
+    pattern cut and doped into it.`);
+  stage.focus(doped, { label: 'n-type patches', at: 'bottom' });
+  await guide.button('Strip the resist ▸');
   stage.clearFocus();
   await fadeOut([resist, ...openings, maskG, srcG], 320);
-  guide.say(`Last, the leftover resist is stripped off. What is left is the silicon with
-    this layer's pattern cut and doped into it. That is one finished layer.`);
+
+  guide.say(`That is one finished layer. It has no wires yet. The metal wires that join transistors
+    into gates are printed later, in layers stacked on top, using this same loop.`);
   stage.focus([wafer, ...trenches, ...doped], { label: 'one finished layer', at: 'bottom' });
   await guide.next();
 
@@ -465,12 +467,6 @@ export async function step2(){
      look from above is now shown right after the mask is introduced */
   stage.clearFocus();
   await fadeOut([...sceneA], 260);
-
-  guide.say(`This layer has no wires yet. The metal wires that join transistors into gates,
-    like the wires in your NAND gate from Act 2, are printed later, in layers stacked on top,
-    using this same loop.`);
-  stage.clearFocus();
-  await guide.next();
 
   /* REVIEW_NOTES N-049: what those wiring layers look like on a finished chip */
   const wiring = slideInPanel(svg, wiringStackHTML());
@@ -513,16 +509,11 @@ export async function step2(){
 
   await fadeIn([slotsG, ...tiles.map(t => t.g)], 340);
 
-  guide.say(`You have now watched all five steps print one layer. They only work in one
-    order. <b>Your goal is to put them back in that order.</b>`);
-  stage.focus(slotsG, { label: 'the order they run', at: 'top' });
-  await guide.next();
-
   /* no focus for the interaction: stage.focus re-parents what it raises, which the
-     placer's pointer handling has to survive */
+     placer's pointer handling has to survive. Critic pass (2026-11-04): one card, not two. */
   stage.clearFocus();
-  guide.say(`Drag each tile into a slot, or tap a tile and then a slot. <b>Your goal is to
-    fill slots 1 to 5 in the order the steps run.</b>`);
+  guide.say(`You have now run all five steps. They only work in one order. <b>Your goal is to put
+    them back in that order</b>: drag each tile into a slot, or tap a tile and then a slot.`);
 
   let wrongs = 0;
   const placer = makePlacer({
@@ -585,14 +576,11 @@ export async function step2(){
   align.g.style.display = 'none';
   await fadeIn([align.g], 320);
 
-  guide.say(`Now look down from above at a later layer, printed by the same five steps. This
-    one sits on top of the transistors.`);
-  stage.focus(baseG, { label: 'a printed layer', at: 'left' });
-  await guide.next();
-
-  guide.say(`The five rings are <b>vias</b>: holes left open in this layer so that the metal
-    of the wiring layer printed above it can reach down through them and make contact.`);
-  stage.focus(baseVias, { label: 'via', at: 'top' });
+  // critic pass (2026-11-04): the layer and its vias are one card
+  guide.say(`Now look down from above at a later layer, on top of the transistors. The five rings
+    are <b>vias</b>: holes left open so that the metal of the wiring layer printed above can reach
+    down through them and make contact.`);
+  stage.focus(baseG, { label: 'vias', at: 'left' });
   await guide.next();
 
   /* ---------- the same layers from the side, built up one at a time ----------
@@ -641,7 +629,7 @@ export async function step2(){
     in the silicon. Then a printing pass etches a via down through it above each source and
     drain.`);
   stage.focus(glass1, { label: 'glass, with vias', at: 'right', ring: false });
-  await guide.next();
+  await guide.button('Add the wires ▸');
 
   stage.clearFocus();
   await fadeIn([metal1], 360);
@@ -659,11 +647,6 @@ export async function step2(){
 
   stage.clearFocus();
   await fadeIn([moveG], 300);
-
-  guide.say(`Layer two's mask is out of place. On a real wafer, an error of a couple of
-    nanometres means the metal misses the via, so the transistor never connects.`);
-  stage.focus(moveG, { label: 'layer two mask', at: 'right' });
-  await guide.next();
 
   stage.clearFocus();
   const readout = makeChip(controls, '', 'warm');
@@ -690,9 +673,10 @@ export async function step2(){
   nudgeBtn('◀ left', 'left', -NUDGE, 0);
   nudgeBtn('▶ right', 'right', NUDGE, 0);
 
-  guide.say(`The <b>offset</b> is how far the mask sits from where it should be, X across and Y
-    down, shown under the stage. <b>Your goal is to bring both offsets to 0.</b> Each button
-    press moves the mask three units.`);
+  // critic pass (2026-11-04): why it matters and the goal are one card
+  guide.say(`Layer two's mask is out of place. On a real wafer, an error of a couple of nanometres
+    means the metal misses the via. <b>Your goal is to bring both offsets, shown under the stage, to
+    0.</b> Each press moves the mask three units.`);
 
   await flow.ask(async replay => {
     if (replay !== undefined){
@@ -709,18 +693,14 @@ export async function step2(){
     return true;
   });
 
-  guide.say(`Both offsets are zero. Each via in the new mask sits on the one printed below
-    it, so the metal that goes in next will touch.`);
-  stage.focus(moveG, { label: 'layer two, landed', at: 'right' });
-  await guide.next();
-
-  stage.clearFocus();
-  // Course restructure (2026-10-25): ASML named (the numbers box gives the same fact).
-  guide.aha(`The newest machines do this with extreme ultraviolet light, <b>13.5 nanometres</b>
-    long. Only one company, ASML in the Netherlands, makes these machines. At that wavelength
-    the mask is a mirror rather than a clear plate, but it works the same way. One flash can
-    print <b>tens of billions</b> of features.`,
+  // critic pass (2026-11-04): the landing and the machine that does it are one card
+  guide.aha(`<b>Both offsets are zero</b>, so the metal that goes in next will touch. The newest
+    machines print this way with extreme ultraviolet light, <b>13.5 nanometres</b> long. Only one
+    company, ASML in the Netherlands, makes them.${info(`At that wavelength the mask is a mirror
+    rather than a clear plate, but it works the same way. One flash can print tens of billions of
+    features.`)}`,
     `You never place a transistor. You print the whole layer, then do it again.`);
+  stage.focus(moveG, { label: 'layer two, landed', at: 'right' });
   await guide.next();
 
   /* Course restructure (2026-10-25): the process node and Moore's law, moved here from the
@@ -765,15 +745,10 @@ export async function step2(){
   moore.style.opacity = '0';
   await Anim.tween(420, p => { moore.style.opacity = p.toFixed(2); });
 
-  guide.say(`Shorter light prints smaller shapes, so more transistors fit in the same area.
-    Each new generation of chip-making is called a <b>process node</b>, and it gets a name such
-    as 5 nm or 3 nm.`);
-  stage2.focus([...moore.querySelectorAll('[data-chip]')], { label: 'each chip, with its node', at: 'bottom', ring: false });
-  await guide.next();
-
-  stage2.clearFocus();
-  guide.say(`This is what people mean when they say a chip is made on a 3 nm process. The name
-    started as the gate's length, but today no part of a 3 nm chip is 3 nm long.`);
+  // critic pass (2026-11-04): the node and what its name means are one card
+  guide.say(`Shorter light prints smaller shapes, so more transistors fit in the same area. Each new
+    generation is called a <b>process node</b>, with a name such as 5 nm or 3 nm. The name started as
+    the gate's length, but today no part of a 3 nm chip is 3 nm long.`);
   stage2.focus(moore.querySelector('[data-chip="a17"]'), { label: 'a 3 nm chip', at: 'left' });
   await guide.next();
 
@@ -790,29 +765,19 @@ export async function step2(){
      dish (develop). Etch and dope are named as other machines in the same cleanroom. */
   stage2.clearFocus();
   const lab = slideInPanel(svg2, lithoLabHTML(), { lab: true });
-  lab.focus('room');
   await lab.show();
-  guide.lab(`This is the lithography room of a university cleanroom, where students run the loop
-    you just put in order. It is lit yellow, because resist reacts to blue and ultraviolet
-    light but not to yellow.`, { intro: true });
-  await guide.next();
-
-  lab.focus('spin');
-  guide.lab(`Coat happens on a <b>spin coater</b>. A few drops of resist go on the wafer, which
-    spins at about 4,000 turns a minute and spreads them into a film about 1 µm thick. A
-    hotplate then dries the film.`);
-  await guide.next();
-
-  lab.focus('aligner');
-  guide.lab(`Expose happens on a <b>mask aligner</b>, the lab version of the lithography machine.
-    Under its microscope you line up the mask's marks with the last layer's, as you did with
-    the vias. Then its lamp shines ultraviolet light through the mask.`);
-  await guide.next();
-
-  lab.focus('develop');
-  guide.lab(`Develop is a dish of alkaline developer. In under a minute the exposed resist
-    dissolves, and the pattern appears. Etching and doping are done by other machines in the
-    same cleanroom, and then the loop starts again.`);
+  // critic pass (2026-11-04): one card to explore, instead of four to read
+  labExplore(lab, {
+    text: `This is the lithography room of a university cleanroom, where students run the loop you
+      just put in order. It is lit yellow, because resist reacts to blue and ultraviolet light but not
+      to yellow.`,
+    prompt: 'Tap a tool to see which step it runs.',
+    items: [
+      { k: 'spin', label: 'Spin coater', html: `Coat happens here. A few drops of resist go on the wafer, which spins at about 4,000 turns a minute and spreads them into a film about 1 µm thick. A hotplate then dries the film.` },
+      { k: 'aligner', label: 'Mask aligner', html: `Expose happens here. Under its microscope you line up the mask's marks with the last layer's, as you did with the vias. Then its lamp shines ultraviolet light through the mask.` },
+      { k: 'develop', label: 'Developer dish', html: `Develop happens here. In under a minute the exposed resist dissolves, and the pattern appears. Etching and doping are done by other machines in the same cleanroom.` },
+    ],
+  });
   await guide.next();
   await lab.hide();
 }

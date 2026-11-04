@@ -1,7 +1,8 @@
 // BYODC engine — shared drawn components (paper style) + controls + placer
-import { el, svgEl, svgPt, clamp } from './util.js';
+import { el, svgEl, svgPt, clamp, RM } from './util.js';
 import { SFX } from './sfx.js';
 import { Anim } from './anim.js';
+import { guide } from './guide.js';
 
 /* lamp: ink circle, amber core + rays when lit (no glow — crisp) */
 export function makeLamp(svg, x, y, { r = 13, label = '' } = {}){
@@ -91,6 +92,47 @@ export function makeMeter(controls, label = 'POWER DRAW'){
   return { el: m, fill: m.querySelector('.fill'), out: m.querySelector('output') };
 }
 
+/* ---------- one press-drag-release, however it ends (N-144, 2026-11-03) ----------
+   A drag that only listens for pointerup can miss the release: a trackpad gesture, a browser
+   drag or the window losing focus ends in pointercancel or in nothing at all. The tile then
+   stays in its drag state and follows the pointer with no button held, which is the part
+   "stuck to the cursor". Here every ending finishes the drag exactly once, and a move that
+   arrives with no button held counts as the release it missed.
+     start(e)  a press; return false to ignore it
+     move(e)   the pointer moved with the press still held
+     end(e)    the press is over */
+export function pointerDrag(el, { start, move, end }){
+  let id = null;
+  const finish = e => {
+    if (id === null) return;
+    const was = id; id = null;
+    window.removeEventListener('pointerup', onWinUp, true);
+    window.removeEventListener('blur', onBlur);
+    try { if (el.hasPointerCapture?.(was)) el.releasePointerCapture(was); } catch { /* already gone */ }
+    end(e);
+  };
+  const onWinUp = e => { if (e.pointerId === id) finish(e); };
+  const onBlur = () => finish({ clientX: last?.clientX ?? 0, clientY: last?.clientY ?? 0 });
+  let last = null;
+  el.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
+    if (id !== null) finish(e);
+    if (start(e) === false) return;
+    id = e.pointerId; last = e;
+    try { el.setPointerCapture(id); } catch { /* the pointer already left */ }
+    window.addEventListener('pointerup', onWinUp, true);
+    window.addEventListener('blur', onBlur);
+  });
+  el.addEventListener('pointermove', e => {
+    if (e.pointerId !== id) return;
+    if (e.buttons === 0){ finish(e); return; }
+    last = e; move(e);
+  });
+  el.addEventListener('pointerup', e => { if (e.pointerId === id) finish(e); });
+  el.addEventListener('pointercancel', e => { if (e.pointerId === id) finish(e); });
+  el.addEventListener('lostpointercapture', e => { if (e.pointerId === id) finish(e); });
+}
+
 /* ---------- click-or-drag placement ---------- */
 export function makePlacer({ svg, tiles, slots, validate, onWrong, onPlace }){
   let armed = null;
@@ -159,33 +201,36 @@ export function makePlacer({ svg, tiles, slots, validate, onWrong, onPlace }){
     g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button');
     g.style.touchAction = 'none';     // a finger drags the tile instead of scrolling the page (mobile, 2026-11-02)
     let drag = null;
-    g.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      g.blur();                       // pointer-driven: no focus ring (keyboard still gets one)
-      g.setPointerCapture(e.pointerId);
-      const p = svgPt(svg, e.clientX, e.clientY);
-      drag = { ox: p.x - tile.tx, oy: p.y - tile.ty, sx: e.clientX, sy: e.clientY, moved: false };
-    });
-    g.addEventListener('pointermove', e => {
-      if (!drag) return;
-      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) drag.moved = true;
-      if (!drag.moved) return;
-      const p = svgPt(svg, e.clientX, e.clientY);
-      unplace(tile);
-      setT(tile, p.x - drag.ox, p.y - drag.oy, false);
-    });
-    g.addEventListener('pointerup', e => {
-      if (!drag) return;
-      const wasDrag = drag.moved; drag = null;
-      if (!wasDrag){
-        if (tile.slot){ goHome(tile); arm(null); return; }
-        arm(armed === tile ? null : tile);
-        SFX.click();
-        return;
-      }
-      const cx2 = tile.tx + tile.w / 2, cy2 = tile.ty + tile.h / 2;
-      const s = slots.find(s => !s.value && cx2 > s.x - 24 && cx2 < s.x + s.w + 24 && cy2 > s.y - 24 && cy2 < s.y + s.h + 24);
-      if (s){ place(tile, s); checkAll(); } else goHome(tile);
+    pointerDrag(g, {
+      start(e){
+        e.preventDefault();
+        g.blur();                     // pointer-driven: no focus ring (keyboard still gets one)
+        const p = svgPt(svg, e.clientX, e.clientY);
+        drag = { ox: p.x - tile.tx, oy: p.y - tile.ty, sx: e.clientX, sy: e.clientY, moved: false };
+      },
+      move(e){
+        if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) drag.moved = true;
+        if (!drag.moved) return;
+        const p = svgPt(svg, e.clientX, e.clientY);
+        unplace(tile);
+        setT(tile, p.x - drag.ox, p.y - drag.oy, false);
+      },
+      end(e){
+        const wasDrag = drag.moved, pt = svgPt(svg, e.clientX, e.clientY); drag = null;
+        if (!wasDrag){
+          if (tile.slot){ goHome(tile); arm(null); return; }
+          arm(armed === tile ? null : tile);
+          SFX.click();
+          return;
+        }
+        // the slot under the pointer wins, then the nearest slot to the tile's centre
+        const cx2 = tile.tx + tile.w / 2, cy2 = tile.ty + tile.h / 2, near = (s, x, y) =>
+          x > s.x - 24 && x < s.x + s.w + 24 && y > s.y - 24 && y < s.y + s.h + 24;
+        const open = slots.filter(s => !s.value), dist = s => Math.hypot(s.x + s.w / 2 - cx2, s.y + s.h / 2 - cy2);
+        const s = open.find(s => near(s, pt.x, pt.y))
+          || open.filter(s => near(s, cx2, cy2)).sort((a, b) => dist(a) - dist(b))[0];
+        if (s){ place(tile, s); checkAll(); } else goHome(tile);
+      },
     });
     g.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' '){ e.preventDefault();
@@ -290,6 +335,7 @@ export function slideInPanel(svg, html, { w = 720, h = 480, lab = false, numbers
   return {
     g,
     async show(){
+      svg.__camHome?.();                // a panel covers the whole stage: the camera backs out first
       await Anim.tween(650, q => g.setAttribute('transform', `translate(${(w * (1 - q) * (1 - q)).toFixed(1)} 0)`));
       g.setAttribute('transform', 'translate(0 0)');
     },
@@ -314,4 +360,45 @@ export function slideInPanel(svg, html, { w = 720, h = 480, lab = false, numbers
       });
     },
   };
+}
+
+/* ---------- a Lab panel you explore by tapping (critic pass, 2026-11-04) ----------
+   One card instead of a run of reading cards. items are the parts of the panel tagged data-k:
+   tapping one, on the picture or in the list under the card, lights it and opens its words. k is
+   the key or keys to light, and hit the part to tap when that is narrower than what lights up.
+   on and off, if given, run as an item opens and closes.
+   Nothing here is an answer, so it costs no flow.ask, and the step's own Next follows it. */
+export function labExplore(panel, { text, intro = false, prompt = 'Tap one to read about it.', items }){
+  const card = guide.lab(text, { intro });
+  const box = el('div', { class: 'explore' });
+  const row = el('div', { class: 'explore-list' });
+  const detail = el('p', { class: 'explore-detail' }, prompt);
+  let current = null;
+  const open = it => {
+    SFX.click();
+    if (current === it) return;
+    current?.off?.();
+    current = it;
+    it.on?.();
+    panel.focus(it.k);
+    detail.innerHTML = it.html;
+    if (!RM) detail.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    items.forEach(x => {
+      x.btn.classList.toggle('on', x === it);
+      if (x === it) x.btn.classList.add('seen');
+    });
+  };
+  items.forEach(it => {
+    it.btn = el('button', { class: 'explore-btn', 'data-label': `explore-${it.k}` }, it.label);
+    it.btn.addEventListener('click', () => open(it));
+    row.appendChild(it.btn);
+    [].concat(it.hit ?? it.k).forEach(k => panel.g.querySelectorAll(`[data-k="${k}"]`).forEach(n => {
+      n.classList.add('explore-hot');
+      n.addEventListener('click', () => open(it));
+    }));
+  });
+  box.append(row, detail);
+  card.appendChild(box);
+  panel.focus(null);
+  return card;
 }

@@ -14,7 +14,7 @@ import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makeSystolic } from '../../engine/mathengine.js';
-import { slideInPanel } from '../../engine/components.js';
+import { slideInPanel, labExplore, pointerDrag } from '../../engine/components.js';
 import { labTiling, labSM, labChips } from './lab.js';
 import { tensorCoreIcon } from '../../art/icons.js';
 
@@ -93,11 +93,6 @@ export async function step4(){
   world.style.opacity = '0';
   await fadeIn([world], 340);
 
-  guide.say(`Here are four copies of the MAC unit you built in step 2. Each one takes two
-    numbers. In AI, one of those two barely changes, so this step stops fetching it.`);
-  stage.focus(sys.el, { label: 'four MAC units', at: 'right' });
-  await guide.next();
-
   /* ============ CARD 2 — name the two numbers, both labelled on the drawing ======== */
 
   stage.clearFocus();
@@ -114,17 +109,11 @@ export async function step4(){
   await fadeIn([legend], 320);
 
   // REVIEW_NOTES N-110: what a weight is for, in Ripu's words: inference, and weights that stay put
-  guide.say(`The <b>weight</b> is a number the AI model has learned. When you talk to ChatGPT,
-    what you type goes through many matrix multiplications with these weights. This is called
-    <b>inference</b>, and during it the weights never change.`);
-  stage.focus(legend, { label: 'weight × data', at: 'right' });
-  await guide.next();
-
-  /* ============ CARD 2b — the other number ========================================= */
-
-  guide.say(`The <b>data</b> is the other number. It is what keeps changing, cycle after
-    cycle.`);
-  stage.focus(legend, { label: 'weight × data', at: 'right' });
+  // critic pass (2026-11-04): the machine and its two numbers are one card, so the student acts on card 2
+  guide.say(`Here are four copies of your MAC unit, each taking two numbers. The <b>weight</b> is a number
+    the AI model has learned, and when you talk to ChatGPT, called <b>inference</b>, it never changes.
+    The <b>data</b> is the other number, and it changes every cycle.`);
+  stage.focus([sys.el, legend], { label: 'weight × data', at: 'right', ring: false });
   await guide.next();
 
   /* ============ CARD 3 — park one weight in each engine's register ================= */
@@ -158,9 +147,9 @@ export async function step4(){
   await fadeIn(tiles.map(t => t.g), 300);
 
   // Course restructure (2026-10-25): the register is ring 1 on step 3's map
-  guide.say(`So park each weight in a register (ring 1 on step 3's map) beside its own MAC
-    unit, and load it only once. Then the chip does not spend energy moving it again every
-    cycle. Drag each number onto the register that is waiting for it.`);
+  guide.say(`So park each weight in a register beside its own MAC unit, and load it only once. The chip
+    no longer spends energy moving it every cycle. Drag each number onto the register waiting for
+    it.`);
   stage.focus([...sys.cells.map(c => c.wreg), ...ghosts, ...tiles.map(t => t.g)],
     { label: 'one register per MAC unit', at: 'top', ring: false });
 
@@ -225,36 +214,35 @@ export async function step4(){
     tiles.forEach(tile => {
       let drag = null;
       tile.g.style.touchAction = 'none';   // drag with a finger without scrolling the page (mobile)
-      tile.g.addEventListener('pointerdown', e => {
-        if (tile.g.style.display === 'none') return;
-        demo.stop();
-        e.preventDefault();
-        tile.g.setPointerCapture(e.pointerId);
-        const p = svgPt(svg, e.clientX, e.clientY);
-        drag = { ox: p.x - tile.tx, oy: p.y - tile.ty, sx: e.clientX, sy: e.clientY, moved: false };
-      });
-      tile.g.addEventListener('pointermove', e => {
-        if (!drag) return;
-        if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) drag.moved = true;
-        if (!drag.moved) return;
-        const p = svgPt(svg, e.clientX, e.clientY);
-        place(tile, p.x - drag.ox, p.y - drag.oy, false);
-      });
-      tile.g.addEventListener('pointerup', () => {
-        if (!drag) return;
-        const moved = drag.moved; drag = null;
-        if (!moved){ place(tile, tile.home.x, tile.home.y, true); return; }
-        const cx = tile.tx + TW / 2, cy = tile.ty + TW / 2;
-        const cell = sys.cells.find(c => c.weight == null
-          && Math.abs(cx - (c.cx + CELL / 2)) < 56 && Math.abs(cy - (c.cy + CELL / 2)) < 56);
-        if (!cell){ place(tile, tile.home.x, tile.home.y, true); return; }
-        if (WEIGHTS[cell.r][cell.c] !== tile.v){
-          place(tile, tile.home.x, tile.home.y, true);
-          guide.note(`That register is waiting for a different number. Each empty register
-            shows the one it wants.`);
-          return;
-        }
-        park(cell, tile);
+      pointerDrag(tile.g, {
+        start(e){
+          if (tile.g.style.display === 'none') return false;
+          demo.stop();
+          e.preventDefault();
+          const p = svgPt(svg, e.clientX, e.clientY);
+          drag = { ox: p.x - tile.tx, oy: p.y - tile.ty, sx: e.clientX, sy: e.clientY, moved: false };
+        },
+        move(e){
+          if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) drag.moved = true;
+          if (!drag.moved) return;
+          const p = svgPt(svg, e.clientX, e.clientY);
+          place(tile, p.x - drag.ox, p.y - drag.oy, false);
+        },
+        end(){
+          const moved = drag.moved; drag = null;
+          if (!moved){ place(tile, tile.home.x, tile.home.y, true); return; }
+          const cx = tile.tx + TW / 2, cy = tile.ty + TW / 2;
+          const cell = sys.cells.find(c => c.weight == null
+            && Math.abs(cx - (c.cx + CELL / 2)) < 56 && Math.abs(cy - (c.cy + CELL / 2)) < 56);
+          if (!cell){ place(tile, tile.home.x, tile.home.y, true); return; }
+          if (WEIGHTS[cell.r][cell.c] !== tile.v){
+            place(tile, tile.home.x, tile.home.y, true);
+            guide.note(`That register is waiting for a different number. Each empty register
+              shows the one it wants.`);
+            return;
+          }
+          park(cell, tile);
+        },
       });
       tile.g.addEventListener('keydown', e => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -421,15 +409,10 @@ export async function step4(){
   svg.appendChild(scale);
   await fadeIn([scale], 380);
 
-  guide.say(`At 128 by 128, that is 16,384 multiplies per cycle for only 256 numbers in and
-    out.`);
-  stage.focus([world, scale], { label: '2 × 2 against 128 × 128', at: 'top', ring: false });
-  await guide.next();
-
-  /* ============ CARD 7b — area against edge ======================================== */
-
-  guide.say(`Multiplies grow with the <b>area</b> of the square. Border crossings grow only
-    with its <b>edge</b> (the length of one side).`);
+  // critic pass (2026-11-04): the count and the rule are one card
+  guide.say(`At 128 by 128, that is 16,384 multiplies per cycle for only 256 numbers in and out.
+    Multiplies grow with the <b>area</b> of the square, and border crossings only with its
+    <b>edge</b>.`);
   stage.focus([world, scale], { label: '2 × 2 against 128 × 128', at: 'top', ring: false });
   await guide.next();
 
@@ -441,13 +424,8 @@ export async function step4(){
   world.setAttribute('transform', '');
 
   // Course restructure (2026-10-25): the TPU line is dropped here; the TPU lab card says it properly
-  guide.aha(`The data moves through it in beats, so its inventors named it after the
-    heartbeat: a <b>systolic array</b>.`);
-  stage.focus(world, { label: 'systolic array', at: 'right', ring: false });
-  await guide.next();
-
-  /* the Tensor Core, by definition, with the picture (js/art/icons.js) the act reuses */
-  stage.clearFocus();
+  /* the Tensor Core, by definition, with the picture (js/art/icons.js) the act reuses.
+     Critic pass (2026-11-04): the two names are one card. */
   const tcG = svgEl('g');
   tcG.innerHTML = `${tensorCoreIcon(560, 168, 96)}
     <text x="608" y="290" class="lbl-strong">TENSOR CORE</text>
@@ -455,9 +433,9 @@ export async function step4(){
   svg.appendChild(tcG);
   tcG.style.opacity = '0';
   await Anim.tween(320, p => { tcG.style.opacity = String(p); });
-  // Course restructure (2026-10-25): one definition, tied to the array; no card-number reference
-  guide.say(`A block of MAC units that multiplies two small matrices in one go, as your array
-    just did, is what NVIDIA calls a <b>Tensor Core</b> (the name from step 2's lab).`);
+  guide.aha(`The data moves through it in beats, so its inventors named it after the heartbeat: a
+    <b>systolic array</b>.`,
+    `A block of MAC units like this is what NVIDIA calls a <b>Tensor Core</b>.`);
   stage.focus([world, tcG], { label: 'a block of MAC units', at: 'top', ring: false });
   await guide.next();
   stage.clearFocus();
@@ -518,60 +496,42 @@ export async function step4(){
   stage.clearFocus();
   const smPanel = slideInPanel(svg, labSM(), { lab: true });
   await smPanel.show();
-  // Course restructure (2026-10-25): "from step 1's lab", not a card number
-  guide.lab(`Here is one SM of NVIDIA's H100 again (from step 1's lab), with everything in it
-    named. Each of its four groups has 32 lanes, one Tensor Core, a scheduler and a register
-    file.`, { intro: true });
+  /* Course restructure (2026-10-25): lanes against Tensor Cores, in FLOPS (step 2's lab). NVIDIA
+     H100 SXM datasheet: FP32 67 TFLOPS; FP16/BF16 Tensor Core 989 TFLOPS dense.
+     Critic pass (2026-11-04): the SM and its rates are one card. */
+  guide.lab(`Here is one SM of NVIDIA's H100. Each of its four groups has 32 lanes, one Tensor Core, a
+    scheduler and a register file. The whole H100's lanes do about 67 teraflops with 32-bit numbers, and
+    its Tensor Cores about 990 with 16-bit numbers.`, { intro: true });
   await guide.next();
 
-  /* Course restructure (2026-10-25): lanes against Tensor Cores, in FLOPS (step 2's lab).
-     NVIDIA H100 SXM datasheet: FP32 67 TFLOPS; FP16/BF16 Tensor Core 989 TFLOPS dense. */
-  smPanel.focus('rates');
-  guide.lab(`The lanes and the Tensor Cores are separate parts. The whole H100's lanes do about
-    67 teraflops with 32-bit numbers, and its Tensor Cores about 990 with
-    16-bit numbers. Headline AI figures come from the Tensor Cores.`);
-  await guide.next();
-
-  const lab = slideInPanel(svg, labTiling(), { lab: true });
-  lab.focus('matrix');
-  await smPanel.swapTo(lab);
-
-  guide.lab(`One layer of a real AI model is far bigger than a Tensor Core: here, 1,024 by 1,024
-    weights, and the data to multiply them by. So the GPU cuts both matrices into
-    <b>tiles</b>, square blocks 128 numbers on a side.`);
-  await guide.next();
-
-  lab.focus(['matrix', 'smem']);
-  // Course restructure (2026-10-25): shared memory is part of ring 2 on step 3's map
-  guide.lab(`It copies one data tile and one weight tile into the shared memory (part of ring 2)
-    of one SM. The two tiles take 64 KB, which fits in the 228 KB an SM can set aside.`);
-  await guide.next();
-
-  lab.focus(['smem', 'work', 'reuse']);
-  // Course restructure (2026-10-25): HBM is ring 4
-  guide.lab(`That SM's Tensor Cores multiply the two tiles. Every number copied in is used 128
-    times before the next tiles replace it, so the HBM (ring 4) is read 128 times less often.`);
-  await guide.next();
-
-  /* Act 4 restructure (2026-10-25): three chips, each drawn by what fills it */
+  /* Act 4 restructure (2026-10-25): three chips, each drawn by what fills it.
+     Critic pass (2026-11-04): one card to explore, instead of three to read. */
   const chips = slideInPanel(svg, labChips(), { lab: true });
-  chips.focus(['cpu', 'gpu']);
-  await lab.swapTo(chips);
-  guide.lab(`Here are three kinds of chip, each drawn by what fills it. A CPU has a few big
-    cores, each with its own control unit. A GPU has thousands of lanes and hundreds of
-    Tensor Cores, grouped into SMs.`);
-  await guide.next();
+  await smPanel.swapTo(chips);
+  labExplore(chips, {
+    text: `Here are three kinds of chip, each drawn by what fills it.`,
+    prompt: 'Tap a chip to read about it.',
+    items: [
+      { k: 'cpu', label: 'CPU', html: `A few big cores, each with its own control unit.` },
+      { k: 'gpu', label: 'GPU', html: `Thousands of lanes and hundreds of Tensor Cores, grouped into SMs.` },
+      { k: 'tpu', label: 'TPU', html: `Google's first tensor processing unit (2015) is mostly one systolic array: 256 by 256, which is 65,536 MAC units. Its control takes about 2% of the chip. A chip built for one kind of job like this is an <b>ASIC</b> (application-specific integrated circuit), and custom AI chips such as Amazon's Trainium are of this kind.` },
+    ],
+  });
+  if (!await guide.labMore()){ await chips.hide(); return; }
 
-  chips.focus('tpu');
-  guide.lab(`Google's first <b>TPU</b> (tensor processing unit, 2015) is mostly one systolic
-    array: 256 by 256, which is 65,536 MAC units, beside the memory that feeds it. Its
-    control takes about 2% of the chip.`);
+  /* behind See more: how a real layer fits a Tensor Core */
+  const lab = slideInPanel(svg, labTiling(), { lab: true });
+  await chips.swapTo(lab);
+  labExplore(lab, {
+    text: `One layer of a real AI model is far bigger than a Tensor Core: here, 1,024 by 1,024 weights, and
+      the data to multiply them by.`,
+    prompt: 'Tap each part, in order, to see how it fits.',
+    items: [
+      { k: 'matrix', label: '1. Cut', html: `The GPU cuts both matrices into <b>tiles</b>, square blocks 128 numbers on a side.` },
+      { k: ['matrix', 'smem'], hit: 'smem', label: '2. Copy', html: `It copies one data tile and one weight tile into the shared memory of one SM. The two tiles take 64 KB, which fits in the 228 KB an SM can set aside.` },
+      { k: ['smem', 'work', 'reuse'], hit: 'work', label: '3. Multiply', html: `That SM's Tensor Cores multiply the two tiles. Every number copied in is used 128 times before the next tiles replace it, so the HBM is read 128 times less often.` },
+    ],
+  });
   await guide.next();
-
-  // Course restructure (2026-10-25): ASIC, named on the TPU it describes
-  guide.lab(`A chip built for one kind of job, like this TPU, is called an <b>ASIC</b>
-    (application-specific integrated circuit). Custom AI chips such as Amazon's Trainium are of
-    this kind.`);
-  await guide.next();
-  await chips.hide();
+  await lab.hide();
 }

@@ -6,6 +6,17 @@ import { Anim } from './anim.js';
 
 const W = 720, H = 480;
 
+/* The stage camera (critic pass, 2026-11-03; Act 1 first, more acts as they are reviewed).
+   When a card spotlights something the picture eases in on it, framed with the label, and
+   eases back out when the spotlight clears. The drawing is untouched: only the viewBox
+   moves, and everything measures through the live CTM (bboxIn, svgPt), so drags, clicks and
+   labels keep working at any zoom. focus(..., { camera: false }) stays on the whole stage. */
+const CAMERA_ACTS = new Set(['1', '2', '3', '4', '5']);
+const CAM_ZOOM = 1.7;      // never closer than this: the subject stays in its surroundings
+const CAM_PAD = 30;        // room around the subject and its label, in stage units
+const HOME = { x: 0, y: 0, w: W, h: H };
+const camEase = t => (t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
 /* Bounding box of a node in the stage's own user units. getBoundingClientRect
    respects every enclosing transform, which getBBox does not; fall back to
    getBBox when layout hasn't happened yet (hidden tab, detached node). */
@@ -60,7 +71,36 @@ export function newStage(numeral, label){
      NotFoundError when the focus list was not in document order. */
   let dimmed = [], marks = null;
 
+  let cam = { ...HOME }, camRun = 0;
+  const camOn = () => CAMERA_ACTS.has(document.getElementById('game')?.dataset.act);
+  function camTo(t){
+    if (!camOn()) return;
+    const run = ++camRun, from = { ...cam };
+    if (['x', 'y', 'w', 'h'].every(k => Math.abs(from[k] - t[k]) < .5)) return;
+    Anim.tween(600, q => {
+      if (run !== camRun) return;
+      const e = camEase(q);
+      cam = { x: from.x + (t.x - from.x) * e, y: from.y + (t.y - from.y) * e,
+              w: from.w + (t.w - from.w) * e, h: from.h + (t.h - from.h) * e };
+      svg.setAttribute('viewBox', `${cam.x.toFixed(2)} ${cam.y.toFixed(2)} ${cam.w.toFixed(2)} ${cam.h.toFixed(2)}`);
+    }, q => q);
+  }
+  /* the frame for a subject: its box and label plus some room, at the stage's own shape,
+     kept inside the stage. A subject that nearly fills the stage just gets the whole stage. */
+  function camFrame(b){
+    const w = Math.max(b.w + CAM_PAD * 2, (b.h + CAM_PAD * 2) * W / H, W / CAM_ZOOM);
+    if (w >= W * .88) return { ...HOME };
+    const h = w * H / W;
+    return { x: Math.max(0, Math.min(W - w, b.x + b.w / 2 - w / 2)),
+             y: Math.max(0, Math.min(H - h, b.y + b.h / 2 - h / 2)), w, h };
+  }
+  svg.__camHome = () => camTo({ ...HOME });    // panels cover the whole stage (slideInPanel)
+
   function clearFocus(){
+    clearMarks();
+    camTo({ ...HOME });
+  }
+  function clearMarks(){
     for (const { node, prev } of dimmed){
       node.classList.remove('dimmed');
       if (prev) node.style.opacity = prev; else node.style.removeProperty('opacity');
@@ -72,7 +112,7 @@ export function newStage(numeral, label){
   /* focus(target|[targets], { label, at, ring }) — at is the side the label sits
      on: 'top' (default), 'bottom', 'left', 'right'. */
   function focus(target, opts = {}){
-    clearFocus();
+    clearMarks();
     const list = (Array.isArray(target) ? target : [target]).filter(Boolean);
     if (!list.length) return;
 
@@ -170,6 +210,13 @@ export function newStage(numeral, label){
         if (left + shift < edge) shift = edge - left;
         if (shift) t.setAttribute('x', String(tx + shift));
       }
+    }
+
+    if (opts.camera === false) camTo({ ...HOME });
+    else {
+      let m = null;
+      try { m = marks.getBBox(); } catch { /* not laid out yet */ }
+      camTo(camFrame(m && (m.width || m.height) ? unionBox([box, { x: m.x, y: m.y, w: m.width, h: m.height }]) : box));
     }
   }
 

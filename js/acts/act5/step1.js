@@ -27,7 +27,7 @@ import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { slideInPanel } from '../../engine/components.js';
+import { slideInPanel, labExplore } from '../../engine/components.js';
 import { rackLab, serverTopLab } from './lab.js';
 
 /* ---------- fixed numbers ---------- */
@@ -168,11 +168,6 @@ export async function step1(){
   trayG.style.opacity = '0';
   await fadeIn([trayG], 320);
 
-  guide.say(`A sled is the tray the box is built on. The GPUs bolt to it, and the whole
-    thing slides into a frame like a drawer.`);
-  stage.focus(trayG, { label: 'sled', at: 'bottom' });
-  await guide.next();
-
   /* ================= CARD 3 — the interconnect ==================================== */
 
   stage.clearFocus();
@@ -186,11 +181,12 @@ export async function step1(){
 
   /* Course restructure (2026-10-25): "interconnect spine" is now just "interconnect", because
      step 3 uses "spine" for a switch. */
-  guide.say(`Down the middle runs the interconnect (a set of copper connections that joins the
-    eight GPUs). The GPUs send data to each other over it, and that data never leaves the
-    box.`);
-  stage.focus(spineG, { label: 'interconnect', at: 'bottom' });
-  await guide.next();
+  // critic pass (2026-11-04): the sled and the interconnect are one card
+  guide.say(`A <b>sled</b> is the tray a box of GPUs is built on, and it slides into a frame like a
+    drawer. Down the middle runs the <b>interconnect</b>, a set of copper connections that the GPUs use
+    to send data to each other inside the box.`);
+  stage.focus([trayG, spineG], { label: 'sled and interconnect', at: 'bottom' });
+  await guide.next('Bring out eight GPUs ▸');
 
   /* ================= CARD 4 — fill the eight slots, and name the node ============== */
 
@@ -263,9 +259,10 @@ export async function step1(){
      a replay lands every card in its slot at once. */
   /* Course restructure (2026-10-25): the old "that box is a node" card merges in here. The
      GPUs slide in under this text, then the finished node takes the focus. */
-  guide.say(`Eight copies of your GPU slide onto the sled, and a short link joins each one to
-    the interconnect. This finished box is called a node, and from here on we count in
-    nodes.`);
+  // critic pass (2026-11-04): the student slides them in
+  guide.say(`Eight copies of your GPU go onto the sled, and a short link joins each one to the
+    interconnect. This finished box is called a <b>node</b>, and from here on we count in nodes.`);
+  await guide.button('Slide them in ▸');
   for (let i = 0; i < BAYS; i++){
     const t = tiles[i], sl = slots[i];
     const from = { x: t.home.x, y: t.home.y };
@@ -285,8 +282,6 @@ export async function step1(){
   /* the cards join the tray so the finished node can travel as one piece. nodeG carries no
      transform yet, so re-parenting them changes nothing on screen. */
   tiles.forEach(t => nodeG.appendChild(t.g));
-  stage.focus(nodeG, { label: 'node', at: 'top' });
-  await guide.next();
 
   /* ================= CARD 5 — what a node draws =================================== */
 
@@ -376,11 +371,6 @@ export async function step1(){
   rackG.style.opacity = '0';
   await fadeIn([rackG], 340);
 
-  guide.say(`A rack is the standing frame the sleds slide into. Each sled runs about a
-    metre back into it, and the cables come out behind.`);
-  stage.focus(rackG, { label: 'rack', at: 'left' });
-  await guide.next();
-
   /* ================= CARD 7 — fill the frame ====================================== */
 
   stage.clearFocus();
@@ -420,8 +410,9 @@ export async function step1(){
   makeSlab(BAYS - 1);
   setRack(1);
 
-  guide.say(`Your node is in the bottom bay (the space one sled takes in the rack). <b>Copy
-    it up the rack until all eight bays are full.</b>`);
+  // critic pass (2026-11-04): the rack and the task are one card
+  guide.say(`A <b>rack</b> is the standing frame the sleds slide into. Your node is in the bottom bay, the
+    space one sled takes. <b>Copy it up the rack until all eight bays are full.</b>`);
 
   const addBtn = el('button', { class: 'btn primary', 'data-label': 'add-a-node' }, 'Add a node ▸');
   controls.appendChild(addBtn);
@@ -464,43 +455,31 @@ export async function step1(){
   guide.aha(`Eight nodes at 7 kW each. One filled rack draws 56 kW, and it never drops. That
     is about forty-seven homes, from one rack.`,
     `That is one rack: 8 nodes, 64 GPUs.`);
-  stage.focus(powerG, { label: 'rack power', at: 'bottom' });
+  stage.focus(powerG, { label: 'rack power', at: 'bottom', camera: false });
   await guide.next();
 
   /* ================= IN THE LAB — a real cluster rack, and one server opened ======= */
 
+  /* critic pass (2026-11-04): one server to explore shows, the real rack is there on request */
   stage.clearFocus();
+  const server = slideInPanel(svg, serverTopLab(), { lab: true });
+  await server.show();
+  labExplore(server, {
+    text: `Here is a real server, with its lid off. Each kind of chip in it has its own job.`,
+    prompt: 'Tap a part to read about it.',
+    items: [
+      { k: 'gpu', label: 'GPUs', html: `The eight GPUs sit under metal heat sinks and do the maths, as the one you built in Act 4 did. The chips beside them link the GPUs, as the interconnect on your sled did.` },
+      { k: 'cpu', label: 'CPUs', html: `The two CPUs run the machine and hand out the work.` },
+      { k: 'net', label: 'Network cards', html: `Some carry a third kind of chip, a <b>DPU</b> (data processing unit): a small processor that moves data on and off the network, so the CPUs do not have to. NVIDIA's DGX B200 server has two of them, for its storage and management traffic.` },
+    ],
+  });
+  if (!await guide.labMore()){ await server.hide(); return; }
+
   const rack = slideInPanel(svg, rackLab(), { lab: true });
   rack.focus('front');
-  await rack.show();
-
-  guide.lab(`You filled a rack with eight nodes. Here is a rack in a university computing
-    cluster, seen from the front: a steel cabinet about 2 metres tall, with servers bolted in
-    one above another.`, { intro: true });
+  await server.swapTo(rack);      // N-053: no flash of the stage between panels
+  guide.lab(`Here is a rack in a university computing cluster, seen from the front: a steel cabinet about
+    2 metres tall, with servers bolted in one above another.`);
   await guide.next();
-
-  /* Course restructure (2026-10-25): the rack-units and PDU cards are cut. The power step
-     defines PDUs. The drawing in lab.js is left as it is; this step no longer focuses its
-     'units' and 'rear' parts. */
-
-  const server = slideInPanel(svg, serverTopLab(), { lab: true });
-  await rack.swapTo(server);      // N-053: no flash of the stage between panels
-  guide.lab(`Here is one of those servers with its lid off. The eight GPUs sit under metal
-    heat sinks, and the chips beside them link the GPUs, as the interconnect on your sled
-    did.`);   // Course restructure (2026-10-25): "spine" renamed
-  await guide.next();
-
-  /* Act 4 restructure plan (2026-10-25): three kinds of chip, each named by its job */
-  server.focus(['cpu', 'gpu']);
-  guide.lab(`Each kind of chip in it has its own job. The two CPUs run the machine and hand out
-    the work. The eight GPUs do the maths, as the one you built in Act 4 did.`);
-  await guide.next();
-
-  server.focus('net');
-  guide.lab(`Some network cards carry a third kind of chip, a <b>DPU</b> (data processing unit):
-    a small processor of its own that moves data on and off the network, so the CPUs do not
-    have to. NVIDIA's DGX B200 server has two of them, for its storage and management
-    traffic.`);
-  await guide.next();
-  await server.hide();
+  await rack.hide();
 }

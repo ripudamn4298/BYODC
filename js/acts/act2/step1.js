@@ -19,12 +19,12 @@
 import { svgEl, el, sleep } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makeLamp, makeChip, makeSeg, makePlacer, makeRaisedTiles, slideInPanel } from '../../engine/components.js';
-import { setLabState } from '../../engine/labcircuits.js';
-import { lab21Part, lab21Board } from './lab.js';
+import { lab21Part } from './lab.js';
+import { labBench, BENCHES } from '../../engine/labbench.js';
 import { makeGate, sigWire } from '../../engine/gates.js';
 
 /* ---------- geometry, in the stage's 720×480 user units ---------- */
@@ -121,9 +121,9 @@ export async function step1(){
      Course restructure (2026-10-25): the old opening card and the old "To decide anything"
      card are merged into this one, and the problem is stated concretely. */
 
-  guide.say(`Here is the CMOS inverter you built at the end of Act 1. An inverter only flips
-    one signal. Adding or comparing combines two, so this step builds a logic gate (a circuit
-    that turns its inputs into one output) that reads two inputs at once.`);
+  guide.say(`Here is the CMOS inverter you built at the end of Act 1. It flips one signal, but
+    adding or comparing combines two. This step builds a logic gate: a circuit that turns two
+    inputs into one output.`);
   focusOn([outG, invG, invP.g, invN.g], { label: 'your act 1 inverter', at: 'bottom', ring: false });
   await guide.next();
 
@@ -199,30 +199,14 @@ export async function step1(){
   slotsG.style.display = 'none';
   await fadeIn([skelG, slotsG], 340);
 
-  /* ---- CARD 2 — two of each switch ---- */
+  /* ---- CARD 2 — two of each switch, and the two inputs ----
+     Critic pass (2026-11-04): three cards are one, so the student acts on card 3. */
 
-  guide.say(`Here are your two transistors from Act 1, copied once each: two PMOS and two
-    NMOS.`);
-  focusOn(tiles.map(t => t.g), { label: 'two of each', at: 'bottom' });
-  await guide.next();
-
-  /* ---- CARD 3 — name the two inputs ----
-     The two terminals sit on opposite sides of the stage, so their union box is almost the
-     whole bench: no ring, and the label goes in the clear strip under the power rail. */
-
-  guide.say(`There are two inputs now. A comes in on the left and B on the right.`);
-  focusOn([...skelG.querySelectorAll('rect.batt-body')],
-    { label: 'inputs a and b', at: 'top', ring: false });
-  await guide.next();
-
-  /* REVIEW_NOTES N-022: say what a 0 and a 1 physically are, the first time this act hands
-     the player 0s and 1s as inputs.
-     Course restructure (2026-10-25): Act 1 step 5 now defines a 1 and a 0 as a wire held high
-     or low, so this card only points back to it instead of defining them a second time. The
-     goal card that followed was cut: its goal sentence is repeated word for word in the
-     placement task below. */
-  guide.say(`As in Act 1, each input is a wire. A 1 is that wire held high, and a 0 is that
-    wire held low.`);
+  guide.say(`Here are your transistors from Act 1, copied once each: two PMOS and two NMOS. There
+    are two inputs now, A on the left and B on the right. Each is a wire, held high for a 1 and
+    low for a 0.`);
+  focusOn([...skelG.querySelectorAll('rect.batt-body, text.batt-t'), ...tiles.map(t => t.g)],
+    { label: 'two of each, two inputs', at: 'bottom', ring: false });
   await guide.next();
 
   /* REVIEW_NOTES N-020: the two "why the NMOS go in a chain / why the PMOS go side by side"
@@ -266,9 +250,9 @@ export async function step1(){
 
   /* ---- why it works (moved here from before the placement, N-020) ---- */
 
-  guide.say(`Here is why this works. The two NMOS sit in a chain (one after the other) between
-    the output and ground. Current can get through a chain only if both transistors are on, so
-    the output drops to 0 only when A and B are both 1.`);
+  guide.say(`The two NMOS sit in a chain, one after the other, between the output and ground.
+    Current gets through a chain only if both are on, so the output drops to 0 only when A and B
+    are both 1.`);
   focusOn([nmosA.g, nmosB.g], { label: 'nmos chain to ground', at: 'left' });
   await guide.next();
 
@@ -310,19 +294,6 @@ export async function step1(){
   ], v => setAB(A ?? 0, v));
   setAB(0, 0, true);
 
-  /* ---- CARD 8 — where A and B go ----
-     Course restructure (2026-10-25): the separate A and B cards are merged into this one.
-     The "try all four combinations" task that followed was cut: the truth table below has
-     the player set every combination on the bench and read the lamp, so it was the same
-     activity twice. */
-
-  guide.say(`Each input sets two transistors. A sets the left PMOS and the top NMOS. B sets
-    the right PMOS and the bottom NMOS.`);
-  focusOn([...skelG.querySelectorAll('rect.batt-body, text.batt-t'), aWire.el, bWire.el, ...devs.map(d => d.g)],
-    { label: 'inputs a and b', at: 'top', ring: false });
-  await guide.next();
-  stage.clearFocus();
-
   /* ---- CARD 9 — the truth table ----
      guide.truthTable and its hints both render through beat(), which in card mode swaps
      the one card slot: a hint would delete the table the player is filling in. So the
@@ -341,8 +312,9 @@ export async function step1(){
   if (ttEl){
     ttEl.insertBefore(el('p', { class: 'guide-p', style: 'margin:0 0 14px' },
       `<b>Your goal is to fill in the OUT column.</b> Set A and B on the bench, read the
-       lamp, then click a cell to match. Each click flips the cell between 0 and
-       1.`), ttEl.firstChild);
+       lamp, then click a cell to match.${info(`Each input sets two transistors. A sets the left
+       PMOS and the top NMOS, and B sets the right PMOS and the bottom NMOS.`)} Each click flips
+       the cell between 0 and 1.`), ttEl.firstChild);
     guide.note = html => {
       let n = ttEl.querySelector('.tt-hint');
       if (!n){ n = el('p', { class: 'guide-note tt-hint', style: 'margin:14px 0 0' }); ttEl.appendChild(n); }
@@ -425,42 +397,31 @@ export async function step1(){
   stage.clearFocus();
   guide.aha(`NOT and AND both came out of the same NAND gate, wired two different ways.`,
     `That is what makes NAND a <b>universal</b> gate: any logic you can describe can be
-     built from copies of this one gate.`);
+     built from copies of this one gate.${info(`OR and XOR are the two you will meet next.
+     Three NANDs make an OR, and four make an XOR.`)}`);
   await guide.next();
 
   /* ================= IN THE LAB (DESIGN.md §6d rule 8) =============================
-     The 74HC00 and its datasheet pinout, then gate 1 on a breadboard in two states. Pin
-     numbers are TI's SN74HC00 data sheet; see js/acts/act2/lab.js for every source. */
+     The 74HC00 and its datasheet pinout. Critic pass (2026-11-04): gate 1 on a breadboard is
+     now a working bench behind See more. Pin numbers are TI's SN74HC00 data sheet; see
+     js/acts/act2/lab.js for every source. */
 
   stage.clearFocus();
   const part = slideInPanel(svg, lab21Part(), { lab: true });
   part.focus('part');
   await part.show();
   guide.lab(`Here is the NAND gate you just built, sold as a part. This black chip is a 74HC00,
-    19.3 mm long, with seven legs down each side. It holds four NAND gates, each built from
-    PMOS and NMOS transistors like yours.`, { intro: true });
+    with seven legs down each side. It holds four NAND gates, built from PMOS and NMOS transistors
+    like yours.`, { intro: true });
   await guide.next();
 
   part.focus('pinout');
   guide.lab(`Its datasheet (the maker's description of the part) shows what each leg does. Gate
     1 takes its inputs on pins 1 and 2 and puts its output on pin 3. Pin 14 takes the supply,
     and pin 7 goes to ground.`);
-  await guide.next();
+  if (!await guide.labMore()){ await part.hide(); return; }
 
-  const bench = slideInPanel(svg, lab21Board(), { lab: true });
-  setLabState(bench, true);
-  await part.swapTo(bench);      // N-053: no flash of the stage between panels
-  guide.lab(`Here is gate 1 on a breadboard with a 5 V supply. Wires join pins 1 and 2 to the +
-    rail, so both inputs are 1. The output on pin 3 is 0, so the LED stays dark.`);
-  await guide.next();
-
-  setLabState(bench, false);
-  guide.lab(`If you move the wire on pin 2 to ground, that input is 0. The output on pin 3 goes
-    to 1, and current flows through the LED and its 1 kΩ resistor to ground, so the LED
-    lights.`);
-  await guide.next();
-  await bench.hide();
-
+  await labBench(svg, part, BENCHES.nand);
   /* ---------- drawing helpers ---------- */
 
   function addText(parent, x, y, s, cls, anchor){

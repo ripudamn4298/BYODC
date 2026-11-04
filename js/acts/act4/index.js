@@ -29,17 +29,16 @@ export const ACT4 = [
     inventory: 'a 16-lane compute block',
     numbers: {
       text: [
-        `You built a block of sixteen lanes. Each lane does one sum per cycle, and all sixteen take the same instruction from one scheduler at the same moment.`,
-        `Saying that a GPU is more powerful than a CPU is an oversimplification. Think of a CPU as a small team of head chefs: each one can cook any dish and decides every step as they go. Think of a GPU as a huge kitchen of helpers who all chop at the same moment when they are told to. They cannot plan a meal, but they get through a mountain of onions in seconds.`,
-        `A computer uses them the same way. The CPU runs everything, including the operating system, whether or not the computer has a GPU at all. When a job needs the same sum done on a mountain of numbers, like drawing a game's picture or running an AI model, the CPU hands that job to the GPU.`,
+        `Saying that a GPU is more powerful than a CPU is an oversimplification. Each CPU core can follow any list of instructions on its own, and each GPU lane is simple, but thousands of them work through one job together.`,
         { ladder: [
-          `A desktop CPU such as AMD's Ryzen 9 9950X (2024) has 16 cores, and each core's clock beats up to 5.7 billion times a second.`,
-          `NVIDIA's H100 GPU (2022) has 16,896 lanes. Each one beats more slowly, up to 1.98 billion times a second, but there are about a thousand times as many.`,
-          `Counting lanes × beats, the H100's lanes do up to about 33 trillion sums a second. If you did one sum every second, day and night, that one second of work would take you about a million years.`,
+          `AMD's Ryzen 9 9950X (2024) has 16 cores, each beating up to 5.7 billion times a second.`,
+          `NVIDIA's H100 (2022) has 16,896 lanes, each beating up to 1.98 billion times a second.`,
+          `Counting lanes × beats, that is up to about 33 trillion sums a second. At one sum a second, that one second of work would take you about a million years.`,
         ] },
-        `Neither is simply stronger. Each CPU core is fast and can follow any list of instructions on its own. Each GPU lane is simple, but thousands of them work through one job together.`,
       ],
       working: [
+        `Think of a CPU as a small team of head chefs: each one can cook any dish and decides every step as they go. Think of a GPU as a huge kitchen of helpers who all chop at the same moment when they are told to.`,
+        `The CPU runs everything, including the operating system, whether or not the computer has a GPU at all. When a job needs the same sum done on a mountain of numbers, like drawing a game's picture or running an AI model, the CPU hands that job to the GPU.`,
         `To count sums a second, multiply the number of lanes by the clock speed, the number of beats in a second (sums per second = lanes × clock speed, S = L × f). A clock that beats 1.98 billion times a second is written 1.98 GHz.`,
         `The H100's lanes do 16,896 × 1.98 billion ≈ 33,500 billion sums a second, which is about 33 trillion. 1.98 GHz is its top (boost) clock, so this is an upper limit.`,
         `A year has 365.25 × 24 × 60 × 60 = 31,557,600 seconds. At one sum a second, 33,500,000,000,000 sums take 33,500,000,000,000 ÷ 31,557,600 ≈ 1,060,000 years, which is about a million years.`,
@@ -50,7 +49,7 @@ export const ACT4 = [
       ],
     },
     numbersArt: cpuGpuArt,             // REVIEW_NOTES N-098: the head chefs and the kitchen
-    premise: `Sixteen lanes adding at once is enough to draw a game on a screen. It is not enough for AI. Almost all of the arithmetic in an AI model starts with a multiply, and your lane cannot multiply at all. How does a chip multiply?`,
+    premise: `Almost all of the arithmetic in an AI model starts with a multiply, and your lane cannot multiply at all. How does a chip multiply?`,
     cta: 'See how a chip multiplies ▸',
     run: step1,
   },
@@ -61,18 +60,20 @@ export const ACT4 = [
     inventory: 'a MAC unit (multiply-accumulate unit)',
     numbers: {
       text: [
-        `You built a multiplier as a square grid of AND gates, and you found that if you halve the width of the numbers, both sides of the grid halve, so the multiplier gets four times smaller. Since about 2015, the makers of AI chips have used that rule again and again, by moving to narrower and narrower numbers.`,
+        `Halving the width makes a multiplier four times smaller, so AI chips have moved to narrower and narrower numbers.`,
         { ladder: [
           `For years, chips trained AI models with 32-bit numbers.`,
-          `NVIDIA's V100 (2017) added Tensor Cores, blocks built to multiply 16-bit numbers, and 16-bit numbers became the usual choice for training.`,
-          `Google's first TPU, in use in Google's data centres from 2015, already ran trained models with 8-bit whole numbers. NVIDIA's H100 (2022) added 8-bit floating-point numbers, which carry the scale factor this step mentioned.`,
+          `NVIDIA's V100 (2017) made 16-bit numbers the usual choice for training.`,
+          `NVIDIA's H100 (2022) added 8-bit floating-point numbers.`,
           `NVIDIA's Blackwell chips (2024) went down to 4-bit numbers.`,
         ] },
-        `Each step down pays off on a real chip. With 16-bit numbers, the H100 can do about 500 trillion multiply-accumulates a second. With 8-bit numbers, it can do about 1,000 trillion, which is twice as many. NVIDIA counts each multiply-accumulate as two operations, so it gives these figures as about 1,000 and 2,000 trillion operations a second.`,
-        `Energy follows the same rule. A widely used table of measured costs, published in 2014, lists a 32-bit multiply at 15.5 times the energy of an 8-bit one, which is close to the 4 × 4 = 16 that the square rule predicts.`,
-        `Spec sheets often print a figure twice as large, marked "with sparsity". That figure assumes half of the numbers are zero and skipped, so the dense figure is the one to compare.`,
+        `It pays off: the H100 does about 500 trillion multiply-accumulates a second with 16-bit numbers, and about 1,000 trillion with 8-bit numbers.`,
       ],
       working: [
+        `NVIDIA's V100 added Tensor Cores, blocks built to multiply 16-bit numbers. Google's first TPU, in use in Google's data centres from 2015, already ran trained models with 8-bit whole numbers.`,
+        `NVIDIA counts each multiply-accumulate as two operations, so it gives the H100's figures as about 1,000 and 2,000 trillion operations a second.`,
+        `Energy follows the same rule. A widely used table of measured costs, published in 2014, lists a 32-bit multiply at 15.5 times the energy of an 8-bit one, which is close to the 4 × 4 = 16 that the square rule predicts.`,
+        `Spec sheets often print a figure twice as large, marked with sparsity. That figure assumes half of the numbers are zero and skipped, so the dense figure is the one to compare.`,
         `Google's 2017 paper on its first TPU (Jouppi and others) says the chip had been in use in Google's data centres since 2015, and that its main unit was a grid of 65,536 8-bit multiply-accumulate units. Cadence's write-up of the paper says the same. That TPU ran trained models but did not train them.`,
         `NVIDIA's description of the V100 says each Tensor Core multiplies 16-bit numbers and adds the results at 32 bits. AnandTech's review of the Titan V, which uses the same chip, describes the same thing.`,
         `NVIDIA's article on the Hopper design says the H100 adds 8-bit floating-point Tensor Cores. Network World's report on Blackwell says Blackwell added 4-bit numbers, while Hopper only went down to 8 bits. NVIDIA unveiled Blackwell in March 2024.`,
@@ -83,7 +84,7 @@ export const ACT4 = [
       ],
     },
     numbersArt: precisionArt,          // REVIEW_NOTES N-054: AI chips year by year, click to turn over
-    premise: `Your MAC unit can multiply. But a MAC unit with nothing in front of it does nothing: every cycle, three numbers have to be handed to it. Where do they wait, and what does the handover cost?`,
+    premise: `A MAC unit with nothing in front of it does nothing: every cycle, three numbers have to be handed to it. Where do they wait, and what does the handover cost?`,
     cta: 'See where the numbers are stored ▸',
     run: step2,
   },
@@ -94,18 +95,19 @@ export const ACT4 = [
     inventory: 'a register file and the mux that reads it',
     numbers: {
       text: [
-        `You built a register file: eight registers beside the MAC unit, and a mux that picks one of them. A register is the fastest memory a chip has. When a number is not in a register, the chip has to fetch it from memory further away, and the further away the number is, the longer the chip waits for it.`,
-        `Here are the waits measured on a desktop processor, Intel's Skylake design (2015), with its clock at 4 GHz. That clock beats 4 billion times a second, so one beat lasts a quarter of a nanosecond (a nanosecond is a billionth of a second). Each wait below is counted in beats.`,
+        `The further away a number waits, the longer the chip waits for it. Here are the waits on a desktop processor, Intel's Skylake design (2015), at 4 GHz.`,
         { ladder: [
           `A register answers within 1 beat, a quarter of a nanosecond.`,
-          `The nearest cache (a small memory on the chip that keeps copies of recently used numbers) answers in about 4 beats, which is 1 nanosecond.`,
-          `The largest cache on the chip answers in about 40 to 55 beats, which is 10 to 14 nanoseconds.`,
-          `Main memory, on separate chips on the board, answers in about 240 to 400 beats, which is 60 to 100 nanoseconds.`,
+          `The nearest cache answers in about 4 beats, which is 1 nanosecond.`,
+          `The largest cache on the chip answers in about 40 to 55 beats.`,
+          `Main memory answers in about 240 to 400 beats, which is 60 to 100 nanoseconds.`,
         ] },
-        `So a number from main memory takes hundreds of times longer to arrive than a number from a register. A core that does one add a beat could have done 240 to 400 adds while it waited.`,
-        `Waiting is not the only cost, because fetching a number also uses energy. A table of measured costs that Google published in 2021 lists one 32-bit add at 0.03 picojoules (a picojoule is a millionth of a millionth of a joule). Reading 64 bits from a separate memory chip, the kind a laptop uses for its main memory, costs about 1,300 picojoules, which is over 40,000 times the energy of the add.`,
+        `Energy is worse: a 64-bit read from a separate memory chip costs over 40,000 times the energy of a 32-bit add.`,
       ],
       working: [
+        `A 4 GHz clock beats 4 billion times a second, so one beat lasts a quarter of a nanosecond (a nanosecond is a billionth of a second).`,
+        `A core that does one add a beat could have done 240 to 400 adds while it waited for main memory.`,
+        `A table of measured costs that Google published in 2021 lists one 32-bit add at 0.03 picojoules (a picojoule is a millionth of a millionth of a joule). Reading 64 bits from a separate memory chip, the kind a laptop uses for its main memory, costs about 1,300 picojoules.`,
         `At 4 GHz, the clock beats 4 billion times a second, so one beat lasts 1 ÷ 4,000,000,000 seconds, which is 0.25 nanoseconds.`,
         `The 7-cpu.com measurements of Intel's Core i7-6700 (Skylake) at 4.0 GHz give 4 beats for the nearest (L1) cache, 12 beats for the next (L2) cache, 42 beats for the largest (L3) cache, and 42 beats plus 51 nanoseconds for main memory. Cornell's guide to the Skylake server chips in the Stampede supercomputers gives 4, 14 and 55 beats for the same three caches.`,
         `On the 7-cpu figures, main memory takes 42 × 0.25 + 51 = 61.5 nanoseconds, and 61.5 ÷ 0.25 = 246 beats. The widely shared table of waits attributed to Jeff Dean of Google gives about 100 nanoseconds for main memory, and 100 ÷ 0.25 = 400 beats.`,
@@ -117,7 +119,7 @@ export const ACT4 = [
       ],
     },
     numbersArt: memoryArt,             // REVIEW_NOTES N-060: where the numbers wait, near to far
-    premise: `Your MAC unit now gets its numbers, and delivery costs more gates than the maths it feeds, on every cycle. Is there a number the MAC unit could keep, instead of fetching it again every cycle?`,
+    premise: `Delivery costs more gates than the maths it feeds, on every cycle. Is there a number the MAC unit could keep, instead of fetching it again every cycle?`,
     cta: 'Cut the delivery cost ▸',
     run: step3,
   },
@@ -128,17 +130,17 @@ export const ACT4 = [
     inventory: 'a systolic array',
     numbers: {
       text: [
-        `You built a systolic array. Each weight is parked beside its own MAC unit, and only the data crosses the border of the square.`,
-        `To see what parking saves, count the multiplies done for each number that crosses the border. An N by N array does N × N multiplies each cycle while 2 × N numbers cross its border (multiplies per crossing = N × N ÷ (2 × N) = N ÷ 2).`,
+        `An N by N array does N × N multiplies each cycle while 2 × N numbers cross its border.`,
         { ladder: [
-          `Your 2 by 2 array did 4 multiplies for 4 crossings, which is 1 multiply per crossing.`,
-          `At 128 by 128, the array does 16,384 multiplies for 256 crossings, which is 64 per crossing.`,
-          `Google's first TPU (in use from 2015) had a 256 by 256 array, which does 128 multiplies per crossing.`,
+          `Your 2 by 2 array did 1 multiply per crossing.`,
+          `At 128 by 128, the array does 64 per crossing.`,
+          `Google's first TPU (in use from 2015) had a 256 by 256 array, which does 128 per crossing.`,
         ] },
-        `The TPU's 65,536 multipliers did about 46 trillion multiplies a second, but its weight memory could deliver only 34 billion weights a second. To keep every multiplier busy, it had to use each weight it fetched about 1,350 times.`,
-        `If it had fetched a fresh weight from its separate memory chips for every multiply, at the cost given in step 3's real numbers, the fetching alone would have drawn about 7,500 watts, as much as three kettles. The whole chip drew about 40 watts while working, which is possible only because each weight it fetched was used many times.`,
+        `Fetching a fresh weight for every multiply would have drawn about 7,500 watts, as much as three kettles. The whole chip drew about 40 watts, because it used each weight about 1,350 times.`,
       ],
       working: [
+        `Multiplies per crossing = N × N ÷ (2 × N) = N ÷ 2.`,
+        `The TPU's 65,536 multipliers did about 46 trillion multiplies a second, but its weight memory could deliver only 34 billion weights a second. To keep every multiplier busy, it had to use each weight it fetched about 1,350 times.`,
         `An N by N array has N × N MAC units, so it does N × N multiplies each cycle. N data numbers enter along one edge and N answers leave along another, so 2 × N numbers cross the border.`,
         `A 2 by 2 array gives 4 ÷ 4 = 1 multiply per crossing. A 128 by 128 array gives 16,384 ÷ 256 = 64 multiplies per crossing. A 256 by 256 array gives 65,536 ÷ 512 = 128 multiplies per crossing.`,
         `The TPU had 256 × 256 = 65,536 multipliers and a clock of 700 million cycles a second, so it did 65,536 × 700,000,000 ≈ 46 trillion multiplies a second (Jouppi and others, 2017).`,
@@ -151,7 +153,7 @@ export const ACT4 = [
       ],
     },
     numbersArt: systolicArt,           // REVIEW_NOTES N-062 / N-063: the clock beat, data in, answers out
-    premise: `Inside the array, the weights stay put and only the data moves. Tensor Cores and TPUs are built this way. But the data still comes from memory, and memory sits off to the side of the chip. Can memory keep up with sixteen lanes?`,
+    premise: `Inside the array the weights stay put, but the data still comes from memory, off to the side of the chip. Can memory keep up with sixteen lanes?`,
     cta: 'Feed the lanes ▸',
     run: step4,
   },
@@ -162,17 +164,16 @@ export const ACT4 = [
     inventory: 'compute and memory, matched',
     numbers: {
       text: [
-        `You matched compute and memory, so the stacks deliver about as many numbers each cycle as the lanes ask for. A real chip has to make the same match, at a far larger scale.`,
-        `A memory's bandwidth is the number of wires × the bits each wire carries per second ÷ 8, because 8 bits make one byte (bandwidth = wires × bit rate ÷ 8, B = w × r ÷ 8).`,
-        `The H100 from step 1 has five HBM stacks with 1,024 wires each, and each wire carries about 5.2 billion bits a second.`,
+        `A real chip has to match compute and memory too, at a far larger scale. The H100 has five HBM stacks with 1,024 wires each, and each wire carries about 5.2 billion bits a second.`,
         { ladder: [
           `One stack delivers about 670 billion bytes a second.`,
-          `All five stacks deliver about 3.35 trillion bytes a second, which is enough to move an hour of high-definition (HD) video in under a thousandth of a second.`,
-          `Under your rule of one number per lane per cycle, with each number 32 bits (4 bytes), the H100's 16,896 lanes would ask for about 134 trillion bytes a second, which is 40 times more.`,
+          `All five deliver about 3.35 trillion bytes a second, enough to move an hour of HD video in under a thousandth of a second.`,
+          `Under your rule of one number per lane per cycle, its lanes would ask for about 134 trillion bytes a second, 40 times more.`,
         ] },
-        `So the H100 cannot match its lanes by adding stacks, because it would need about 200 of them. Instead, it uses each number it loads many times, the way your systolic array used each parked weight.`,
       ],
       working: [
+        `A memory's bandwidth is the number of wires × the bits each wire carries per second ÷ 8, because 8 bits make one byte (bandwidth = wires × bit rate ÷ 8, B = w × r ÷ 8).`,
+        `In that rule each number is 32 bits (4 bytes). So the H100 cannot match its lanes by adding stacks, because it would need about 200 of them. Instead, it uses each number it loads many times, the way your systolic array used each parked weight.`,
         `The H100 has 5 stacks × 1,024 wires = 5,120 wires to its memory.`,
         `NVIDIA lists 3.35 trillion bytes a second. 3,350,000,000,000 × 8 ÷ 5,120 ≈ 5.23 billion bits a second on each wire, which is about 5.2 billion.`,
         `One stack delivers 1,024 × 5.23 billion ÷ 8 ≈ 670 billion bytes a second, and five stacks deliver 5 × 670 billion ≈ 3.35 trillion bytes a second.`,
@@ -182,7 +183,7 @@ export const ACT4 = [
         `With 16-bit numbers (2 bytes), the lanes would ask for about 67 trillion bytes a second, and the gap would be 20 times. The point is the same either way.`,
       ],
     },
-    premise: `Compute and memory now match, and every lamp is blue. But everything in this act is still loose parts on a bench, and a chip you can sell has to be one sealed unit that does not overheat. What goes into the package?`,
+    premise: `Everything in this act is still loose parts on a bench, and a chip you can sell has to be one sealed unit that does not overheat. What goes into the package?`,
     cta: 'Assemble the GPU ▸',
     run: step5,
   },
@@ -193,16 +194,16 @@ export const ACT4 = [
     inventory: 'a GPU, your machine for mathematics',
     numbers: {
       text: [
-        `You assembled the GPU, with the GPU die in the middle, memory on both sides and a cooler on top. Its meter read about 700 watts, which is the real power limit of the H100 from step 1.`,
-        `A watt is one joule of energy every second (power = energy ÷ time, P = E ÷ t).`,
+        `Your meter read about 700 watts, the real power limit of the H100.`,
         { ladder: [
           `Every second, 700 joules of heat have to leave through the lid, from a die about 2.9 cm on a side.`,
-          `That is 70% of what a microwave uses to cook (1,000 watts), and more than half of what an average home draws (1.2 kilowatts).`,
-          `At its top rated speed, the H100 does about 495 trillion 16-bit multiply-adds a second, so each one costs about 1.4 picojoules, including the delivery of its numbers.`,
+          `That is 70% of what a microwave uses to cook, and more than half of what an average home draws.`,
+          `At its top rated speed, each 16-bit multiply-add costs the H100 about 1.4 picojoules, including the delivery of its numbers.`,
         ] },
-        `In step 3's numbers, a single 64-bit read from a small memory on the chip cost 7.5 picojoules. The whole H100 spends less than that on each multiply-add, because it uses each number it fetches many times.`,
       ],
       working: [
+        `A watt is one joule of energy every second (power = energy ÷ time, P = E ÷ t). A microwave uses about 1,000 watts to cook, and an average home draws about 1.2 kilowatts.`,
+        `At its top rated speed, the H100 does about 495 trillion 16-bit multiply-adds a second. In step 3's numbers, a single 64-bit read from a small memory on the chip cost 7.5 picojoules. The whole H100 spends less than that on each multiply-add, because it uses each number it fetches many times.`,
         `The H100's die is 814 mm², and √814 ≈ 28.5 mm, which is about 2.9 cm on a side.`,
         `700 watts is 700 joules every second. 700 ÷ 1,000 = 0.7, which is 70% of a microwave, and 700 ÷ 1,200 ≈ 0.58, which is more than half of a home.`,
         `NVIDIA's headline figure for 16-bit numbers is 1,979 trillion operations a second, but that figure assumes half of the numbers are zero and skipped. The full rate is half of that, about 990 trillion operations a second.`,

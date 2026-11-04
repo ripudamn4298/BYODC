@@ -25,10 +25,10 @@
 import { svgEl, el, sleep, waitFor } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeChip, cornerTicks, slideInPanel } from '../../engine/components.js';
+import { makeChip, cornerTicks, slideInPanel, labExplore } from '../../engine/components.js';
 import { cleanroomHTML } from './lab.js';   // Course restructure (2026-10-25): ingotScaleHTML no longer used here
 import { mulberry32 } from '../../engine/fab.js';
 
@@ -245,34 +245,25 @@ export async function step1(){
 
   /* ================= cards ================= */
 
-  // Course restructure (2026-10-25): new first card, the hand-in from Act 2, which ends on
-  // "Nobody places those by hand: they are printed." The stage shows only the puller here,
-  // so the card names the crystal and the next card points at the machine.
-  guide.say(`In Act 2 you built a small processor as a drawing of gates and wires. To make
-    it real, every transistor in it has to be made in silicon, and that starts with a
-    crystal.`);
-  await guide.next();
-
-  guide.say(`A transistor only works if the silicon under it is one unbroken crystal
-    lattice, the ordered grid of atoms from Act 1. Here you grow that crystal, then slice
-    it into thin discs called wafers.`);
+  // Critic pass (2026-11-04): the hand-in from Act 2 and the reason for the crystal are one card.
+  guide.say(`In Act 2 you built a small processor as a drawing. To make it real, every transistor
+    has to sit on silicon that is one unbroken crystal, the ordered grid of atoms from Act 1. Here
+    you grow that crystal, then slice it into thin discs called wafers.`);
   stage.focus(rigG, { label: 'crystal puller', at: 'right' });
   await guide.next();
 
-  guide.say(`This is the melt: refined sand, 99.9999999% silicon (nine nines), held liquid
-    at 1,414 °C. Purity is not enough on its own, because every atom still has to land in
-    the right place.`);
+  guide.say(`This is the melt: refined sand, 99.9999999% silicon,${info(`That is called nine nines
+    pure: only about one atom in every billion is something other than silicon.`)} held liquid at
+    1,414 °C. Purity is not enough on its own, because every atom still has to land in the right
+    place.`);
   stage.focus(melt, { label: 'the melt', at: 'left' });
   await guide.next();
 
-  guide.say(`The rod holds a seed crystal, a small bar of silicon whose atoms already sit in
-    perfect order. Everything grown below it copies that order.`);
+  // critic pass (2026-11-04): the seed and the dip are one card, so the student acts on card 3
+  guide.say(`The rod holds a seed crystal, a small bar of silicon whose atoms already sit in perfect
+    order. Touch it to the melt and pull it back up: silicon freezes onto its underside and copies
+    that order.`);
   stage.focus(seed, { label: 'seed crystal', at: 'right' });
-  await guide.next();
-
-  guide.say(`Touch the seed to the melt, then pull it back up. Silicon freezes onto its
-    underside as it rises.`);
-  stage.clearFocus();
   await guide.button('Dip the seed ▸');
 
   await Anim.tween(700, p => setSeedHeight(SEED_HIGH + (MELT_Y - SEED_H - SEED_HIGH) * p));
@@ -288,15 +279,11 @@ export async function step1(){
   await Anim.tween(420, p => { panelG.style.opacity = String(p); detailG.style.opacity = String(p * 0.9); });
   panelG.style.opacity = '1';
 
-  guide.say(`The panel magnifies the growth face, the boundary where the crystal meets the
-    melt. Each ink circle is one silicon atom, and the ones below the dashed line are
-    still liquid.`);
+  // critic pass (2026-11-04): the panel and the layer landing are one card
+  guide.say(`The panel magnifies the growth face, where the crystal meets the melt. Each circle is
+    one silicon atom, and the ones below the dashed line are still liquid. An atom in the melt
+    attaches to the row above it and takes that row's spacing.`);
   stage.focus(panelG, { label: 'growth face', at: 'top' });
-  await guide.next();
-
-  guide.say(`An atom in the melt attaches to the row above it and takes that row's spacing.
-    Watch one layer land.`);
-  stage.clearFocus();
   await guide.button('Freeze one layer ▸');
 
   {
@@ -392,8 +379,8 @@ export async function step1(){
   stage.clearFocus();
   setReadout('slow', drawLattice('slow', seedNum, ROWS));
   guide.say(`At 0.2 mm/min, extra silicon atoms have time to squeeze between the rows and
-    clump. Pulling this slowly also takes much longer: the full 1.6 m ingot takes about five
-    and a half days, instead of about two days at 0.5 mm/min.`);
+    clump.${info(`Pulling this slowly also takes much longer: the full 1.6 m ingot takes about five
+    and a half days, instead of about two days at 0.5 mm/min.`)}`);
   stage.focus([panelG, faceCap], { label: 'pulled at 0.2 mm/min', at: 'top' });
   await guide.next();
 
@@ -514,17 +501,16 @@ export async function step1(){
      touched, so the cleanroom panel still draws its carriers, unfocused. */
   stage.clearFocus();
   const room = slideInPanel(svg, cleanroomHTML(), { lab: true });
-  room.focus('air');
   await room.show();
-  guide.lab(`The wafers are made into chips in a <b>cleanroom</b>, a room whose air is filtered
-    all the time. Fans push the air down through filters in the ceiling and out through the
-    floor, so dust is carried down and away from the wafers.`, { intro: true });
-  await guide.next();
-
-  room.focus('suit');
-  guide.lab(`People are the biggest source of dust in a cleanroom, because skin and hair shed
-    tiny flakes all the time. So everyone wears a gown that covers them from hood to boots,
-    with goggles, a mask and gloves. People often call it a bunny suit.`);
+  // critic pass (2026-11-04): one card to explore, instead of two to read
+  labExplore(room, {
+    text: `The wafers are made into chips in a <b>cleanroom</b>, a room built to keep dust away from
+      them.`,
+    items: [
+      { k: 'air', label: 'The air', html: `The air is filtered all the time. Fans push it down through filters in the ceiling and out through the floor, so dust is carried down and away from the wafers.` },
+      { k: 'suit', label: 'The people', html: `People are the biggest source of dust, because skin and hair shed tiny flakes all the time. So everyone wears a gown from hood to boots, with goggles, a mask and gloves. People often call it a bunny suit.` },
+    ],
+  });
   await guide.next();
   await room.hide();
 }

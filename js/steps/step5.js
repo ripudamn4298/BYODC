@@ -15,10 +15,11 @@
 import { svgEl, waitFor } from '../engine/util.js';
 import { Anim } from '../engine/anim.js';
 import { SFX } from '../engine/sfx.js';
-import { guide } from '../engine/guide.js';
+import { guide, info } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
 import { CurrentFlow } from '../engine/pathflow.js';
+import { labBench, BENCHES } from '../engine/labbench.js';
 import { makeLamp, makeChip, makeSeg, makePlacer, makeRaisedTiles, slideInPanel } from '../engine/components.js';
 import { breadboard, dip, jumper } from '../engine/reallife.js';
 
@@ -398,9 +399,9 @@ export async function step5(){
      says "hold its output high or low", in line with the new premise, instead of "hold a
      value (a 0 or a 1)" before a value was defined. */
 
-  guide.say(`The needle swung across and stayed there, because current flows the whole time
-    the gate is high. In a chip, that current is wasted. <b>Your goal is to build a circuit that holds
-    its output high or low and draws no current.</b>`);
+  guide.say(`The needle stayed across, because current flows the whole time the gate is high, and in
+    a chip that current is wasted. <b>Your goal is to build a circuit that holds its output high or
+    low and draws no current.</b>`);
   stage.focus(meterG, { label: 'still drawing', at: 'right' });
   await guide.next();
 
@@ -461,22 +462,15 @@ export async function step5(){
   // and the 0/1 notation shrank to the bare labels. What 0s and 1s are gets its own card
   // after the inverter is named. The labels stay here because the tiles, the slot task and
   // the IN buttons use 0 and 1 from this card on.
-  guide.say(`A wire comes out of the middle of the column and ends at the circle marked OUT.
-    This is the output of the pair you are building. The circle lights up when the output is
-    high, marked 1, and goes dark when it is low, marked 0.`);
-  stage.focus(outG, { label: 'output', at: 'bottom' });
-  await guide.next();
-
-  /* REVIEW_NOTES (Ripu, 2026-10-11): the lamp is notation only. A real lamp needs current the
-     whole time it is lit, which is exactly what CMOS avoids, so say plainly what the output
-     really drives: the next pair's gate, the step 4 capacitor, which stores charge. */
-  // REVIEW_NOTES N-111: the same point, crisper
-  // Course restructure (2026-10-25): card 1 now says the output's job is the next gate, so
-  // this card points back to it instead of saying it again.
-  guide.say(`The lamp only stands in for the gate of the next pair, which is the capacitor
-    from step 4. A high output charges that gate to the supply voltage, and a low output
-    empties it to ground.`);
-  stage.focus(lamp.g, { label: 'really: the next gate', at: 'left' });
+  /* REVIEW_NOTES (Ripu, 2026-10-11, N-111): the lamp is notation only. A real lamp needs current
+     the whole time it is lit, which is exactly what CMOS avoids, so say plainly what the output
+     really drives: the next pair's gate. critic pass (2026-11-03): one card with the output. */
+  guide.say(`A wire from the middle of the column ends at OUT. The circle lights when the output is
+    high, marked 1, and goes dark when it is low, marked 0. It only stands in for the next pair's
+    gate.${info(`A high output charges that gate to the supply voltage, and a low output empties it
+    to ground. A real lamp needs current the whole time it is lit, and CMOS is built to avoid
+    that.`)}`);
+  stage.focus([outG, lamp.g], { label: 'output', at: 'bottom' });
   await guide.next();
 
   /* ================= CARD 8 — the two slots ====================================== */
@@ -487,18 +481,16 @@ export async function step5(){
   // show only the bottom wire until the pair was placed, which read as "the input feeds only
   // the bottom gate" and then changed under the player.
   await fadeIn([slotsG, gateTop], 300);
-  guide.say(`There are two slots now, and the input wire reaches both. The top one joins the
-    output to power, and the bottom one joins it to ground. One of the two transistors goes in
-    each.`);
-  stage.focus(slotsG, { label: 'two slots', at: 'left' });
-  await guide.next();
+  stage.clearFocus();
 
   /* ================= CARD 9 — place the pair ====================================
      No focus on this card: stage.focus re-parents what it raises, which breaks the
      placer's pointer handling on anything it lifts. */
 
   stage.clearFocus();
-  guide.say(`<b>Your goal is to fill both slots</b> so that an input of 0 connects the
+  // critic pass (2026-11-03): what the slots do and the job are one card
+  guide.say(`The top slot joins the output to power, and the bottom one joins it to ground. <b>Your
+    goal is to fill both slots</b> so that an input of 0 connects the
     output up to power. Drag a twin into each slot.`);
 
   const placer = makePlacer({
@@ -523,10 +515,6 @@ export async function step5(){
 
   /* ================= CARD 10 — one input, both gates ============================= */
 
-  guide.say(`It is wired. The input on the left connects to both gates at once, so both transistors
-    always read the same signal.`);
-  stage.focus(gateG, { label: 'one input, both gates', at: 'bottom' });
-  await guide.next();
 
   /* ================= the live inverter =========================================== */
 
@@ -573,8 +561,10 @@ export async function step5(){
 
   /* ================= CARD 11 — exactly one conducts ============================== */
 
-  guide.say(`The input is high right now, so the bottom transistor conducts and the top one is
-    off. Exactly one of them is ever on.`);
+  // critic pass (2026-11-03): one card. Both gates share the input, so exactly one is ever on.
+  guide.say(`It is wired. The input connects to both gates at once. It is high right now, so the
+    bottom transistor conducts and the top one is off. Exactly one of them is ever on.${info(`During a flip, both conduct for a tiny moment as the
+    input passes through the middle. Between flips, one of them is always fully off.`)}`);
   stage.focus([pmos.g, nmos.g], { label: 'exactly one conducts', at: 'right' });
   await guide.next();
 
@@ -637,11 +627,11 @@ export async function step5(){
 
   /* ================= CARD 17 — the payoff ======================================== */
 
-  guide.aha(`The battery stayed connected the whole time, and the needle only twitched on
-    each flip. Between flips, one of the two transistors is always off, so there is no path
-      from power to ground.`,
-    `The only current is the moment it takes to charge or empty the next gate's plate. Once
-     the plate is full, the glass stops any more current.`);
+  guide.aha(`The needle only twitched on each flip. Between flips, one of the two transistors is
+    always off, so there is no path from power to ground.`,
+    `The only current is the moment it takes to charge or empty the next gate's plate.${info(`The next
+    gate is a small capacitor, as in step 4. It fills when the output goes high and empties when
+    the output goes low, and the current stops as soon as it has.`)}`);
   stage.focus(battG, { label: 'connected the whole time', at: 'right' });
   await guide.next();
 
@@ -658,9 +648,8 @@ export async function step5(){
      empties the next gate, so this card points at the needle's twitch instead of
      restating it. Most, not all, of the 700 W: some is leakage. */
 
-  guide.say(`This is where a chip's heat comes from. Each twitch of the needle is a little
-    energy drawn from the supply, and it ends up as heat in the pair. Billions of pairs flipping over and over make
-    most of an AI chip's 700 watts.`);
+  guide.say(`This is where a chip's heat comes from. Each twitch of the needle is a little energy
+    that ends up as heat in the pair. Billions of pairs flipping make most of an AI chip's 700 watts.`);
   stage.focus(meterG, { label: 'energy per flip', at: 'right' });
   await guide.next();
   stage.clearFocus();
@@ -681,23 +670,15 @@ export async function step5(){
   await real.show();
   guide.lab(`Here is your CMOS inverter, sold as a part. The black chip is a 74HC04, pushed into
     a breadboard. Metal clips under the holes join each short row, so you can build a circuit
-    without soldering.`, { intro: true });
-  await guide.next();
-
-  guide.lab(`Its input, pin 1, is wired to ground, so its output, pin 2, is high and lights
-    the LED through a resistor. Move that input wire to the + rail, and the LED goes out.`);
+    without soldering.`);
   await guide.next();
 
   real.focus('pinout');
   guide.lab(`Inside are six inverters, each built from PMOS and NMOS transistors like yours. Pin
     14 takes the supply, pin 7 goes to ground, and the other twelve pins are six inputs and six
     outputs.`);
-  await guide.next();
+  // critic pass (2026-11-03): the part and what is inside it show, the wiring is there on request
+  if (!await guide.labMore()){ await real.hide(); return; }
 
-  real.g.querySelector('.rl-notch').style.display = '';
-  real.focus(['board', 'notch']);
-  guide.lab(`The notch at one end, and the dot beside it, mark pin 1, so you can tell which way
-    round the chip goes. The pins are numbered anticlockwise from there.`);
-  await guide.next();
-  await real.hide();
+  await labBench(svg2, real, BENCHES.inverter);    // N-146
 }

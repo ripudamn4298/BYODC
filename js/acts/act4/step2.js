@@ -11,12 +11,12 @@
 import { svgEl, sleep } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makeSeg, makeChip, slideInPanel } from '../../engine/components.js';
 import { labMatmul } from './lab.js';
-import { makeBitRow, makeDotColumns, makeFAToken } from '../../engine/mathengine.js';
+import { makeBitRow, makeDotColumns } from '../../engine/mathengine.js';
 
 async function fadeIn(nodes, dur = 300){
   const list = nodes.filter(Boolean);
@@ -63,16 +63,11 @@ export async function step2(){
   const eqA = decimal(ay, '= 7'), eqB = decimal(by, '= 7');
   const numbers = [rowA.el, rowB.el, times, eqA, eqB];
 
-  /* ---- CARD 1 · the preface: a multiply whose answer the player already owns ---- */
-  guide.say(`Before we build a multiplier, look at how multiplication itself works. We will
-    do <b>7 × 7</b>. You already know it is 49, so you can check the machine at every
-    stage.`);
-  stage.focus(numbers, { label: '7 × 7, in binary', at: 'left' });
-  await guide.next();
-
-  /* ---- CARD 2 · one bit times one bit ---- */
-  guide.say(`Start with one bit times one bit. <b>1 × 1 = 1</b>, and anything × 0 = 0.
-    You built the gate that does exactly that in Act 2. Which one?`);
+  /* ---- CARD 1 · a multiply whose answer the player already owns, and one bit times one bit ----
+     Critic pass (2026-11-04): one card, so the student acts on card 1. */
+  guide.say(`Here is how a chip multiplies <b>7 × 7</b>. You know it is 49, so you can check it at every
+    stage. Start with one bit times one bit: <b>1 × 1 = 1</b>, and anything × 0 = 0. You built the gate
+    that does exactly that in Act 2. Which one?`);
   stage.focus([rowA.cells[2].r, rowB.cells[2].r], { label: 'one bit × one bit', at: 'right' });
 
   const gate = await guide.choose([
@@ -188,9 +183,6 @@ export async function step2(){
      Course restructure (2026-10-25): the old cards 6a ("drawn as dots") and 6 ("each column
      of 1s is now the column of dots") are merged into this one. The card goes up first and
      the dot-board animation plays under it; the focus lands once the dots have settled. */
-  guide.say(`Next, the same 1s are drawn as dots, each in its place-value column. A column
-    three dots tall means three 1s to add in that place.`);
-
   // every 1 in the rows, by place value e: row k's cell i has weight 2^(k + 2 − i)
   const onesAt = e => {
     const out = [];
@@ -222,16 +214,13 @@ export async function step2(){
   }
   const chipPile = makeChip(controls, `PILE VALUE: <b>${pileValue()}</b>`, 'warm');
 
-  stage.focus([...ppRows, board.el], { label: 'one column per place value', at: 'right', ring: false });
+  // critic pass (2026-11-04): the dots and the check against 49 are one card
+  guide.say(`The same 1s are now dots, each in its place-value column: one in the 1s, two in the 2s,
+    three in the 4s, two in the 8s and one in the 16s. That is 1 + 4 + 12 + 16 + 16 = <b>49</b>, the
+    7 × 7 you started with.`);
+  stage.focus([...ppRows, board.el], { label: 'pile value 49', at: 'right', ring: false });
   await guide.next();
   ppRows.forEach(g => { g.style.transition = 'opacity .4s'; g.style.opacity = '.35'; });
-
-  /* ---- CARD 7 · the checkpoint: the pile counts back to 49 ---- */
-  guide.aha(`Count it: one 1 in the 1s, two in the 2s, three in the 4s, two in the 8s, one
-    in the 16s. That is 1 + 4 + 12 + 16 + 16 = <b>49</b>.`,
-    `That is the same 7 × 7 you started with. The pile holds the whole multiply, and all that is left is adding it up.`);
-  stage.focus(board.el, { label: 'pile value 49' });
-  await guide.next();
 
   /* ---- CARD 8 · what the multiply cost, in gates (not "9 ANDs") ---- */
   const andGrid = svgEl('g');
@@ -260,16 +249,12 @@ export async function step2(){
   accRow.el.style.opacity = '0';
   await fadeIn([accRow.el], 300);
 
-  /* ---- CARD 9 · define the accumulator ---- */
+  /* ---- CARD 9 · the accumulator, and its bits into the same columns ----
+     Critic pass (2026-11-04): one card. */
   guide.say(`A chip almost never multiplies just once. It keeps a running total called the
-    <b>accumulator</b> and adds each product onto it. Ours holds 15.`);
-  stage.focus(accRow.el, { label: '15 = 1111', at: 'top' });
-  await guide.next();
-
-  /* ---- CARD 10 · drop its bits into the same columns ---- */
-  guide.say(`Fifteen is <b>1111</b>, so it puts one 1 into each of the first four columns.
-    It lands on the same board, in the same place-value columns.`);
-  stage.focus(board.cols.slice(0, 4).map(c => c.colG), { label: 'the accumulator lands here' });
+    <b>accumulator</b> and adds each product onto it. Ours holds 15, which is <b>1111</b>, so it puts one
+    1 into each of the first four columns.`);
+  stage.focus([accRow.el, ...board.cols.slice(0, 4).map(c => c.colG)], { label: '15 = 1111', at: 'top' });
 
   await guide.button('Drop the 15 into the pile ▸');
 
@@ -288,32 +273,13 @@ export async function step2(){
 
   /* ============ the crush: three 1s in a column become two ======================== */
 
-  /* ---- CARD 12 · the crush rule, on its own card ---- */
-  guide.say(`Three 1s in a column add up to binary <b>11</b>. One stays in the column, one
-    carries into the column on its left.`);
-  stage.focus(board.cols[1].colG, { label: 'three 1s = binary 11', at: 'left' });
-  await guide.next();
-
-  /* ---- CARD 13 · name the part that does it, before it shows up mid-animation ---- */
-  const tok = makeFAToken(svg, { x: 92, y: 288 });
-  // drop the token's own pop-in: its scale keyframe is still running when focus() measures
-  // the bounding box, which would pin the ring to the shrunken position.
-  tok.el.classList.remove('pop-in');
-  tok.el.style.opacity = '0';
-  await fadeIn([tok.el], 260);
-
-  guide.say(`The part that does that is the <b>full adder</b> from Act 2. Three 1s go in
-    and two come out, so chip designers call it a 3-into-2 compressor.`);
-  stage.focus(tok.el, { label: '3 into 2', at: 'right' });
-  await guide.next();
-
-  /* ---- CARD 14 · the crush game ---- */
+  /* ---- CARD 12 · the crush: the rule, the part that does it, and the game ----
+     Critic pass (2026-11-04): three cards are one, and the student does it straight away. */
   stage.clearFocus();
-  await fadeOut([tok.el], 220);
-  tok.el.remove();
-
-  guide.say(`Tap any column holding three or more dots, until no column holds three. The
-    pile value stays at 64 the whole way through.`);
+  guide.say(`Three 1s in a column add up to binary <b>11</b>: one stays, and one carries left. The
+    <b>full adder</b> from Act 2 does that.${info(`Three 1s go in and two come out, so chip designers
+    call it a 3-into-2 compressor.`)} Tap any column holding three or more dots, until no column holds
+    three. The pile stays at 64 throughout.`);
   stage.focus(board.el, { label: 'tap the tall columns' });
 
   const chipComp = makeChip(controls, `columns crushed: <b>0</b>`);
@@ -535,10 +501,8 @@ export async function step2(){
   svg.appendChild(inside);
   inside.style.opacity = '0';
   await Anim.tween(380, q => { inside.style.opacity = q.toFixed(2); z.style.opacity = (1 - q).toFixed(2); });
-  guide.say(`Zoom into one lane. Inside is its MAC unit, and the first part of that is the AND
-    grid you built: 3 by 3, because 7 is a 3-bit number.`);
-  stage.focus(inside.querySelector('.zm-and'), { label: 'the AND grid', at: 'left', ring: false });
-  await guide.next();
+  // critic pass (2026-11-04): the zoom plays on the way to the next card, which names what is inside
+  if (!flow.instant) await sleep(900);
 
   /* ============ the precision square ============================================== */
 
@@ -607,8 +571,9 @@ export async function step2(){
   /* ---- CARD 17 · read the square ----
      Course restructure (2026-10-25): "the tile (one fixed patch of silicon)" became "the
      patch of silicon", as step 1 says it, so it does not clash with step 4's matrix tiles. */
-  guide.say(`Real chips multiply wider numbers. Two 16-bit numbers need 16 AND gates across
-    and 16 down. That is 256 gates, and it fills the patch of silicon.`);
+  guide.say(`Inside each lane, the first part of the MAC unit is the AND grid you built, 3 by 3 because 7
+    is a 3-bit number. Real chips multiply wider numbers: two 16-bit numbers need 16 AND gates across and
+    16 down. That is 256 gates, and it fills the patch of silicon.`);
   stage2.focus([footFrame, gridG], { label: '16 × 16 and gates', at: 'right' });
   await guide.next();
 
@@ -621,18 +586,12 @@ export async function step2(){
   if (!flow.instant) await sleep(700);
   await setPrecision(4);
 
-  guide.aha(`Halve the width (the number of bits in each number) and both sides of the grid
-    halve, so the multiplier gets four times smaller. That is why AI chips moved to 8-bit
-    and then 4-bit maths.`,
-    `Real chips also carry a floating-point exponent (a scale factor stored beside each number), which blunts this rule a little. Area still grows close to the square of the width, and that is still the deciding factor.`);
-  stage2.focus(gridG, { label: '4 × 4 and gates', at: 'right' });
-  await guide.next();
-
-  /* Course restructure (2026-10-25): a light-bulb card with the spec-sheet names for the
-     three widths, so "50 petaflops of FP4" in the news reads as this square */
-  guide.say(`Spec sheets write 16-bit, 8-bit and 4-bit numbers as <b>FP16</b>, <b>FP8</b> and
-    <b>FP4</b>. FP stands for floating point, the format that keeps that scale factor beside
-    each number.`);
+  // critic pass (2026-11-04): the rule and the spec-sheet names are one card, the exponent behind an i
+  guide.aha(`Halve the width (the number of bits in each number) and both sides of the grid halve, so the
+    multiplier gets four times smaller. That is why AI chips moved to 8-bit and then 4-bit maths.`,
+    `Spec sheets write these widths as <b>FP16</b>, <b>FP8</b> and <b>FP4</b>. Try all three under the
+     stage.${info(`FP stands for floating point, a format that keeps a scale factor beside each number.
+     It blunts this rule a little, but area still grows close to the square of the width.`)}`);
   stage2.focus(gridG, { label: 'fp4: 4-bit numbers', at: 'right' });
   await guide.next();
 
@@ -641,30 +600,28 @@ export async function step2(){
      Tensor Core step (4 × 4 grids, 64 multiply-accumulates a clock). Sources in lab.js. */
   stage2.clearFocus();
   const lab = slideInPanel(svg2, labMatmul(), { lab: true });
-  lab.focus('code');
+  lab.focus(['code', 'loop']);
   await lab.show();
 
-  guide.lab(`The multiply-accumulate you built is the operation AI code runs most. In PyTorch,
-    the line <b>c = a @ b</b> multiplies two <b>matrices</b> (grids of numbers), here each
-    4,096 numbers on a side.`, { intro: true });
-  await guide.next();
-
-  lab.focus('loop');
-  guide.lab(`Each number in c is a running total of 4,096 multiplies, each added onto the
-    total, which is your accumulator. c holds about 16.8 million numbers, so that one line
-    asks for about 69 billion multiply-accumulates.`);
+  // critic pass (2026-11-04): the line of code and what it asks for are one card
+  guide.lab(`The multiply-accumulate you built is the operation AI code runs most. In PyTorch, the line
+    <b>c = a @ b</b> multiplies two <b>matrices</b> (grids of numbers), here each 4,096 numbers on a side.
+    That one line asks for about 69 billion multiply-accumulates.${info(`Each number in c is a running
+    total of 4,096 multiplies, each added onto the total, which is your accumulator. c holds about 16.8
+    million numbers.`)}`, { intro: true });
   await guide.next();
 
   /* Course restructure (2026-10-25): the rate unit the news uses, on the same panel focus */
   guide.lab(`Spec sheets count one multiply-accumulate as two operations, and give the rate in
     <b>FLOPS</b> (floating-point operations a second). A teraflop is a trillion a second, and
     a petaflop is a thousand trillion.`);
-  await guide.next();
+  // critic pass (2026-11-04): FLOPS shows, the V100's Tensor Core is there on request
+  if (!await guide.labMore()){ await lab.hide(); return; }
 
   lab.focus('tc');
   guide.lab(`A <b>Tensor Core</b> is a block of MAC units that multiplies two small matrices
     in one go: in NVIDIA's V100 (2017), two 4 by 4 matrices, 64 multiply-accumulates every
-    clock beat. Remember the name, because in step 4 you build a block like this yourself.`);
+    clock beat. In step 4 you build a block like this yourself.`);
   await guide.next();
   await lab.hide();
 }

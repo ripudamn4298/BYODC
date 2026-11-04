@@ -20,13 +20,13 @@
 import { svgEl, el, waitFor, svgPt } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makeGate, sigWire, makeBits } from '../../engine/gates.js';
 import { makeLamp, slideInPanel } from '../../engine/components.js';
-import { setLabState } from '../../engine/labcircuits.js';
-import { lab23Part, lab23Board, lab23Register, lab23Ram } from './lab.js';
+import { lab23Part, lab23Register, lab23Ram } from './lab.js';
+import { labBench, BENCHES } from '../../engine/labbench.js';
 
 /* gate geometry, in the stage's 720×480 user units. h = 110 puts the two input pins
    36.7 units apart, which is what makes a 15-unit target ring unambiguous. */
@@ -293,29 +293,19 @@ export async function step3(){
   const rTxt = inLbl(gate2.pinIn[1].y - 4, 'R', 'RESET');
   await fadeIn([setW.el, rstW.el, ...sTxt, ...rTxt], 300);
 
-  guide.say(`Two more input wires come in from the left. S goes into gate 1, at the top, and
-    R into gate 2, at the bottom.`);
-  stage.focus([setW.el, rstW.el], { label: 's and r', at: 'left', ring: false });
-  await guide.next();
-
-  /* ---- CARD 6 — where you read the bit ---- */
-  stage.clearFocus();
+  /* ---- CARD 5 — the two ways in, and where you read the bit ----
+     Critic pass (2026-11-04): two cards are one, and the wire voltages moved behind an i. */
   const stub1 = sigWire(wires, `M${gate1.pinOut.x} ${gate1.pinOut.y} H553`);
   const lampQ = makeLamp(sceneB, 568, gate1.pinOut.y, { label: 'MEMORY' });
   await fadeIn([stub1.el, lampQ.g], 300);
 
-  guide.say(`This lamp shows gate 1's output. That output is the bit you are storing. The bit
-    is the voltage on gate 1's output wire: at the supply voltage for 1 (lamp lit), and at 0 V
-    for 0 (lamp dark).`);
-  stage.focus(lampQ.g, { label: 'the stored bit', at: 'bottom' });
+  guide.say(`Two more wires come in from the left: S into gate 1, and R into gate 2. This lamp
+    shows gate 1's output, and that output is the bit you are storing.${info(`The bit is the
+    voltage on gate 1's output wire: at the supply voltage for 1, with the lamp lit, and at 0 V
+    for 0, with the lamp dark.`)}`);
+  stage.focus([setW.el, rstW.el, lampQ.g], { label: 's, r and the stored bit', at: 'bottom', ring: false });
   await guide.next();
-
-  /* ---- CARD 7 — the name ---- */
   stage.clearFocus();
-  guide.say(`Two NANDs wired like this are an <b>SR latch</b>: a circuit that holds one bit.
-    S sets the bit to 1, and R resets it to 0.`);
-  stage.focus(sceneB, { label: 'sr latch', at: 'top' });
-  await guide.next();
 
   /* ============ the latch, live ================================================== */
 
@@ -352,16 +342,16 @@ export async function step3(){
     () => { SFX.click(); resetHeld = true; pressedR = true; recompute(); },
     () => { resetHeld = false; recompute(); });
 
-  /* REVIEW_NOTES N-022: what "hold S" physically does, and why that sets the bit. */
-  guide.say(`S and R normally sit at 1, at the supply voltage. Each button connects its wire
-    to ground while you hold it, so the wire drops to 0 (0 V). When you let go, the wire goes
-    back up to 1.`);
-  stage.focus([setW.el, rstW.el], { label: 'at 0 while held', at: 'top', ring: false });
+  /* REVIEW_NOTES N-022: what "hold S" physically does. Critic pass (2026-11-04): the name and
+     the buttons are one card. */
+  guide.say(`Two NANDs wired like this are an <b>SR latch</b>, which holds one bit. S sets it to 1
+    and R resets it to 0. Both wires sit at 1, and each button pulls its wire to 0 while you hold
+    it.`);
+  stage.focus(sceneB, { label: 'sr latch', at: 'top' });
   await guide.next();
 
-  guide.say(`A NAND's output is 1 whenever any of its inputs is 0. So while you hold S at 0,
-    gate 1's output is forced to 1. Holding R at 0 does the same to gate 2, and that drives
-    gate 1's output to 0.`);
+  guide.say(`A NAND's output is 1 whenever any input is 0. So holding S forces gate 1's output to
+    1. Holding R forces gate 2's output to 1, and that drives gate 1's output to 0.`);
   stage.focus([gate1.g, gate2.g], { label: 'any 0 in gives 1 out', at: 'top' });
   await guide.next('Try it ▸');
 
@@ -402,21 +392,20 @@ export async function step3(){
   stage.focus([gate1.g, gate2.g], { label: 'cmos gates', at: 'top' });
   await guide.next();
 
-  /* ---- CARD 13 — the aha: the loop ---- */
-  stage.clearFocus();
+  /* ---- CARD 13 — the aha: the loop, and what people mean by storing a 0 or a 1 ----
+     Critic pass (2026-11-04): two cards are one, on the loop itself. */
   guide.aha(`The SR latch remembers because each gate's output keeps the other gate's input
-    where it was, even after you let go.`);
-  await guide.next();
-
-  /* ---- CARD 14 — light-bulb card: how a 0 or a 1 is stored ---- */
-  guide.say(`This is what people mean when they say a computer stores 0s and 1s. Each bit is a
-    loop like this one, holding its wire at 1 or 0 until the power goes off.`);
+    where it was, even after you let go.`,
+    `This is what people mean when they say a computer stores 0s and 1s: each bit is a loop like
+     this one, holding its wire until the power goes off.`);
   stage.focus([fb.A.el, fb.B.el], { label: 'the loop', at: 'right', ring: false });
   await guide.next();
 
   /* ---- CARD 15 — SRAM, moved out of the aha's second line ---- */
   guide.say(`This loop is what <b>SRAM</b> is. The cache in a processor, its small fast memory,
-    is millions of these loops, each built with 6 transistors instead of your 8.`);
+    is millions of these loops, each built with 6 transistors instead of your 8.${info(`Your latch is two NAND gates of 4
+    transistors each. An SRAM cell is two inverters feeding each other, which is 4 transistors,
+    plus 2 that connect the cell to its read and write wires.`)}`);
   stage.focus([fb.A.el, fb.B.el], { label: 'one sram cell', at: 'right', ring: false });
   await guide.next();
 
@@ -449,13 +438,8 @@ export async function step3(){
     await fadeIn([boxes[i]], 200);
   }
 
-  /* ---- CARD 16 — four of them ---- */
-  guide.say(`One SR latch holds one bit. Four of them side by side hold four bits.`);
-  stage.focus(loopsG, { label: 'four latches', at: 'top' });
-  await guide.next();
-
-  /* ---- CARD 17 — the name ---- */
-  stage.clearFocus();
+  /* ---- CARD 16 — four of them, and the name ----
+     Critic pass (2026-11-04): two cards are one. The boxes above come first, then the row. */
   const regBits = makeBits(sceneC, { x: 135, y: 310, n: 4, gap: 150, size: 30, weights: true });
   regBits.set(0b1011);
   const read = svgEl('text', { x: 360, y: 374, class: 'lbl-strong' });
@@ -463,8 +447,8 @@ export async function step3(){
   sceneC.appendChild(read);
   await fadeIn([regBits.g, read], 300);
 
-  guide.say(`Four latches side by side are a <b>register</b>: a circuit that holds a whole
-    number. These four are holding 11.`);
+  guide.say(`One SR latch holds one bit. Four side by side are a <b>register</b>: a circuit that
+    holds a whole number. These four are holding 11.`);
   stage.focus(sceneC, { label: 'register', at: 'bottom' });
   await guide.next();
 
@@ -475,47 +459,25 @@ export async function step3(){
   await guide.next();
 
   /* ================= IN THE LAB (DESIGN.md §6d rule 8) =============================
-     The 74HC279 (four SR latches with active-low inputs, the S̄R̄ NAND latch built here),
-     latch 2 on a breadboard with two buttons, then a 74HC173 four-bit register. Sources for
-     every pin and function are listed in js/acts/act2/lab.js. */
+     The 74HC279 (four SR latches with active-low inputs, the S̄R̄ NAND latch built here), then
+     a laptop RAM stick, which Act 4's HBM leans on. Critic pass (2026-11-04): the 74HC173 and a
+     working latch on a breadboard are behind See more. Sources for every pin and function are
+     listed in js/acts/act2/lab.js. */
 
   stage.clearFocus();
   const part = slideInPanel(svg, lab23Part(), { lab: true });
   part.focus(['part', 'pinout']);
   await part.show();
   guide.lab(`Here is the SR latch you just built, sold as a part: a 74HC279 holds four of them.
-    The bar over S and R in its pin names means <b>active low</b>: the input acts when it is
-    pulled down to 0 V, as your S and R did.`, { intro: true });
-  await guide.next();
-
-  const bench = slideInPanel(svg, lab23Board(), { lab: true });
-  setLabState(bench, true);
-  await part.swapTo(bench);      // N-053: no flash of the stage between panels
-  guide.lab(`On this breadboard, a 10 kΩ resistor holds each input of latch 2 at 5 V, and each
-    button connects its input to ground while you press it. If you press S and let go, the
-    LED lights and stays lit.`);
-  await guide.next();
-
-  setLabState(bench, false);
-  /* Course restructure (2026-10-25): "for as long as the supply is on" cut; the step says
-     the bit is lost at power-off once, on card 14. */
-  guide.lab(`If you then press R and let go, the LED goes out and stays out. The latch holds
-    the bit, not the buttons.`);
-  await guide.next();
-
-  const reg = slideInPanel(svg, lab23Register(), { lab: true });
-  reg.focus(['part', 'pinout']);
-  await bench.swapTo(reg);      // N-053: no flash of the stage between panels
-  guide.lab(`A register like yours is sold as a part too. The 74HC173 holds four bits on pins 3
-    to 6. It copies in a new number from pins 11 to 14 only when pin 7 goes from 0 V to 5 V.
-    That pin is the clock, which the next step explains.`);
+    The bar over S and R in its pin names means <b>active low</b>.${info(`Active low means the input
+    acts when it is pulled down to 0 V, as your S and R did.`)}`, { intro: true });
   await guide.next();
 
   /* Course restructure (2026-10-25): a laptop RAM stick, to set up DRAM before Act 4's HBM.
      Drawn as a DDR4 SO-DIMM, whose refresh window is 64 ms (DDR5's is 32 ms). */
   const ram = slideInPanel(svg, lab23Ram(), { lab: true });
   ram.focus(['stick', 'cell']);
-  await reg.swapTo(ram);
+  await part.swapTo(ram);
   guide.lab(`A laptop's main memory is a stick like this. Its chips are <b>DRAM</b>: each bit is
     a charge on one tiny capacitor, with one transistor to reach it.`);
   await guide.next();
@@ -523,6 +485,15 @@ export async function step3(){
   ram.focus('cell');
   guide.lab(`The charge leaks away, so the chip rewrites every bit at least once every 64 ms.
     The HBM in Act 4 is DRAM too.`);
+  if (!await guide.labMore()){ await ram.hide(); return; }
+
+  const reg = slideInPanel(svg, lab23Register(), { lab: true });
+  reg.focus(['part', 'pinout']);
+  await ram.swapTo(reg);
+  guide.lab(`A register like yours is sold as a part too. The 74HC173 holds four bits on pins 3
+    to 6. It copies in a new number from pins 11 to 14 only when pin 7 goes from 0 V to 5 V.
+    That pin is the clock, which the next step explains.`);
   await guide.next();
-  await ram.hide();
+
+  await labBench(svg, reg, BENCHES.latch);
 }

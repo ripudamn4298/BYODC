@@ -12,7 +12,7 @@ import { SFX } from '../../engine/sfx.js';
 import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
-import { makeMeter, slideInPanel } from '../../engine/components.js';
+import { makeMeter, slideInPanel, labExplore } from '../../engine/components.js';
 import { labGraphicsCard, labServerAndKit, labHeadline } from './lab.js';
 import { makeLaneGrid } from '../../engine/lanes.js';
 import { CurrentFlow } from '../../engine/pathflow.js';
@@ -219,12 +219,12 @@ export async function step6(){
   await Anim.tween(1200, setPower);
   setPower(1);
 
-  guide.say(`Every transistor that flips turns a little power into heat. Billions of flips a
-    second on this die add up to about 700 watts, which the meter under the stage shows.`);
+  // critic pass (2026-11-04): the heat and the cooler are one card, and the student fits it
+  guide.say(`Every transistor that flips turns a little power into heat. On this die that adds up to about
+    700 watts, shown on the meter. A <b>cooler</b>, a metal lid with fins, passes it into the air. All 700
+    watts have to leave through it, or the chip overheats.`);
   stage.focus(dieG, { label: 'GPU die', at: 'left' });
-  await guide.next();
-
-  /* ============ CARD 3 — the cooler, dropped on ==================================== */
+  await guide.button('Fit the cooler ▸');
 
   stage.clearFocus();
   const cooler = svgEl('g');
@@ -248,12 +248,7 @@ export async function step6(){
     cooler.style.opacity = Math.min(1, e * 2).toFixed(2);
     cooler.setAttribute('transform', `translate(0 ${(-60 * (1 - e)).toFixed(1)})`);
   });
-  if (!flow.instant) SFX.flow();
-
-  guide.say(`A <b>cooler</b> is a metal lid with fins that takes heat off the die and passes it
-    into the air. All 700 watts have to leave through it, or the chip overheats.`);
-  stage.focus(cooler, { label: 'heat leaves here', at: 'top' });
-  await guide.next();
+  if (!flow.instant){ SFX.flow(); await sleep(900); }
 
   /* ============ CARDS 9-12 — the training loop ==================================== */
 
@@ -286,26 +281,14 @@ export async function step6(){
   lossG.append(lossCap, lossVal);
   svg2.appendChild(lossG);
 
-  // Course restructure (2026-10-25): the two training-intro cards merged into one, and
-  // inference named against it.
-  guide.say(`<b>Training</b> is how an AI model learns its weights. On each pass, data streams
-    in from memory, and the lanes adjust the weights a little. Using the trained weights
-    afterwards is inference, as in step&nbsp;4.`);
-  stage2.focus([src, wire, grid.g], { label: 'one pass', at: 'bottom' });
-  await guide.next();
-
-  stage2.clearFocus();
-  guide.say(`The loss is one number that says how wrong the model's answers are right now.
-    It should fall on every pass.`);
-  stage2.focus(lossG, { label: 'loss', at: 'top' });
-  await guide.next();
-
-  /* REVIEW_NOTES N-069: the task gets its own card, says which button and how many times,
-     and reports after every pass */
+  /* REVIEW_NOTES N-069: the task says which button and how many times, and reports after every
+     pass. Critic pass (2026-11-04): training, the loss and the task are one card. */
   const runBtn = el('button', { class: 'btn primary', 'data-label': 'run-a-training-pass' }, 'RUN A TRAINING PASS ▸');
   controls2.appendChild(runBtn);
-  guide.say(`<b>Your goal is to train the model: click RUN A TRAINING PASS, under the stage,
-    three times.</b> Watch the loss after each pass.`);
+  guide.say(`<b>Training</b> is how an AI model learns its weights: on each pass, data streams in from memory
+    and the lanes adjust the weights a little. The <b>loss</b> is one number that says how wrong the model is.
+    <b>Your goal is to click RUN A TRAINING PASS three times</b> and watch it fall.`);
+  stage2.focus(lossG, { label: 'loss', at: 'top' });
 
   async function runPass(loss){
     dataFlow.setSpeed(200);
@@ -343,17 +326,11 @@ export async function step6(){
     return true;
   });
 
-  guide.say(`The loss went 2.4, then 1.1, then 0.5, then 0.2. Each pass left the model a
-    little less wrong than the pass before.`);
-  stage2.focus(lossG, { label: 'loss', at: 'top' });
-  await guide.next();
-
-  stage2.clearFocus();
-  stage2.focus(grid.g, { label: '16 lanes, from step 1', at: 'bottom' });
-  // Course restructure (2026-10-25): the aha points back at the game job in step 1; the
-  // lanes are no longer stamped there, and physics is taught nowhere in the course.
-  guide.aha(`Training ran on the same sixteen lanes that moved the game's corners in step 1.`,
+  // critic pass (2026-11-04): the result and what it ran on are one card
+  guide.aha(`The loss went 2.4, 1.1, 0.5, 0.2. That training ran on the same sixteen lanes that moved the
+    game's corners in step 1.`,
     `Both jobs send one instruction to many numbers at once.`);
+  stage2.focus(grid.g, { label: '16 lanes, from step 1', at: 'bottom' });
   await guide.next();
 
   /* ============ CARD — the closing recap: everything built, package down to one lane ===
@@ -374,7 +351,7 @@ export async function step6(){
   const pkgRung = svg3.querySelector('[data-rung="package"]');
   guide.say(`An H100 holds 80 GB in its HBM. GPT-3 (2020) has 175 billion weights, and at 16
     bits each they fill 350 GB, so just holding it takes five GPUs.`);
-  stage3.focus(pkgRung, { label: '80 GB of HBM', at: 'top' });
+  stage3.focus(pkgRung, { label: '80 GB of HBM', at: 'top', camera: false });
   await guide.next();
   stage3.clearFocus();
 
@@ -382,33 +359,13 @@ export async function step6(){
      Sources in lab.js: RTX 4090 (24 GB on a 384-bit bus, so 12 chips; 450 W), the
      nvidia-smi readout of an H100 server, the Jetson Orin Nano developer kit. */
   const card = slideInPanel(svg3, labGraphicsCard(), { lab: true });
-  card.focus(['gpu', 'board', 'cooler']);
+  card.focus(['gpu', 'board', 'cooler', 'mem']);
   await card.show();
 
-  guide.lab(`Your package of die, memory and cooler is what sits on every graphics card. This
-    one is opened, with its cooler lifted off, and the GPU is the square in the middle of the
-    board.`, { intro: true });
-  await guide.next();
-
-  card.focus(['mem', 'board']);
-  guide.lab(`The black chips around the GPU are its memory. A gaming card such as the RTX 4090
-    has 12 of them, holding 24 GB, and together they deliver about 1 TB/s, under a third of
-    the H100's HBM.`);
-  await guide.next();
-
-  const desk = slideInPanel(svg3, labServerAndKit(), { lab: true });
-  desk.focus('smi');
-  await card.swapTo(desk);      // N-053: no flash of the stage between panels
-  guide.lab(`In a data centre, an H100 has no fans of its own, because the server cools it. The
-    command <b>nvidia-smi</b> shows it at work, drawing 511 watts of its 700-watt limit, the
-    figure your meter showed. Spec sheets call that limit the <b>TDP</b> (thermal design
-    power).`);   // Course restructure (2026-10-25): TDP named
-  await guide.next();
-
-  desk.focus('kit');
-  guide.lab(`You do not need a data centre to try this. NVIDIA's Jetson Orin Nano developer
-    kit is a small board whose GPU has 1,024 lanes and 32 Tensor Cores. It costs $249 and
-    runs on 7 to 25 watts.`);
+  // critic pass (2026-11-04): the card and its memory are one card
+  guide.lab(`Your package of die, memory and cooler is what sits on every graphics card. This one is opened:
+    the GPU is the square in the middle, and the black chips around it are its memory. On an RTX 4090 they
+    hold 24 GB and deliver about 1 TB/s, under a third of the H100's HBM.`, { intro: true });
   await guide.next();
 
   /* Course restructure (2026-10-25): the last lab card reads a real headline with the act's
@@ -416,10 +373,23 @@ export async function step6(){
      FP4 maths runs on the Tensor Cores. 50 PF = 50 × 10^15 = 50,000 trillion a second. */
   const news = slideInPanel(svg3, labHeadline(), { lab: true });
   news.focus(null);
-  await desk.swapTo(news);
+  await card.swapTo(news);
   guide.lab(`Now you can read a headline like this. 50 petaflops of FP4 is 50,000 trillion
     operations a second on 4-bit numbers, from the Tensor Cores. 288 GB is what the HBM stacks
     beside the die hold.`);
+  // critic pass (2026-11-04): the server and the dev kit are there on request
+  if (!await guide.labMore()){ await news.hide(); return; }
+
+  const desk = slideInPanel(svg3, labServerAndKit(), { lab: true });
+  await news.swapTo(desk);
+  labExplore(desk, {
+    text: `You can see all of this at work, in a data centre or on a desk.`,
+    prompt: 'Tap one to read about it.',
+    items: [
+      { k: 'smi', label: 'An H100 server', html: `In a data centre, an H100 has no fans of its own, because the server cools it. The command <b>nvidia-smi</b> shows it drawing 511 watts of its 700-watt limit, the figure your meter showed. Spec sheets call that limit the <b>TDP</b> (thermal design power).` },
+      { k: 'kit', label: 'A dev kit', html: `NVIDIA's Jetson Orin Nano developer kit is a small board whose GPU has 1,024 lanes and 32 Tensor Cores. It costs $249 and runs on 7 to 25 watts.` },
+    ],
+  });
   await guide.next();
-  await news.hide();
+  await desk.hide();
 }

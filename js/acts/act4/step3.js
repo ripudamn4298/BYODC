@@ -12,7 +12,7 @@ import { guide } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makeMuxRig } from '../../engine/mathengine.js';
-import { slideInPanel } from '../../engine/components.js';
+import { slideInPanel, labExplore } from '../../engine/components.js';
 import { labMemoryLadder } from './lab.js';
 import { ringsMap, RING_LEVELS, ringPoint } from '../../art/rings.js';
 
@@ -69,11 +69,6 @@ export async function step3(){
   text(engine, ENGINE.x + ENGINE.w / 2, ENGINE.y + 42, 'ABOUT 35 GATES', 'lbl-faint', 'middle');
   svg.appendChild(engine);
 
-  guide.say(`The MAC unit you built last step needs its numbers delivered every cycle. This
-    step is about where they wait, and what the delivery costs.`);
-  stage.focus(engine, { label: 'the MAC unit you built', at: 'top' });
-  await guide.next();
-
   /* ============ CARD 2 — one register, alone on the stage ========================== */
 
   const rig = makeMuxRig(svg, RIG);
@@ -90,22 +85,14 @@ export async function step3(){
   hide(merge);
   hide([wire]);
 
-  stage.clearFocus();
-  await fadeIn([rows[0]], 340);
+  /* ============ CARD 1 — what the MAC unit needs, and where it comes from ==========
+     Critic pass (2026-11-04): the preface, one register and the file are one card. */
+  await fadeIn(rows, 420);
 
-  guide.say(`A register stores one number, and it sits right next to the MAC unit. This one
-    holds 0011.`);
-  stage.focus(rows[0], { label: 'register R0', at: 'right' });
-  await guide.next();
-
-  /* ============ CARD 3 — seven more shelves make the file ========================== */
-
-  stage.clearFocus();
-  await fadeIn(rows.slice(1), 420);
-
-  guide.say(`Eight registers together are a register file. Your MAC unit reads its numbers
-    from here and nowhere else.`);
-  stage.focus(rows, { label: 'register file', at: 'right' });
+  guide.say(`The MAC unit you built needs its numbers delivered every cycle. A <b>register</b> stores one
+    number, right next to the MAC unit, and eight together are a <b>register file</b>. This step is about
+    where numbers wait, and what delivering them costs.`);
+  stage.focus([engine, ...rows], { label: 'register file and mac unit', at: 'bottom', ring: false });
   await guide.next();
 
   /* ============ CARD 4 — the mux, watched (Act 4 restructure, 2026-10-25) ===========
@@ -117,9 +104,15 @@ export async function step3(){
   if (!flow.instant) await sleep(500);
   await rig.select(3);
 
-  guide.say(`To read one register, the chip uses a <b>mux</b> (short for multiplexer), made of
-    AND and OR gates. Here it passes R3 down to the MAC unit and blocks the other seven.`);
+  guide.say(`To read one register, the chip uses a <b>mux</b> (short for multiplexer), made of AND and OR
+    gates. Here it passes R3 down to the MAC unit and blocks the other seven. Tap another register to
+    switch it.`);
   stage.focus([...tabs, ...merge], { label: 'mux', at: 'left', ring: false });
+  // critic pass (2026-11-04): the student can pick a register. Nothing here is an answer.
+  rows.forEach((r, i) => {
+    r.style.cursor = 'pointer';
+    r.addEventListener('click', () => { SFX.click(); rig.select(i); });
+  });
   await guide.next();
 
   /* ============ CARD 5 — the bill, drawn to scale ================================== */
@@ -147,11 +140,10 @@ export async function step3(){
   });
   if (!flow.instant){ SFX.blip(); await sleep(120); }
 
-  guide.aha(`The MAC unit reads three numbers every cycle, so it needs three muxes: 180 gates
-    to deliver the numbers, against about 35 gates for the maths. That is five gates of
-    delivery for every gate of maths, on every cycle.`,
-    `Measured in energy on a real chip, the gap is far wider: fetching a number from even a
-     small on-chip memory costs 100 to 250 times more than adding it.`);
+  guide.aha(`The MAC unit reads three numbers every cycle, so it needs three muxes: 180 gates to deliver
+    them, against about 35 for the maths.`,
+    `In energy the gap is far wider: fetching a number from even a small on-chip memory costs 100 to 250
+     times more than adding it.`);
   stage.focus(bars, { ring: true });
   await guide.next();
 
@@ -192,31 +184,20 @@ export async function step3(){
      Sizes from NVIDIA's Hopper architecture article; sources in lab.js. */
   stage2.clearFocus();
   const lab = slideInPanel(svg2, labMemoryLadder(), { lab: true });
-  lab.focus(['reg', 'sm']);
+  lab.focus(null);
   await lab.show();
 
-  // Course restructure (2026-10-25): the SM is defined in step 1's lab; each rung names its ring
-  guide.lab(`You built a register file beside your MAC unit. On a real GPU, every <b>SM</b>
-    (from step 1) has its own, and it is ring 1 of the map. On NVIDIA's H100, each one holds
-    256 KB, enough for 65,536 numbers of 32 bits.`, { intro: true });
-  await guide.next();
-
-  lab.focus(['l1', 'sm']);
-  // Course restructure (2026-10-25): "cache" is defined on the rings card, so it is not defined again
-  guide.lab(`Ring 2 is the L1 cache, 256 KB in each SM. The program can set up to 228 KB of it
-    aside as <b>shared memory</b>, which it fills itself, so shared memory is part of ring 2.`);
-  await guide.next();
-
-  lab.focus(['l2', 'pkg']);
-  guide.lab(`Ring 3 is the L2 cache, 50 MB in the middle of the die. All 132 SMs share
-    it, so a number that one SM has fetched can be read by the others from here.`);
-  await guide.next();
-
-  lab.focus(['hbm', 'pkg']);
-  // Course restructure (2026-10-25): HBM is ring 4; no hyphen, to match the step 5 title
-  guide.lab(`Ring 4, the main memory, is <b>HBM</b> (high bandwidth memory): stacks of memory
-    chips beside the die, 80 GB on the H100. It holds the model's weights and data, and every
-    number the lanes use is copied in from here, through the caches, to a register.`);
+  // critic pass (2026-11-04): one card to explore, instead of four to read
+  labExplore(lab, {
+    text: `On NVIDIA's H100, every ring of that map is a real part of the chip.`,
+    prompt: 'Tap a ring to see what it is and how much it holds.',
+    items: [
+      { k: ['reg', 'sm'], hit: 'reg', label: 'Ring 1', html: `Registers. You built a register file beside your MAC unit, and every SM has its own. Each one holds 256 KB, enough for 65,536 numbers of 32 bits.` },
+      { k: ['l1', 'sm'], hit: 'l1', label: 'Ring 2', html: `The L1 cache, 256 KB in each SM. The program can set up to 228 KB of it aside as <b>shared memory</b>, which it fills itself.` },
+      { k: ['l2', 'pkg'], hit: 'l2', label: 'Ring 3', html: `The L2 cache, 50 MB in the middle of the die. All 132 SMs share it, so a number that one SM has fetched can be read by the others from here.` },
+      { k: ['hbm', 'pkg'], hit: 'hbm', label: 'Ring 4', html: `The main memory, <b>HBM</b> (high bandwidth memory): stacks of memory chips beside the die, 80 GB on the H100. It holds the model's weights and data, and every number the lanes use is copied in from here.` },
+    ],
+  });
   await guide.next();
   await lab.hide();
 }

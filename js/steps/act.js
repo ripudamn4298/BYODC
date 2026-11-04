@@ -58,19 +58,19 @@ export const ACT1 = [
           `Forwards, it is built to carry 1 amp.`,
           `Backwards, even with 50 volts pushing, no more than 10 microamps leak through, which is a hundred-thousandth of the forward current.`,
         ] },
-        `Going forwards still has a price. Every electron that crosses has to climb the 0.7-volt hill, and the energy it spends there turns into heat. Power is voltage × current (P = V × I), so when 1 amp flows forwards, the diode turns at least 0.7 watts into heat.`,
-        `Your phone charger depends on this one-way behaviour. The current from a wall socket flows back and forth, and diodes inside the charger let it through in one direction only. That gives your phone the one-way current its battery needs.`,
+        `Going forwards still has a price: at 1 amp, the diode turns at least 0.7 watts into heat.`,
+        `Your phone charger depends on this. Diodes inside it turn the back-and-forth current from the wall socket into the one-way current your battery needs.`,
       ],
       working: [
         `The 1N4001 datasheets rate it for an average forward current of 1 amp and a reverse voltage of 50 volts. They list the reverse leakage at 25 °C as at most 5 microamps, or 10 microamps in one manufacturer's table, so the box uses the larger figure.`,
         `10 microamps ÷ 1 amp = 0.00001, which is a hundred-thousandth.`,
-        `Power is voltage × current, so 0.7 volts × 1 amp = 0.7 watts.`,
+        `Every electron that crosses has to climb the 0.7-volt hill, and the energy it spends there turns into heat. Power is voltage × current (P = V × I), so 0.7 volts × 1 amp = 0.7 watts.`,
         `The box says "at least" because a real 1N4001 drops about 0.93 volts at 1 amp, so it actually turns about 0.93 watts into heat. 0.7 volts is the lowest the drop can be.`,
         `A charger usually has four diodes arranged in a bridge (a bridge rectifier), so that both halves of the back-and-forth current come out flowing the same way.`,
       ],
     },
     numbersArt: chargerArt,            // REVIEW_NOTES N-053: a phone charger, taken apart
-    premise: `A diode lets current through one way only, and the current itself decides when it flows. A switch needs something more: a separate wire that turns a large current on and off. How do you build one?`,
+    premise: `A switch needs something a diode does not have: a separate wire that turns a large current on and off. How do you build one?`,
     cta: 'Take control of the current ▸',
     run: step2,
   },
@@ -81,16 +81,13 @@ export const ACT1 = [
     inventory: 'a working transistor',
     numbers: {
       text: [
-        `Your NPN transistor stays on only while 10 µA flows into its base. If that current stops, the transistor turns off.`,
-        `Power is voltage × current. At 0.7 volts and 0.00001 amps, that is 7 microwatts, and the transistor needs it for as long as it stays on.`,
-        `One transistor is cheap, but a chip is made of billions of them. The chip in a 2023 iPhone, Apple's A17 Pro, has 19 billion transistors. Suppose chips were built from your NPN and every transistor were held on.`,
+        `Your NPN transistor stays on only while 10 µA flows into its base. At 0.7 volts, that costs 7 microwatts for as long as it stays on.`,
+        `The chip in a 2023 iPhone, Apple's A17 Pro, has 19 billion transistors. Suppose every one were your NPN, held on.`,
         { ladder: [
-          `A thousand of them would draw 7 milliwatts.`,
-          `A million would draw 7 watts.`,
+          `A million of them would draw 7 watts.`,
           `A billion would draw 7,000 watts, as much as seven microwaves running at once.`,
-          `The 19 billion in one phone chip would draw 133,000 watts.`,
+          `The 19 billion in one phone chip would draw 133,000 watts, more than 100 homes use.`,
         ] },
-        `That is more electricity than 100 homes use, and it would be inside your pocket. Your transistor works, but a chip cannot be built from it.`,
       ],
       working: [
         `One transistor draws 0.7 volts × 10 microamps = 0.7 × 0.00001 = 0.000007 watts, which is 7 microwatts.`,
@@ -101,7 +98,7 @@ export const ACT1 = [
         `This counts only the current that keeps each transistor on. The larger current that each transistor controls would come on top.`,
       ],
     },
-    premise: `Your transistor can now control a large current. The catch is that it consumes a small current the whole time it is on, just to stay on. That is acceptable for hundreds of transistors and impossible for billions. Wouldn't it be better if we could hold it on without any current at all?`,
+    premise: `Your transistor works, but it consumes a small current the whole time it is on. Can we hold it on without any current at all?`,
     cta: 'Find a better transistor ▸',
     run: step3,
   },
@@ -112,23 +109,21 @@ export const ACT1 = [
     inventory: 'a voltage-driven transistor (MOSFET)',
     numbers: {
       text: [
-        `You built an NMOS. Like the NPN from step 3, it lets a current run through it while it is on. The difference is what it takes to keep it on.`,
+        `You built an NMOS. Take the 19 billion transistors in a phone chip.`,
         { ladder: [
-          `The NPN stays on only while a current keeps flowing into its base. That costs 7 microwatts for every moment it is on.`,
-          `The NMOS stays on while its gate holds a voltage. The glass under the gate blocks current, so no current has to flow into the gate to keep it on.`,
+          `As NPNs, keeping them all on would need 133,000 watts flowing into their bases.`,
+          `As NMOS transistors, they need no current at their gates, because the glass blocks it. One charge of about 0.00002 joules sets them all.`,
         ] },
-        `Setting the gate takes one small charge. The energy for that is the gate's capacitance × voltage² (E = C × V²), about a thousandth of a trillionth of a joule.`,
-        `Take the 19 billion transistors in a phone chip. If they were NPNs, keeping them all on would need 133,000 watts flowing into their bases. As NMOS transistors, they need no current at their gates, only one charge of about 0.00002 joules to set them all.`,
       ],
       working: [
         `An NPN transistor needs 0.7 volts × 10 microamps = 7 microwatts at its base for as long as it is on (step 3).`,
         `Charging a gate takes energy E = C × V², where C, the capacitance, is how much charge the gate stores per volt. With a generous C of 1 femtofarad (10⁻¹⁵ farads) and V = 1 volt, E = 10⁻¹⁵ × 1² = 10⁻¹⁵ joules, which is a thousandth of a trillionth. Published estimates for real gates are about 25 times smaller still.`,
         `For 19 billion NPN transistors, the base current costs 19,000,000,000 × 7 microwatts = 133,000 watts.`,
         `For 19 billion NMOS gates, one charge costs 19,000,000,000 × 10⁻¹⁵ joules = 0.000019 joules, which is about 0.00002 joules.`,
-        `In a modern chip the glass is only a few atoms thick, so a very small current does pass through it into the gate. This is one more kind of leakage, and it is tiny next to the NPN's base current.`,
+        `In a modern chip the glass is only a few atoms thick, so a very small current does pass through it into the gate. It is tiny next to the NPN's base current.`,
       ],
     },
-    premise: `Your NMOS needs no current at its gate. In a chip there is no lamp: each transistor's only job is to set the gate of the next one high or low, so any current it passes from the supply to ground is wasted. Can a circuit hold its output high or low and draw nothing?`,
+    premise: `In a chip there is no lamp, so any current a transistor passes from the supply to ground is wasted. Can a circuit hold its output high or low and draw nothing?`,
     cta: 'Hold the output without current ▸',
     run: step4,
   },
@@ -140,8 +135,7 @@ export const ACT1 = [
     numbers: {
       text: [
         `Your CMOS pair draws current only during the instant it flips. Between flips, one of its two transistors is always off, so no current runs from power to ground.`,
-        `That is what lets a chip hold billions of transistors. NVIDIA's H100 (2022), one of the leading chips that data centres use to train AI, is built from pairs like these.`,
-        `To find the power per transistor, divide the total power by the number of transistors (p = P ÷ N). The H100 draws at most 700 watts for 80 billion transistors, which is under 9 billionths of a watt each.`,
+        `NVIDIA's H100 (2022), one of the leading chips that data centres use to train AI, is built from pairs like these. It has 80 billion transistors.`,
         { ladder: [
           `If those 80 billion transistors were built the step 3 way and all were held on, they would draw 560,000 watts.`,
           `Built as CMOS pairs, they draw at most 700 watts, and that includes the chip's memory.`,
@@ -149,7 +143,7 @@ export const ACT1 = [
         `So 80 billion transistors run on less power than one microwave.`,
       ],
       working: [
-        `Each transistor gets 700 watts ÷ 80,000,000,000 = 0.00000000875 watts, which is under 9 billionths of a watt. This is an upper bound, because the 700 watts also feeds the memory on the same board.`,
+        `To find the power per transistor, divide the total power by the number of transistors (p = P ÷ N). Each transistor gets 700 watts ÷ 80,000,000,000 = 0.00000000875 watts, which is under 9 billionths of a watt. This is an upper bound, because the 700 watts also feeds the memory on the same board.`,
         `Built the step 3 way, the transistors would draw 80,000,000,000 × 7 microwatts = 560,000 watts.`,
         `Dividing 7 microwatts by 0.00000000875 watts gives 800, so the real chip's whole budget, shared out, is 800 times less per transistor than a step 3 transistor needs just to stay on.`,
         `A microwave cooks at about 1,000 watts, and 700 watts is less than that.`,

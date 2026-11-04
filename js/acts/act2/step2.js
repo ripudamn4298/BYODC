@@ -20,7 +20,7 @@
 import { svgEl, sleep, waitFor } from '../../engine/util.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { makeSeg, makeChip, makePlacer, makeLamp, slideInPanel } from '../../engine/components.js';
@@ -88,13 +88,10 @@ export async function step2(){
   bitsG.style.opacity = '0';
   await fadeIn([bitsG]);
 
-  guide.say(`Here are four lamps in a row. Each lamp holds one <b>bit</b>: a single 0 or 1,
-    lit for 1 and dark for 0.`);
-  stage.focus(bits.g, { label: 'one bit per lamp', at: 'top' });
-  await guide.next();
-
-  guide.say(`Each lamp also has a weight: <b>8, 4, 2, 1</b>. This is <b>place value</b>. The
-    row shows a number: add up the weights of the lit lamps.`);
+  // critic pass (2026-11-04): bit and place value are one card, so the student acts on card 3
+  guide.say(`Here are four lamps. Each holds one <b>bit</b>: a 0 when dark, a 1 when lit. Each also
+    has a weight, <b>8, 4, 2, 1</b>, called <b>place value</b>. Add the weights of the lit lamps
+    to read the number.`);
   stage.focus(bits.g, { label: 'place value', at: 'top' });
   await guide.next();
 
@@ -144,7 +141,8 @@ export async function step2(){
   await fadeIn([gB]);
 
   guide.say(`Here is the same sum on paper, in <b>binary</b> (numbers written with only the
-    digits 0 and 1). <b>5 is 101</b> and <b>3 is 011</b>. Work it one column at a time,
+    digits 0 and 1). <b>5 is 101</b>${info(`101 means one 4, no 2 and one 1, which is
+    4 + 0 + 1 = 5. 011 means 0 + 2 + 1 = 3.`)} and <b>3 is 011</b>. Work it one column at a time,
     starting at the right.`);
   stage.focus(csum.el, { label: '5 + 3', at: 'top' });
   await guide.next();
@@ -197,8 +195,8 @@ export async function step2(){
   // Course restructure (2026-10-25): "one job per column" and "build it once, stamp it"
   // were two cards; they are one now.
   guide.say(`Every column did the same job: add two digits and the carry in, write one digit,
-    and pass any carry left. You will build that job once as a circuit, then copy it once
-    for each column. Making those copies is called <b>stamping</b>.`);
+    and pass any carry left. You will build that job once as a circuit, then copy it for
+    each column, which is called <b>stamping</b>.`);
   stage.focus(csum.el, { label: 'one job, four times', at: 'bottom' });
   await guide.next();
   stage.clearFocus();
@@ -265,33 +263,26 @@ export async function step2(){
   gC.style.opacity = '0';
   await fadeIn([gC]);
 
-  guide.say(`The circuit that does one column is a <b>full adder</b>. Here is its frame:
-    five empty boxes and the wires between them.`);
-  stage.focus(gC, { label: 'full adder', at: 'top' });
-  await guide.next();
-
-  // Course restructure (2026-10-25): the inputs card and the outputs card are one card.
-  // inLblG then outG: focus restores back to front, so the list must be in document order.
-  guide.say(`It has three inputs: the two digits in this column, <b>A</b> and <b>B</b>, and
-    the <b>carry in</b> from the column on its right. It has two outputs: this column's
-    <b>sum</b> digit and the <b>carry out</b> going left.`);
-  stage.focus([inLblG, outG], { label: '3 in, 2 out', at: 'bottom' });
+  // critic pass (2026-11-04): the frame and its inputs and outputs are one card
+  guide.say(`The circuit that does one column is a <b>full adder</b>, shown here as five empty
+    boxes. It takes three inputs: the digits <b>A</b> and <b>B</b>, and the <b>carry in</b> from
+    the right. It gives two outputs: the <b>sum</b> digit and the <b>carry out</b>.`);
+  stage.focus(gC, { label: 'full adder: 3 in, 2 out', at: 'top' });
   await guide.next();
 
   guide.say(`The sum digit is 1 when the two digits <b>differ</b>. The gate that asks "do
     these differ?" is <b>XOR</b> (exclusive or). There are two here, because the carry in
-    has to be compared as well.`);
+    has to be compared as well.${info(`The first XOR compares A and B. The second compares that
+    answer with the carry in. Together, the sum digit is 1 when an odd number of the three inputs
+    are 1.`)}`);
   stage.focus(laneG.sum, { label: 'sum row', at: 'top' });
   await guide.next();
 
-  guide.say(`The carry asks a different question: were <b>both</b> digits 1? AND answers
-    that. There are two again: one for A and B, and one for the carry in.`);
-  stage.focus(laneG.carry, { label: 'carry row', at: 'right' });
-  await guide.next();
-
-  guide.say(`There are two ways to produce a carry, and either one is enough. <b>OR</b>
-    (output 1 if either input is 1) merges them into the single carry out.`);
-  stage.focus(laneG.or, { label: 'either carry', at: 'top' });
+  // critic pass (2026-11-04): the two ANDs and the OR that merges them are one card
+  guide.say(`The carry asks a different question: were <b>both</b> digits 1? AND answers that,
+    once for A and B, and once for the carry in. Either one is enough, so <b>OR</b> (output 1 if
+    either input is 1) merges them into the carry out.`);
+  stage.focus([laneG.carry, laneG.or], { label: 'either carry', at: 'right' });
   await guide.next();
 
   /* ---- placement runs with no focus: the scrim would hide the tray, and the tiles
@@ -465,15 +456,13 @@ export async function step2(){
   await fadeIn([arcsG]);
   arcs.forEach(a => { a.style.opacity = '.28'; });
 
-  guide.say(`Each full adder's <b>carry out</b> feeds the <b>carry in</b> of the full adder
-    on its left, the same way you wrote the carries above the paper sum.`);
-  stage.focus(arcsG, { label: 'carry out to carry in', at: 'top' });
-  await guide.next();
-
-  guide.say(`Every carry has to wait for the column on its right, so the answer settles from
-    right to left. Four full adders chained like this are a <b>ripple adder</b>.`);
-  // chainG then colCap: focus restores back to front, so the list must be in document order
-  stage.focus([chainG, colCap], { label: 'ripple adder', at: 'bottom' });
+  // critic pass (2026-11-04): the carry links and the ripple are one card
+  guide.say(`Each full adder's <b>carry out</b> feeds the <b>carry in</b> of the one on its left.
+    Every carry waits for the column on its right, so the answer settles from right to left.
+    Four chained like this are a <b>ripple adder</b>.${info(`That wait adds up in a 64-column
+    adder, so fast processors add extra gates that work out the carries ahead of time. The job of
+    each column stays the same.`)}`);
+  stage.focus([chainG, colCap, arcsG], { label: 'ripple adder', at: 'bottom' });
   await guide.next();
 
   /* the answer row: five lamps, one under each column plus the sixteens */
@@ -543,14 +532,10 @@ export async function step2(){
     return finalCarry;
   }
 
-  guide.say(`The answer row has five lamps: <b>16, 8, 4, 2, 1</b>. Four columns hold up to
-    15, so a bigger sum needs that fifth lamp.`);
-  stage.focus(outG2, { label: 'answer', at: 'top' });
-  await guide.next();
-
+  // critic pass (2026-11-04): the answer row and the goal are one card
   stage.clearFocus();
-  guide.say(`<b>Your goal is to set A to 5 and B to 3</b>, using the bit buttons under the
-    stage.`);
+  guide.say(`The answer row has five lamps, because four columns only hold up to 15. <b>Your goal
+    is to set A to 5 and B to 3</b>, using the bit buttons under the stage.`);
   await flow.ask(async replay => {
     if (replay !== undefined){
       toggleA4.set(replay[0], true); toggleB4.set(replay[1], true);
@@ -593,7 +578,8 @@ export async function step2(){
   guide.lab(`Each number comes in on four pins, A1 to A4 and B1 to B4, where 1 is the ones
     column. The sum comes out on S1 to S4. Pin 7 is the carry in, and pin 9 is the carry
     out.`);
-  await guide.next();
+  // critic pass (2026-11-04): the part shows, its breadboard is there on request
+  if (!await guide.labMore()){ await part.hide(); return; }
 
   const bench = slideInPanel(svg, lab22Board(), { lab: true });
   bench.focus('inputs');

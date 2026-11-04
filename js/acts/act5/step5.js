@@ -5,13 +5,14 @@
 // introduced from what is on screen; it makes no claim that the player has seen it
 // before, because the landing is the hand-drawn frame scrub (ACT5_MAKEOVER.md §1.3).
 import { svgEl, sleep } from '../../engine/util.js';
-import { guide } from '../../engine/guide.js';
+import { guide, info } from '../../engine/guide.js';
 import { flow } from '../../engine/flow.js';
 import { newStage } from '../../engine/stage.js';
 import { Anim } from '../../engine/anim.js';
 import { SFX } from '../../engine/sfx.js';
 import { EARTH_DOTS } from '../../earth-dots.js';
-import { slideInPanel } from '../../engine/components.js';
+import { slideInPanel, labExplore, pointerDrag } from '../../engine/components.js';
+import { recapPanel, smallText } from '../../engine/recap.js';
 import { siteLab } from './lab.js';
 import { laneIcon } from '../../art/icons.js';
 
@@ -139,6 +140,46 @@ function ledgerRow(parent, y, label, amount, { strong = false } = {}){
    atom, each rung tagged with the act that built it. Modelled on the recap ladders that end
    Act 1 (js/steps/step5.js) and Act 4 (js/acts/act4/step6.js), but drawn as a small column
    beside the globe, so the globe stays on screen to the very end. */
+/* N-150: what you built in Act 5, one rung per step */
+const ACT5_RECAP = {
+  title: 'WHAT YOU BUILT IN ACT 5',
+  sub: 'FROM ONE RACK TO A WHOLE SITE',
+  rungs: [
+    { tag: 'STEP 5.1', name: 'A RACK', lines: ['8 NODES', '64 GPUs'],
+      art: (x, y) => `<rect x="${x + 36}" y="${y + 12}" width="46" height="94" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.2"/>
+        ${[0, 1, 2, 3, 4, 5, 6, 7].map(i => `<rect x="${x + 41}" y="${y + 17 + i * 11}" width="36" height="8" rx="1" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width=".8"/>`).join('')}` },
+    { tag: 'STEP 5.2', name: 'ALL-TO-ALL', lines: ['A NODE WIRED', 'SO EVERY GPU TALKS'],
+      art: (x, y) => {
+        const n = 8, pts = [...Array(n).keys()].map(i => [x + 59 + 40 * Math.cos(i * Math.PI / 4), y + 59 + 40 * Math.sin(i * Math.PI / 4)]);
+        let d = '';
+        for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) d += `M${pts[a][0].toFixed(1)} ${pts[a][1].toFixed(1)} L${pts[b][0].toFixed(1)} ${pts[b][1].toFixed(1)}`;
+        return `<path d="${d}" stroke="var(--blue)" stroke-width=".7" fill="none"/>
+          ${pts.map(q => `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="5" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.1"/>`).join('')}`;
+      } },
+    { tag: 'STEP 5.3', name: 'A FABRIC', lines: ['SURVIVES A SWITCH', 'FAILING'],
+      art: (x, y) => {
+        const top = [38, 80].map(d => x + d), low = [20, 59, 98].map(d => x + d);
+        let d = '';
+        for (const t of top) for (const l of low) d += `M${t} ${y + 36} L${l} ${y + 82}`;
+        return `<path d="${d}" stroke="var(--blue)" stroke-width="1" fill="none"/>
+          ${top.map(t => `<rect x="${t - 13}" y="${y + 24}" width="26" height="12" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.1"/>`).join('')}
+          ${low.map(l => `<rect x="${l - 13}" y="${y + 82}" width="26" height="12" rx="2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.1"/>`).join('')}`;
+      } },
+    { tag: 'STEP 5.4', name: 'A HALL', lines: ['THAT HOLDS', 'THE POWER LINE'],
+      art: (x, y) => `<rect x="${x + 14}" y="${y + 40}" width="90" height="16" rx="1.5" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1"/>
+        ${smallText(x + 59, y + 51, 'THE LINE', 'var(--ink)')}
+        <rect x="${x + 14}" y="${y + 64}" width="74" height="16" rx="1.5" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1"/>
+        ${smallText(x + 51, y + 75, 'COMPUTERS')}
+        <rect x="${x + 88}" y="${y + 64}" width="16" height="16" rx="1.5" fill="var(--paper)" stroke="var(--ink-soft)" stroke-width="1"/>` },
+    { tag: 'STEP 5.5', name: 'THE SITE', lines: ['28,480 GPUs', 'ABOUT $1.7 BILLION'],
+      art: (x, y) => `<rect x="${x + 10}" y="${y + 12}" width="98" height="94" rx="2" fill="var(--paper)" stroke="var(--ink-soft)" stroke-width="1" stroke-dasharray="4 3"/>
+        <rect x="${x + 18}" y="${y + 20}" width="38" height="44" rx="1.5" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1"/>
+        <rect x="${x + 62}" y="${y + 20}" width="38" height="44" rx="1.5" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="1"/>
+        <rect x="${x + 18}" y="${y + 72}" width="38" height="24" rx="1.5" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1"/>
+        <rect x="${x + 62}" y="${y + 72}" width="38" height="24" rx="1.5" fill="var(--paper-high)" stroke="var(--ink)" stroke-width="1"/>` },
+  ],
+};
+
 function courseLadder(){
   const g = svgEl('g');
   const X = 566, Y0 = 56, S = 28, PITCH = 40, TX = X + S + 10;
@@ -210,10 +251,11 @@ export async function step5(){
   planG.appendChild(planHead);
 
   await fadeIn([plotRect, planHead], 320);
-  guide.say(`Everything from the last four steps goes on one plot of land. You will watch
-    four kinds of building appear on it, then choose where the plot sits.`);
+  // critic pass (2026-11-04): the student places each building, and the button says which
+  guide.say(`Everything from the last four steps goes on one plot of land. You will place four kinds of
+    building on it, then choose where the plot sits.`);
   stage.focus(plotRect, { label: 'one plot', at: 'bottom' });
-  await guide.next();
+  await guide.next('Place the two halls ▸');
 
   /* --- the two halls --- */
   stage.clearFocus();
@@ -229,18 +271,12 @@ export async function step5(){
     }
   });
   await fadeIn([hallA, hallB], 340);
-  guide.say(`Two halls hold the racks. You budgeted 25 MW of IT load, and at 56 kW a rack
-    that comes to about 445 racks.`);
-  stage.focus(docOrder([hallA, hallB]), { label: 'halls a and b', at: 'top' });
-  await guide.next();
-
-  /* Course restructure (2026-10-25): the site's GPU count, and the word "cluster".
-     445 racks × 8 nodes × 8 GPUs = 445 × 64 = 28,480 GPUs (COST_MODEL.md). Inference is
-     defined in Act 4, step 4. */
-  stage.clearFocus();
-  guide.say(`Your halls hold 445 racks × 64 = 28,480 GPUs, wired to work as one machine. This
-    is what people mean when they say a cluster. Once a model is trained, much of a cluster's
-    time goes to inference.`);
+  /* Course restructure (2026-10-25): the site's GPU count, and the word "cluster". 445 racks × 8
+     nodes × 8 GPUs = 445 × 64 = 28,480 GPUs (COST_MODEL.md). Inference is defined in Act 4, step 4.
+     Critic pass (2026-11-04): the halls and the cluster are one card. */
+  guide.say(`Two halls hold the racks. 25 MW of IT load at 56 kW a rack is about 445 racks, and 445 × 64 = 28,480
+    GPUs, wired to work as one machine. This is what people mean when they say a <b>cluster</b>.${info(`Once a
+    model is trained, much of a cluster's time goes to inference.`)}`);
   stage.focus(docOrder([hallA, hallB]), { label: '28,480 GPUs', at: 'top' });
   await guide.next();
 
@@ -251,7 +287,7 @@ export async function step5(){
     about 28 exaflops together. An exaflop is a million trillion operations a second. This is
     what people mean when they say compute: how much maths a company's chips can do.`);
   stage.focus(docOrder([hallA, hallB]), { label: 'about 28 exaflops', at: 'top' });
-  await guide.next();
+  await guide.next('Bring in the grid ▸');
 
   /* --- the substation --- */
   stage.clearFocus();
@@ -273,18 +309,14 @@ export async function step5(){
   grid.append(feed, bus, feedLbl);
   planG.appendChild(grid);
   await fadeIn([sub, grid], 340);
-  guide.say(`Grid power arrives at 138,000 volts. The substation steps it down (lowers the
-    voltage) to the few hundred volts a rack can take.`);
-  stage.focus(docOrder([sub, grid]), { label: 'substation', at: 'bottom' });
-  await guide.next();
-
-  /* Course restructure (2026-10-25): the gigawatt light-bulb card. The site draws 29.4 MW
-     (the power step's whole draw). 1,000 ÷ 29.4 ≈ 34 sites, and 34 × 28,480 ≈ 970,000 GPUs. */
-  stage.clearFocus();
-  guide.say(`Your site draws 29.4 MW from the grid. A 1 GW campus in the news draws 1,000 MW.
-    That is about 34 sites like yours, holding roughly a million GPUs like yours.`);
+  /* Course restructure (2026-10-25): the gigawatt light-bulb card. The site draws 29.4 MW (the power
+     step's whole draw). 1,000 ÷ 29.4 ≈ 34 sites, and 34 × 28,480 ≈ 970,000 GPUs.
+     Critic pass (2026-11-04): the substation and the gigawatt are one card. */
+  guide.say(`Grid power arrives at 138,000 volts, and the substation lowers it to the few hundred volts a rack can
+    take. Your site draws 29.4 MW. A 1 GW campus in the news draws 1,000 MW: about 34 sites like yours, holding
+    roughly a million GPUs like yours.`);
   stage.focus(docOrder([sub, grid]), { label: '29.4 MW from the grid', at: 'bottom' });
-  await guide.next();
+  await guide.next('Add cooling and fibre ▸');
 
   /* --- the cooling plant --- */
   stage.clearFocus();
@@ -303,13 +335,7 @@ export async function step5(){
   });
   planG.appendChild(heat);
   await fadeIn([cool, heat], 340);
-  guide.say(`Everything the racks draw leaves as heat. The cooling plant carries 25 MW of
-    it out of the buildings.`);
-  stage.focus(docOrder([cool, heat]), { label: 'cooling plant', at: 'bottom' });
-  await guide.next();
-
   /* --- fibre to the backbone --- */
-  stage.clearFocus();
   const fibre = building(planG, BUILDINGS.fibre);
   const fibreDot = svgEl('circle', { cx: 194, cy: 344, r: 4 });
   fibreDot.style.fill = 'var(--blue)';      // a live signal path
@@ -322,10 +348,12 @@ export async function step5(){
   trunk.append(trunkLine, trunkLbl);
   planG.appendChild(trunk);
   await fadeIn([fibre, trunk], 340);
-  guide.say(`Fibre (glass cable that carries data as light) leaves the site here and runs to
-    the backbone, the long-distance cables that carry the internet between cities.`);
-  stage.focus(docOrder([fibre, trunk]), { label: 'fibre hub', at: 'right' });
-  await guide.next();
+  // critic pass (2026-11-04): the cooling plant and the fibre are one card
+  guide.say(`Everything the racks draw leaves as heat, and the cooling plant carries 25 MW of it out. <b>Fibre</b>
+    (glass cable that carries data as light) leaves the site to the backbone, the long-distance cables that carry
+    the internet between cities.`);
+  stage.focus(docOrder([cool, heat, fibre, trunk]), { label: 'cooling and fibre', at: 'right' });
+  await guide.next('Add up the bill ▸');
 
   /* ============ SCENE B — the bill, act by act ============ */
 
@@ -350,19 +378,14 @@ export async function step5(){
     await fadeIn([row], 200);
     if (!flow.instant) await sleep(90);
   }
-  guide.say(`Every act added a line to this bill. Acts 1 to 4 come to about $23,020. The
-    halls, power and cooling cost about $440 million, and the network about $190 million.`);
-  stage.focus(docOrder(actRows), { label: 'spent so far', at: 'top' });
-  await guide.next();
-
-  stage.clearFocus();
-  const rule2 = svgEl('line', { x1: 390, y1: 306, x2: 690, y2: 306, stroke: 'var(--ink)', 'stroke-width': 1 });
+  const rule2 = svgEl('line', { x1: 390, y1: 306, x2: 690, y2: 306, stroke: 'var(--ink)', 'stroke-width': 1.4 });
   ledgerG.appendChild(rule2);
   const totalRow = ledgerRow(ledgerG, 334, 'TOTAL', TOTAL_COST, { strong: true });
   await fadeIn([rule2, totalRow], 300);
-  guide.say(`The whole site costs about $1.7 billion. Most of it pays for the servers, about
-    $1.07 billion for the GPUs and the boxes around them. Company capex (money spent on
-    buildings and machines) is mostly this.`);
+  // critic pass (2026-11-04): the bill and its total are one card
+  guide.say(`Every act added a line to this bill, and Acts 1 to 4 come to about $23,020. The whole site costs about
+    <b>$1.7 billion</b>, and about $1.07 billion of that is the servers. Company capex (money spent on buildings
+    and machines) is mostly this.`);
   // the two server rows (the first rack, the other 444) and the total
   stage.focus(docOrder([actRows[1], actRows[5], totalRow]), { label: 'mostly servers', at: 'bottom' });
   await guide.next();
@@ -399,29 +422,24 @@ export async function step5(){
   /* ============ IN THE LAB — what a visitor sees on a data-centre tour ============ */
 
   stage.clearFocus();
+  const recap = recapPanel(svg, ACT5_RECAP);
+  await recap.show();
+  guide.say(`Here is everything you built in this act, from one rack to a whole site.`);
+  await guide.next();
+
   const lab = slideInPanel(svg, siteLab(), { lab: true });
-  lab.focus('hall');
-  await lab.show();
-
-  guide.lab(`On a tour, you would walk into one of the halls you placed on your plot. The
-    racks stand in long rows, and each pair of rows faces the same aisle.`, { intro: true });
-  await guide.next();
-
-  lab.focus(['hall', 'aisles']);
-  guide.lab(`The rack fronts face the cold aisle, kept at about 18 to 27 °C. The servers pull
-    that air through and blow it out of their backs into the hot aisle. A roof over the cold
-    aisle stops the two mixing.`);
-  await guide.next();
-
-  lab.focus('power');
-  guide.lab(`Outside, the substation's transformers step the grid's voltage down, as on your
-    plan. Beside them stand diesel generators. If the grid fails, they start within about 15
-    seconds, and batteries inside carry the racks until then.`);
-  await guide.next();
-
-  lab.focus('cooling');
-  guide.lab(`The cooling plant you placed is out here too. Water warmed by the racks' heat is
-    pumped to cooling towers, which cool it by letting some of it evaporate into the air.`);
+  await recap.swapTo(lab);
+  // critic pass (2026-11-04): one card to explore, instead of four to read
+  labExplore(lab, {
+    text: `On a tour of a data centre, this is what you would walk past.`,
+    prompt: 'Tap a part to read about it.',
+    items: [
+      { k: 'hall', label: 'A hall', html: `The racks stand in long rows, and each pair of rows faces the same aisle.` },
+      { k: ['hall', 'aisles'], hit: 'aisles', label: 'The aisles', html: `The rack fronts face the cold aisle, kept at about 18 to 27 °C. The servers pull that air through and blow it out of their backs into the hot aisle. A roof over the cold aisle stops the two mixing.` },
+      { k: 'power', label: 'Power', html: `Outside, the substation's transformers step the grid's voltage down, as on your plan. Beside them stand diesel generators. If the grid fails, they start within about 15 seconds, and batteries inside carry the racks until then.` },
+      { k: 'cooling', label: 'Cooling', html: `The cooling plant you placed is out here too. Water warmed by the racks' heat is pumped to cooling towers, which cool it by letting some of it evaporate into the air.` },
+    ],
+  });
   await guide.next();
   await lab.hide();
 
@@ -582,20 +600,18 @@ export async function step5(){
   grab.style.touchAction = 'none';    // spin the globe with a finger without scrolling the page (mobile)
   gsvg.insertBefore(grab, rim);
   let drag = null;
-  grab.addEventListener('pointerdown', e => {
-    grab.setPointerCapture(e.pointerId);
-    drag = { x: e.clientX, y: e.clientY };
-    grab.style.cursor = 'grabbing';
+  pointerDrag(grab, {
+    start(e){
+      drag = { x: e.clientX, y: e.clientY };
+      grab.style.cursor = 'grabbing';
+    },
+    move(e){
+      const k = 0.006;                   // radians per screen pixel
+      turn(-(e.clientX - drag.x) * k, (e.clientY - drag.y) * k);
+      drag = { x: e.clientX, y: e.clientY };
+    },
+    end(){ drag = null; grab.style.cursor = 'grab'; },
   });
-  grab.addEventListener('pointermove', e => {
-    if (!drag) return;
-    const k = 0.006;                     // radians per screen pixel
-    turn(-(e.clientX - drag.x) * k, (e.clientY - drag.y) * k);
-    drag = { x: e.clientX, y: e.clientY };
-  });
-  const letGo = () => { drag = null; grab.style.cursor = 'grab'; };
-  grab.addEventListener('pointerup', letGo);
-  grab.addEventListener('pointercancel', letGo);
 
   /* Course restructure (2026-10-25): the full ladder of the course sits beside the globe
      for the last card, so the globe stays on screen to the very end. */

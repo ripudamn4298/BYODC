@@ -4,10 +4,38 @@ import { $, el, slug, RM } from './util.js';
 import { SFX } from './sfx.js';
 import { flow } from './flow.js';
 
+/* An i button inside a card's text (N-143): a brief line can stay brief, and the fuller
+   explanation opens under the card on request. Opening it is not an answer, so nothing here
+   goes through flow.ask. Write it straight after the words it explains:
+     guide.say(`It only stands in for the next pair's gate.${info('A high output charges…')}`) */
+const attr = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+export const info = text =>
+  `<button type="button" class="info-i" aria-expanded="false" aria-label="More about this" data-info="${attr(text.replace(/\s+/g, ' ').trim())}">i</button>`;
+function toggleInfo(b){
+  const card = b.closest('.beat') || b.parentElement;
+  const open = card.querySelector('.info-note');
+  const same = open && open.__from === b;
+  if (open){ open.__from.setAttribute('aria-expanded', 'false'); open.remove(); }
+  if (same) return;
+  const note = el('span', { class: 'info-note' });
+  note.textContent = b.dataset.info;
+  note.__from = b;
+  b.setAttribute('aria-expanded', 'true');
+  (b.closest('p') || card).appendChild(note);
+  if (!RM) note.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  SFX.click();
+}
+
 export const guide = {
   root: null,
   _cards: null,          // { slot, actions } while a step is in card mode
-  init(){ this.root = $('#guide-scroll'); },
+  init(){
+    this.root = $('#guide-scroll');
+    this.root.addEventListener('click', e => {
+      const b = e.target.closest?.('.info-i');
+      if (b) toggleInfo(b);
+    });
+  },
   clear(){ this.root.innerHTML = ''; this._cards = null; },
 
   /* ---------- card mode (DESIGN_MAKEOVER.md §2 rule 1) ----------
@@ -161,6 +189,23 @@ export const guide = {
     });
   },
   next(label = 'Next ▸'){ return this.button(label, 'primary'); },
+  /* The end of a step's best In the Lab cards (critic pass, 2026-11-03): Next carries on, and
+     "See more in the lab" opens the rest. Resolves true for more. The recorded path through a
+     step (index, Resume) takes Next, so the extra cards are not numbered in the index. */
+  labMore(){
+    const row = this.beat(el('div', { class: 'btn-row' }), 'actions');
+    const next = el('button', { class: 'btn primary', 'data-label': 'next' }, 'Next ▸');
+    const more = el('button', { class: 'btn', 'data-label': 'lab-more' }, 'See more in the lab');
+    row.append(next, more);
+    const settle = () => { next.disabled = more.disabled = true; next.classList.add('used'); more.classList.add('used'); };
+    return flow.ask(replay => {
+      if (replay !== undefined){ settle(); return replay; }
+      return new Promise(res => {
+        next.addEventListener('click', () => { SFX.click(); settle(); res(false); });
+        more.addEventListener('click', () => { SFX.click(); settle(); res(true); });
+      });
+    });
+  },
   choose(options){
     const row = this.beat(el('div', { class: 'choice-wrap' }), 'actions');
     const btns = options.map(o => {

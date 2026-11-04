@@ -17,13 +17,13 @@
 import { sleep, waitFor, svgEl, clamp } from '../engine/util.js';
 import { Anim } from '../engine/anim.js';
 import { SFX } from '../engine/sfx.js';
-import { guide } from '../engine/guide.js';
+import { guide, info } from '../engine/guide.js';
 import { flow } from '../engine/flow.js';
 import { newStage } from '../engine/stage.js';
 import { CurrentFlow, PathFlow } from '../engine/pathflow.js';
 import { makeLamp, makeBattery, makeSlider, makePlacer, slideInPanel } from '../engine/components.js';
 import { SHEEN, to92 } from '../engine/reallife.js';   // Course restructure (2026-10-25): to18 no longer drawn
-import { circuitNPN, setLabState } from '../engine/labcircuits.js';
+import { labBench, BENCHES } from '../engine/labbench.js';
 import { makeDepletionBands, makeOvershootDemo } from '../engine/junction.js';
 
 /* ---- geometry, in the stage's 720x480 user units ----
@@ -99,12 +99,9 @@ export async function step3(){
      "semiconductors changed the world" story box are cut. They restated the premise that
      ends step 1.2 and were theatrical. One plain card replaces them. None of the three drew
      anything on the stage, so no drawing goes with them. */
-  guide.say(`Your diode opens only when the current through it pushes hard enough. A switch
-    needs a separate wire that turns a large current on and off.`);
-  await guide.next();
-
-  guide.say(`This is the junction you built last step: N against P, with a depletion layer
-    between them. Current only crosses it above about <b>0.7 V</b>.`);
+  // critic pass (2026-11-03): one card, on the junction the learner built
+  guide.say(`Here is last step's diode. It opens only when the current through it pushes hard
+    enough. A switch needs a separate wire that turns a large current on and off.`);
   stage.focus(jg, { label: 'from last step', at: 'bottom' });
   await guide.next();
 
@@ -155,25 +152,10 @@ export async function step3(){
   const tileC = makeTile('C', 150, 78, 'COLLECTOR', 452, 346);
   const tiles = [tileE, tileB, tileC];
 
-  await fadeIn([tileE.g]);
-  guide.say(`The <b>emitter</b> is the block that emits (sends out) the electrons. It is
-    small because its only job is to push electrons into the block next to it.`);
-  stage.focus(tileE.g, { label: 'emitter (n)', at: 'top' });
-  await guide.next();
-
-  stage.clearFocus();
-  await fadeIn([tileB.g]);
-  guide.say(`The <b>base</b> is the thin P block in the middle. Every electron the emitter
-    sends out has to cross it.`);
-  stage.focus(tileB.g, { label: 'base (p)', at: 'top' });
-  await guide.next();
-
-  stage.clearFocus();
-  await fadeIn([tileC.g]);
-  guide.say(`The <b>collector</b> collects the electrons that make it across. It is wide
-    because it carries the whole current, and a large current produces heat.`);
-  stage.focus(tileC.g, { label: 'collector (n)', at: 'top' });
-  await guide.next();
+  // critic pass (2026-11-03): build it first, name it second (DESIGN.md §6b-2). All three blocks
+  // arrive together and the learner places them on card 3 (it was card 7); the naming cards
+  // follow on the assembled device.
+  await fadeIn(tiles.map(t => t.g));
 
   /* ================= CARD 6 — place them, name landing as each block goes in ======= */
 
@@ -195,8 +177,8 @@ export async function step3(){
     if (s.value && nameFor[s.key].style.display === 'none') fadeIn([nameFor[s.key]], 240);
   });
 
-  guide.say(`From left to right, the blocks are the emitter, the base and the collector. Drag each block into a slot, or tap a
-    block and then a slot.`);
+  guide.say(`<b>Drag each block into a slot</b>, or tap a block and then a slot. The small emitter
+    goes on the left, the thin base in the middle and the wide collector on the right.`);
 
   const placer = makePlacer({
     svg, tiles, slots,
@@ -238,6 +220,23 @@ export async function step3(){
   dev.style.display = 'none';
   if (!flow.instant) SFX.success();
   await fadeIn([dev], 380);
+
+  /* one name per card, each on its own block of the device the learner just built */
+  guide.say(`The <b>emitter</b> sends out the electrons. It is small because its only job is to push
+    electrons into the block next to it.`);
+  stage.focus(eRect, { label: 'emitter', at: 'top' });
+  await guide.next();
+
+  guide.say(`The <b>base</b> is the thin P block in the middle. Every electron the emitter sends out
+    has to cross it.`);
+  stage.focus(bRect, { label: 'base', at: 'top' });
+  await guide.next();
+
+  guide.say(`The <b>collector</b> collects the electrons that make it across. It is wide because it
+    carries the whole current, and a large current produces heat.`);
+  stage.focus(cRect, { label: 'collector', at: 'top' });
+  await guide.next();
+  stage.clearFocus();
 
   /* ================= CARD 7 — a barrier at each seam =============================== */
 
@@ -305,10 +304,6 @@ export async function step3(){
   ctlRig.style.display = 'none';
   await fadeIn([ctlRig]);
 
-  guide.say(`You already know how to lower a barrier: push about <b>0.7 V</b> across it.
-    This second battery does that, from the base down to the emitter.`);
-  stage.focus(ctlRig, { label: '0.7 v, base to emitter', at: 'right' });
-  await guide.next();
 
   /* ---- the electrical state of the whole rig, as one pure function of the base current.
      Called with a fixed 4 µA for the 0.7 V beat, then driven by the dial. ---- */
@@ -356,8 +351,10 @@ export async function step3(){
   eFlow.setSpeed(46);
   await sleep(360);
 
-  guide.say(`This voltage acts on the left barrier only. When that barrier narrows,
-    electrons start crossing from the emitter into the base.`);
+  // critic pass (2026-11-03): the second battery and what it does are one card
+  guide.say(`You already know how to lower a barrier: push about <b>0.7 V</b> across it. This second
+    battery does that to the left barrier only, so electrons start crossing from the emitter
+    into the base.`);
   stage.focus(wallL.el, { label: 'left barrier narrows', at: 'top' });
   await guide.next();
 
@@ -438,18 +435,11 @@ export async function step3(){
   dial.on(applyBias);
   applyBias(dial.value);   // the current chevrons return here, with the talk of current
 
-  guide.say(`Now we swap the fixed battery for a dial, which sets how much current you push
-    into the base.`);
-  stage.focus(ctlRig, { label: 'base dial', at: 'right' });
-  await guide.next();
-
-  /* ================= CARD 15 — the two numbers to compare ========================= */
-
-  stage.clearFocus();
+  // critic pass (2026-11-03): the dial and its two readouts are one card
   await fadeIn([baseC.g, mainC.g]);
-  guide.say(`There are two readouts now: the current you put into the base, and the current running
-    through the device from collector to emitter.`);
-  stage.focus([baseC.g, mainC.g], { label: 'in and out', at: 'top' });
+  guide.say(`Now a dial sets how much current you push into the base. The two readouts show that
+    current and the current running through the device from collector to emitter.`);
+  stage.focus([ctlRig, baseC.g, mainC.g], { label: 'dial and readouts', at: 'top' });
   await guide.next();
 
   /* ================= CARDS 16-17 — take it fully off, then fully on ================ */
@@ -484,39 +474,24 @@ export async function step3(){
 
   /* ================= CARD 18 — the ratio ========================================== */
 
-  guide.aha(`<b>You put 10 µA in, and 1,000 µA came out.</b> The small base current keeps the emitter-side
-    barrier lowered, so the device passes a hundred times more current than you put in.`,
-    `Flick the dial and it is a switch. Move it smoothly and it is an amplifier.`);
+  guide.aha(`<b>You put 10 µA in, and 1,000 µA came out.</b> The small base current keeps the first
+    barrier lowered, so a hundred times more current passes.`,
+    `Flick the dial and it is a switch. Move it smoothly and it is an amplifier.${info(`An amplifier makes a larger copy of a small signal. A small
+    wobble in the base current gives the same wobble, a hundred times larger, in the current
+    through the device. This is how a microphone's signal gets strong enough to drive a speaker.`)}`);
   stage.focus([baseC.g, mainC.g], { label: '1 in, 100 out', at: 'top' });
   await guide.next();
 
   /* ================= CARD 19 — the name, once the thing exists ==================== */
 
   stage.clearFocus();
-  guide.say(`It is an N block, a thin P block, then another N block. That is what the name says: this is an
-    <b>NPN transistor</b>.`);
-  stage.focus(dev, { label: 'npn transistor', at: 'bottom' });
-  await guide.next();
-
   /* Course restructure (2026-10-25): light-bulb card, "transistor count". Plain card, no
-     eyebrow (COURSE_RESTRUCTURE_PROPOSAL.md §6). */
-  guide.say(`A transistor is a switch with no moving parts: a small base current turns the
-    current from collector to emitter on or off. This is what people mean when they talk
-    about a chip's transistor count: a count of switches like this one.`);
-  stage.focus(dev, { label: 'one switch', at: 'bottom' });
-  await guide.next();
-
-  /* ================= CARD 20 — the two directions, reconciled ===================== */
-
-  stage.clearFocus();
-  const eArrow = arrow(svg, 148, 244, 404, 244, 'var(--blue)');   // the path the demo ran on
-  eArrow.style.display = 'none';
-  await fadeIn([eArrow]);
-
-  guide.say(`Inside the crystal the electrons run from emitter to collector. The arrows on
-    the wires point the other way, because they show conventional current, as agreed in step
-    1.`);
-  stage.focus(eArrow, { label: 'electrons', at: 'right' });
+     eyebrow (COURSE_RESTRUCTURE_PROPOSAL.md §6). critic pass (2026-11-03): the NPN name goes
+     on it, and the conventional-current recap is cut, because step 1 already agreed it. */
+  guide.say(`N, a thin P, then N: this is an <b>NPN transistor</b>, a switch with no moving parts. This
+    is what people mean when they talk about a chip's transistor count: a count of switches
+    like this one.`);
+  stage.focus(dev, { label: 'npn transistor', at: 'bottom' });
   await guide.next();
   stage.clearFocus();
 
@@ -526,23 +501,10 @@ export async function step3(){
   await real.show();
   // Course restructure (2026-10-25): the 2N2222 card and the "both multiply" card are cut;
   // the line about computers built from separate transistors is folded in here.
-  guide.lab(`Here is the NPN transistor you just built, sold as a part: a BC547. With its flat
-    face towards you, its legs are the collector, the base and the emitter, from left to
-    right. Before chips, whole computers were built from thousands of separate transistors
-    like this one.`, { intro: true });
-  await guide.next();
+  guide.lab(`Here is the NPN transistor you just built, sold as a part: a BC547. Before chips, whole
+    computers were built from thousands of separate transistors like this one.`);
+  // critic pass (2026-11-03): the part shows, the breadboard is there on request
+  if (!await guide.labMore()){ await real.hide(); return; }
 
-  const board = slideInPanel(svg, circuitNPN(), { lab: true });
-  setLabState(board, false);
-  await real.swapTo(board);      // N-053: no flash of the stage between panels
-  guide.lab(`Here is your transistor test on a breadboard. The LED and its resistor sit between
-    the + rail and the collector, and the emitter goes to ground. The base wire is on ground,
-    so the LED is off.`);
-  await guide.next();
-
-  setLabState(board, true);
-  guide.lab(`Move the base wire to the + rail. A tiny current, about 0.04 mA, flows through the
-    100 kΩ resistor into the base, and it switches on several milliamps through the LED.`);
-  await guide.next();
-  await board.hide();
+  await labBench(svg, real, BENCHES.npn);
 }
