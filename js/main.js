@@ -81,7 +81,13 @@ async function startGame(actId = 1, startAt = 0, replay = {}){
   if (started || starting) return;
   starting = true;
   SFX.init(); SFX.click();
-  await tour.landing();      // the first time only: a look round the top bar before the course opens
+  // a new visitor's first start: a look round the page, and they stay on it. Their next click on an
+  // act opens the course. Someone resuming a saved run goes straight in.
+  if (tour.landingDue() && !progress.load() && !replay.queue){
+    await tour.landing();
+    starting = false;
+    return;
+  }
   started = true;
   teardownLanding();
   $('#landing').style.display = 'none';
